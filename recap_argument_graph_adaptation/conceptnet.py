@@ -52,7 +52,6 @@ class Relationship:
         pass
 
 
-
 # CONCEPTNET NODES
 def concept_name(text: str, lang: str) -> str:
     """Create name of concept.
@@ -60,11 +59,9 @@ def concept_name(text: str, lang: str) -> str:
     Originally from conceptnet5.nodes.preprocess_and_tokenize_text
     """
 
-    text = preprocess_text(text.replace('_', ' '), lang)
+    text = preprocess_text(text.replace("_", " "), lang)
     tokens = simple_tokenize(text)
-    return '_'.join(tokens)
-
-
+    return "_".join(tokens)
 
 
 # CONCEPTNET URI
@@ -120,7 +117,7 @@ def join_uri(*pieces):
     >>> join_uri('/test', '/more/')
     '/test/more'
     """
-    joined = '/' + ('/'.join([piece.strip('/') for piece in pieces]))
+    joined = "/" + ("/".join([piece.strip("/") for piece in pieces]))
     return joined
 
 
@@ -158,16 +155,16 @@ def concept_uri(lang, text, *more):
         ...
     AssertionError: 'this is wrong' is not in normalized form
     """
-    assert ' ' not in text, "%r is not in normalized form" % text
+    assert " " not in text, "%r is not in normalized form" % text
     if len(more) > 0:
         if len(more[0]) != 1:
             # We misparsed a part of speech; everything after the text is
             # probably junk
             more = []
         for dis1 in more[1:]:
-            assert ' ' not in dis1, "%r is not in normalized form" % dis1
+            assert " " not in dis1, "%r is not in normalized form" % dis1
 
-    return join_uri('/c', lang, text, *more)
+    return join_uri("/c", lang, text, *more)
 
 
 def compound_uri(op, args):
@@ -193,14 +190,14 @@ def compound_uri(op, args):
     """
     items = [op]
     first_item = True
-    items.append('[')
+    items.append("[")
     for arg in args:
         if first_item:
             first_item = False
         else:
-            items.append(',')
+            items.append(",")
         items.append(arg)
-    items.append(']')
+    items.append("]")
     return join_uri(*items)
 
 
@@ -213,12 +210,12 @@ def split_uri(uri):
     >>> split_uri('/')
     []
     """
-    if not uri.startswith('/'):
+    if not uri.startswith("/"):
         return [uri]
-    uri2 = uri.lstrip('/')
+    uri2 = uri.lstrip("/")
     if not uri2:
         return []
-    return uri2.split('/')
+    return uri2.split("/")
 
 
 def uri_prefix(uri, max_pieces=3):
@@ -273,7 +270,7 @@ def uri_prefixes(uri, min_pieces=2):
     for piece in split_uri(uri):
         pieces.append(piece)
         if len(pieces) >= min_pieces:
-            if pieces.count('[') == pieces.count(']'):
+            if pieces.count("[") == pieces.count("]"):
                 prefixes.append(join_uri(*pieces))
     return prefixes
 
@@ -290,13 +287,13 @@ def parse_compound_uri(uri):
     ('/or', ['/and/[/s/one/,/s/two/]', '/and/[/s/three/,/s/four/]'])
     """
     pieces = split_uri(uri)
-    if pieces[-1] != ']':
+    if pieces[-1] != "]":
         raise ValueError("Compound URIs must end with /]")
-    if '[' not in pieces:
+    if "[" not in pieces:
         raise ValueError(
             "Compound URIs must contain /[/ at the beginning of the argument list"
         )
-    list_start = pieces.index('[')
+    list_start = pieces.index("[")
     op = join_uri(*pieces[:list_start])
 
     chunks = []
@@ -305,19 +302,19 @@ def parse_compound_uri(uri):
 
     # Split on commas, but not if they're within additional pairs of brackets.
     for piece in pieces[(list_start + 1) : -1]:
-        if piece == ',' and depth == 0:
-            chunks.append('/' + ('/'.join(current)).strip('/'))
+        if piece == "," and depth == 0:
+            chunks.append("/" + ("/".join(current)).strip("/"))
             current = []
         else:
             current.append(piece)
-            if piece == '[':
+            if piece == "[":
                 depth += 1
-            elif piece == ']':
+            elif piece == "]":
                 depth -= 1
 
     assert depth == 0, "Unmatched brackets in %r" % uri
     if current:
-        chunks.append('/' + ('/'.join(current)).strip('/'))
+        chunks.append("/" + ("/".join(current)).strip("/"))
     return op, chunks
 
 
@@ -337,7 +334,7 @@ def parse_possible_compound_uri(op, uri):
     >>> parse_possible_compound_uri('or', '/s/contributor/omcs/dev')
     ['/s/contributor/omcs/dev']
     """
-    if uri.startswith('/' + op + '/'):
+    if uri.startswith("/" + op + "/"):
         return parse_compound_uri(uri)[1]
     else:
         return [uri]
@@ -364,7 +361,7 @@ def conjunction_uri(*sources):
     elif len(sources) == 1:
         return sources[0]
     else:
-        return compound_uri('/and', sorted(set(sources)))
+        return compound_uri("/and", sorted(set(sources)))
 
 
 def assertion_uri(rel, start, end):
@@ -375,8 +372,8 @@ def assertion_uri(rel, start, end):
     >>> assertion_uri('/r/CapableOf', '/c/en/cat', '/c/en/sleep')
     '/a/[/r/CapableOf/,/c/en/cat/,/c/en/sleep/]'
     """
-    assert rel.startswith('/r'), rel
-    return compound_uri('/a', (rel, start, end))
+    assert rel.startswith("/r"), rel
+    return compound_uri("/a", (rel, start, end))
 
 
 def is_concept(uri):
@@ -388,7 +385,7 @@ def is_concept(uri):
     >>> is_concept('/a/[/r/Synonym/,/c/ro/funcția_beta/,/c/en/beta_function/]')
     False
     """
-    return uri.startswith('/c/')
+    return uri.startswith("/c/")
 
 
 def is_relation(uri):
@@ -398,7 +395,7 @@ def is_relation(uri):
     >>> is_relation('/c/sv/klänning')
     False
     """
-    return uri.startswith('/r/')
+    return uri.startswith("/r/")
 
 
 def is_term(uri):
@@ -410,7 +407,7 @@ def is_term(uri):
     >>> is_term('/a/[/r/RelatedTo/,/c/en/cake/,/c/en/flavor/]')
     False
     """
-    return uri.startswith('/c/') or uri.startswith('/x/')
+    return uri.startswith("/c/") or uri.startswith("/x/")
 
 
 def is_absolute_url(uri):
@@ -424,7 +421,7 @@ def is_absolute_url(uri):
     >>> is_absolute_url('/c/fr/nouveau')
     False
     """
-    return uri.startswith('http') or uri.startswith('cc:')
+    return uri.startswith("http") or uri.startswith("cc:")
 
 
 def get_uri_language(uri):
@@ -439,8 +436,8 @@ def get_uri_language(uri):
     >>> get_uri_language('/x/en/able')
     'en'
     """
-    if uri.startswith('/a/'):
-        return get_uri_language(parse_possible_compound_uri('a', uri)[1])
+    if uri.startswith("/a/"):
+        return get_uri_language(parse_possible_compound_uri("a", uri)[1])
     elif is_term(uri):
         return split_uri(uri)[1]
     else:
@@ -466,16 +463,15 @@ def uri_to_label(uri):
     'Q89'
     """
     if is_absolute_url(uri):
-        return uri.split('/')[-1]
+        return uri.split("/")[-1]
     if is_term(uri):
         uri = uri_prefix(uri)
     parts = split_uri(uri)
     if len(parts) < 3 and not is_relation(uri):
-        return ''
-    return parts[-1].replace('_', ' ')
+        return ""
+    return parts[-1].replace("_", " ")
 
 
 class Licenses:
-    cc_attribution = 'cc:by/4.0'
-    cc_sharealike = 'cc:by-sa/4.0'
-
+    cc_attribution = "cc:by/4.0"
+    cc_sharealike = "cc:by-sa/4.0"

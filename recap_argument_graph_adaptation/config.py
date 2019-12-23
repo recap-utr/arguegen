@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 import tomlkit as toml
 
+
 class Config(collections.MutableMapping):
     _instance = None
     _store: Dict[str, Any]
@@ -60,5 +61,6 @@ class Config(collections.MutableMapping):
         return f"""The key '{key}' is not defined in '{self._file}'.
         This is most likely caused by an old version of that file.
         Look at '{self._template}' to see all options."""
+
 
 config = Config.instance()
