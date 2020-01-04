@@ -14,14 +14,14 @@ class Config(collections.MutableMapping):
     @classmethod
     def instance(cls):
         """ Static access method. """
-        if cls._instance == None:
+        if cls._instance is None:
             cls()
         return cls._instance
 
     def __init__(self):
         """ Private constructor."""
-        if Config._instance != None:
-            raise Exception("This class is a singleton!")
+        if Config._instance is not None:
+            raise RuntimeError("This class is a singleton!")
         else:
             Config._instance = self
             with self._file.open() as f:

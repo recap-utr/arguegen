@@ -1,55 +1,21 @@
-from dataclasses import dataclass
+from __future__ import annotations
 
-import neo4j
 from wordfreq import simple_tokenize
 from wordfreq.preprocess import preprocess_text
 
 
-@dataclass
-class Node:
-    name: str
-    lang: str
-    source: str
+def adapt_name(retrieved_name: str, original_name: str) -> str:
+    """Convert normalized concept text to a version with proper capitalization."""
 
-    @property
-    def uri(self):
-        return concept_uri(self.lang, self.name)
+    name = retrieved_name.replace("_", " ")
 
-    @classmethod
-    def from_neo4j(cls, obj: neo4j.Node) -> "Node":
-        return cls(name=obj["name"], lang=obj["language"], source=obj["source"])
+    if original_name.istitle():
+        return name.title()
 
-    def adapt_name(self, original_name: str):
-        """Convert normalized concept text to a version with proper capitalization."""
+    elif original_name[0].isupper():
+        return name.capitalize()
 
-        name = self.name.replace("_", " ")
-
-        if original_name.istitle():
-            return name.title()
-
-        elif original_name[0].isupper():
-            return name.capitalize()
-
-        return name
-
-
-@dataclass
-class Relationship:
-    category: str
-    start: Node
-    end: Node
-    dataset: str
-    license: str
-    weight: float
-
-    @property
-    def uri(self) -> str:
-        rel_uri = join_uri("r", self.category)
-        return assertion_uri(rel_uri, self.start.uri, self.end.uri)
-
-    @classmethod
-    def from_neo4j(cls, obj: neo4j.Relationship) -> "Relationship":
-        pass
+    return name
 
 
 # CONCEPTNET NODES
