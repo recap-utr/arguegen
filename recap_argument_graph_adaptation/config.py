@@ -1,15 +1,14 @@
 import collections
 from pathlib import Path
-from typing import Dict, Any
+import typing as t
 
 import tomlkit as toml
 
 
 class Config(collections.MutableMapping):
     _instance = None
-    _store: Dict[str, Any]
+    _store: t.MutableMapping[str, t.Any]
     _file = Path("config.toml")
-    _template = Path("config-template.toml")
 
     @classmethod
     def instance(cls):
@@ -28,22 +27,13 @@ class Config(collections.MutableMapping):
                 self._store = toml.parse(f.read())
 
     def __getitem__(self, key):
-        if key in self._store:
-            return self._store[key]
-        else:
-            raise ValueError(self._error(key))
+        return self._store[key]
 
     def __setitem__(self, key, value):
-        if key in self._store:
-            self._store[key] = value
-        else:
-            raise ValueError(self._error(key))
+        self._store[key] = value
 
     def __delitem__(self, key):
-        if key in self._store:
-            del self._store[key]
-        else:
-            raise ValueError(self._error(key))
+        del self._store[key]
 
     def __iter__(self):
         return iter(self._store)
@@ -56,11 +46,6 @@ class Config(collections.MutableMapping):
 
     def __str__(self):
         return str(self._store)
-
-    def _error(self, key: str) -> str:
-        return f"""The key '{key}' is not defined in '{self._file}'.
-        This is most likely caused by an old version of that file.
-        Look at '{self._template}' to see all options."""
 
 
 config = Config.instance()

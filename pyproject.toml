@@ -11,6 +11,7 @@ neo4j = "^1.7.6"
 tomlkit = "^0.5.8"
 wordfreq = "^2.2.1"
 langcodes = "^1.4.1"
+nltk = "^3.4.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
