@@ -1,15 +1,10 @@
-import typing as t
-from dataclasses import dataclass
 from pathlib import Path
 
-import neo4j
 import recap_argument_graph as ag
 import spacy
 import stackprinter
 
 from .controller import concept
-from .model import conceptnet
-from .model.adaptation import ConceptAdaptation
 from .model.config import Config
 from .model.database import Database
 
