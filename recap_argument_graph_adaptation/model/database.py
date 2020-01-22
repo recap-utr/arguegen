@@ -71,17 +71,17 @@ class Database:
     # EXTEND PATH
 
     def extend_path(
-        self, path: neo4j.Path, relationship: neo4j.Relationship
+        self, current_path: neo4j.Path, extension_path: neo4j.Path
     ) -> neo4j.Path:
         with self._driver.session() as session:
-            return session.read_transaction(self._extend_path, path, relationship)
+            return session.read_transaction(self._extend_path, current_path, extension_path)
 
     @staticmethod
     def _extend_path(
-        tx: neo4j.Session, path: neo4j.Path, relationship: neo4j.Relationship
+        tx: neo4j.Session, current_path: neo4j.Path, extension_path: neo4j.Path
     ) -> neo4j.Path:
         wordgen = Gibberish()
-        relationships = list(path.relationships) + [relationship]
+        relationships = list(current_path.relationships) + list(extension_path.relationships)
         words = wordgen.generate_words(len(relationships))
 
         q = "MATCH p = ( (:Concept)-["
@@ -101,7 +101,7 @@ class Database:
 
     def expand_node(
         self, node: neo4j.Node, rel_types: t.Collection[str]
-    ) -> t.Optional[t.List[neo4j.Relationship]]:
+    ) -> t.Optional[t.List[neo4j.Path]]:
         with self._driver.session() as session:
             return session.read_transaction(
                 self._expand_node, node, rel_types, self.lang
@@ -110,10 +110,11 @@ class Database:
     @staticmethod
     def _expand_node(
         tx: neo4j.Session, node: neo4j.Node, rel_types: t.Collection[str], lang: str
-    ) -> t.Optional[t.List[neo4j.Relationship]]:
+    ) -> t.Optional[t.List[neo4j.Path]]:
         rel_query = "|:".join(rel_types)
         result = tx.run(
-            f"MATCH (n:Concept {{language: $lang}})-[r:{rel_query}]-(m:Concept {{language: $lang}}) WHERE id(n)={node.id} RETURN r",
+            f"MATCH p=(n:Concept {{language: $lang}})-[r:{rel_query}]-(m:Concept {{language: $lang}})"
+            f"WHERE id(n)={node.id} RETURN p",
             lang=lang,
         )
 

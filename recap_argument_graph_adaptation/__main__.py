@@ -34,7 +34,7 @@ query_graph.add_node(
 case_concepts = concept.from_graph(case_graph)
 query_concepts = concept.from_graph(query_graph)
 
-adaptation_rules = [("penalty", "punishment"), ("death", "any")]
+adaptation_rules = [("penalty", "punishment")]
 
 for rule in adaptation_rules:
     original_paths = concept.reference_paths(db, case_concepts, rule)

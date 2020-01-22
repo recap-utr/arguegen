@@ -3,8 +3,8 @@ import typing as t
 
 import neo4j
 import recap_argument_graph as ag
+from scipy.spatial import distance
 import spacy
-import numpy as np
 
 from ..model import conceptnet
 from ..model.database import Database
@@ -48,37 +48,36 @@ def adapt_paths(
         adapted_path = db.single_path(rule[1])
 
         for reference_rel in reference_path:
-            adapted_relationships = db.expand_node(
+            path_candidates = db.expand_node(
                 adapted_path.end_node, [reference_rel.type]
             )
 
-            adapted_relationship = filter_relationships(
-                adapted_relationships, concept, rule
+            path_candidate = filter_paths(
+                path_candidates, concept, rule
             )
-            # adapted_relationship = next(iter(adapted_relationships), None)
 
-            if adapted_relationship:
-                adapted_path = db.extend_path(adapted_path, adapted_relationship)
+            if path_candidate:
+                adapted_path = db.extend_path(adapted_path, path_candidate)
 
         adapted_paths[concept] = adapted_path
 
     return adapted_paths
 
 
-def filter_relationships(
-    rels: t.Optional[t.Iterable[neo4j.Relationship]],
+def filter_paths(
+    paths: t.Optional[t.Iterable[neo4j.Path]],
     concept: str,
     rule: t.Tuple[str, str],
-) -> t.Optional[neo4j.Relationship]:
+) -> t.Optional[neo4j.Path]:
     diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
     candidate_pair = (None, 1)
 
-    for rel in rels:
-        diff_adapted = abs(nlp(rel.end_node["name"]).vector - nlp(rule[1]).vector)
-        dist = scipy.spatial.distance.cosine(diff_reference, diff_adapted)
+    for path in paths:
+        diff_adapted = abs(nlp(path.end_node["name"]).vector - nlp(rule[1]).vector)
+        dist = distance.cosine(diff_reference, diff_adapted)
 
         if dist < candidate_pair[1]:
-            candidate_pair = (rel, dist)
+            candidate_pair = (path, dist)
 
     return candidate_pair[0]
 
