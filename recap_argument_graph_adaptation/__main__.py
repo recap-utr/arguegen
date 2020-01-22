@@ -10,7 +10,7 @@ from .model.database import Database
 
 config = Config.instance()
 db = Database("en")
-nlp = spacy.load("en")
+nlp = spacy.load("en_core_web_lg")
 
 stackprinter.set_excepthook(style="darkbg")
 
