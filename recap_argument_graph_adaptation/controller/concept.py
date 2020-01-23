@@ -12,29 +12,30 @@ from ..model.database import Database
 nlp = spacy.load("en_core_web_lg")
 
 
-def from_graph(graph: ag.Graph) -> t.Set[str]:
-    db = Database(lang = "en")
+def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
     concepts = set()
 
     for node in graph.inodes:
         doc = nlp(node.text)
 
         for chunk in doc.noun_chunks:
+            chunk_text = chunk.text
+
             # special case 1: noun chunk is single-word pronoun: them, they, it.. 
-            if len(chunk) == 1: and chunk[0].pos_ == "PRON":
+            if len(chunk) == 1 and chunk[0].pos_ == "PRON":
                 continue
 
             # special case 2: preceeding stop word: '[A] death penalty', '[THE] sexual orientation'
-            elif len(chunk) > 2: and chunk[0].is_stop:
-                nc = chunk[1:].text
-            else:
-                nc = chunk.text
+            # TODO: Make it more robust (stop words may occur in other positions than 0).
+            elif len(chunk) > 2 and chunk[0].is_stop:
+                chunk_text = chunk[1:].text
 
             # check if noun chunk is concept in ConceptNet otherwise check if root is concept and add
-            if db.node(nc) is not None:
-                concept.add(nc)
-            elif db.node(root) is not None:
-                concept.add(chunk.root.text)
+            if db.node(chunk_text) is not None:
+                concepts.add(chunk_text)
+
+            elif db.node(chunk.root) is not None:
+                concepts.add(chunk.root.text)
 
     return concepts
 

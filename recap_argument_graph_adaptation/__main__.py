@@ -31,8 +31,8 @@ query_graph.add_node(
     )
 )
 
-case_concepts = concept.from_graph(case_graph)
-query_concepts = concept.from_graph(query_graph)
+case_concepts = concept.from_graph(db, case_graph)
+query_concepts = concept.from_graph(db, query_graph)
 
 adaptation_rules = [("penalty", "punishment")]
 
