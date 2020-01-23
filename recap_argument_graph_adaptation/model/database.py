@@ -52,6 +52,27 @@ class Database:
 
         return result.value() if result else None
 
+        # ALL SHORTEST PATHS
+
+    def all_shortest_path(self, start: str, end: str) -> t.Optional[t.List[neo4j.Path]]:
+        with self._driver.session() as session:
+            return session.read_transaction(self._all_shortest_paths, start, end, self.lang)
+
+    @staticmethod
+    def _all_shortest_paths(
+            tx: neo4j.Session, start: str, end: str, lang: str
+    ) -> t.Optional[t.List[neo4j.Path]]:
+        result = tx.run(
+            "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})-[*..10]-"
+            "(m:Concept {name: $end, language: $lang})) RETURN p",
+            start=conceptnet.concept_name(start, lang),
+            end=conceptnet.concept_name(end, lang),
+            # max_relations=max_relations,
+            lang=lang,
+        ).single()
+
+        return result.value() if result else None
+
     # SINGLE PATH
 
     def single_path(self, name: str) -> t.Optional[neo4j.Path]:
