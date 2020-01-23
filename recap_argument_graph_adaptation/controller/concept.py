@@ -1,5 +1,6 @@
 import math
 import typing as t
+from collections import defaultdict
 
 import neo4j
 import recap_argument_graph as ag
@@ -16,12 +17,12 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
     concepts = set()
 
     for node in graph.inodes:
-        doc = nlp(node.text)
+        doc = node.text  # nlp(node.text)
 
         for chunk in doc.noun_chunks:
             chunk_text = chunk.text
 
-            # special case 1: noun chunk is single-word pronoun: them, they, it.. 
+            # special case 1: noun chunk is single-word pronoun: them, they, it..
             if len(chunk) == 1 and chunk[0].pos_ == "PRON":
                 continue
 
@@ -34,7 +35,7 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
             if db.node(chunk_text) is not None:
                 concepts.add(chunk_text)
 
-            elif db.node(chunk.root) is not None:
+            elif db.node(chunk.root.text) is not None:
                 concepts.add(chunk.root.text)
 
     return concepts
@@ -42,9 +43,9 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
 
 def reference_paths(
     db: Database, concepts: t.Iterable[str], rule: t.Tuple[str, str]
-) -> t.Dict[str, t.Optional[neo4j.Path]]:
+) -> t.Dict[str, t.Optional[t.List[neo4j.Path]]]:
     return {
-        concept: db.shortest_path(rule[0], rule[1])
+        concept: db.all_shortest_paths(rule[0], concept)
         for concept in concepts
         if rule[0] != concept
     }
@@ -52,36 +53,39 @@ def reference_paths(
 
 def adapt_paths(
     db: Database,
-    reference_paths: t.Dict[str, t.Optional[neo4j.Path]],
+    reference_paths: t.Dict[str, t.Optional[t.Iterable[neo4j.Path]]],
     rule: t.Tuple[str, str],
 ) -> t.Dict[str, t.Optional[neo4j.Path]]:
     adapted_paths = {}
 
-    for concept, reference_path in reference_paths.items():
-        # We have to convert the target to a path object here.
-        adapted_path = db.single_path(rule[1])
+    for concept, paths in reference_paths.items():
+        # We are using allShortestPaths, so we pick the one that has the highest number of matches.
+        adaptation_candidates = defaultdict(int)
 
-        for reference_rel in reference_path:
-            path_candidates = db.expand_node(
-                adapted_path.end_node, [reference_rel.type]
-            )
+        for path in paths:
+            # We have to convert the target to a path object here.
+            adapted_path = db.single_path(rule[1])
 
-            path_candidate = filter_paths(
-                path_candidates, concept, rule
-            )
+            for rel in path:
+                path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
-            if path_candidate:
-                adapted_path = db.extend_path(adapted_path, path_candidate)
+                path_candidate = filter_paths(path_candidates, concept, rule)
 
-        adapted_paths[concept] = adapted_path
+                if path_candidate:
+                    adapted_path = db.extend_path(adapted_path, path_candidate)
+
+            adaptation_candidates[adapted_path] += 1
+
+        # TODO: Multiple paths with the same count might occur!!
+        adapted_paths[concept] = max(
+            adaptation_candidates, key=adaptation_candidates.get
+        )
 
     return adapted_paths
 
 
 def filter_paths(
-    paths: t.Optional[t.Iterable[neo4j.Path]],
-    concept: str,
-    rule: t.Tuple[str, str],
+    paths: t.Optional[t.Iterable[neo4j.Path]], concept: str, rule: t.Tuple[str, str],
 ) -> t.Optional[neo4j.Path]:
     diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
     candidate_pair = (None, 1)

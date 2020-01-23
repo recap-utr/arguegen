@@ -12,7 +12,7 @@ config = Config.instance()
 db = Database("en")
 nlp = spacy.load("en_core_web_lg")
 
-stackprinter.set_excepthook(style="darkbg")
+# stackprinter.set_excepthook(style="darkbg2")
 
 
 # TODO: allShortestPaths could be used to filter for paths that contain names of existing concepts in graph
@@ -37,8 +37,8 @@ query_concepts = concept.from_graph(db, query_graph)
 adaptation_rules = [("penalty", "punishment")]
 
 for rule in adaptation_rules:
-    original_paths = concept.reference_paths(db, case_concepts, rule)
-    adapted_paths = concept.adapt_paths(db, original_paths, rule)
+    reference_paths = concept.reference_paths(db, case_concepts, rule)
+    adapted_paths = concept.adapt_paths(db, reference_paths, rule)
     concept.adapt_graph(adapted_graph, adapted_paths)
 
 adapted_graph.render(Path("data/out/"))
