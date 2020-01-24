@@ -32,10 +32,10 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
                 chunk_text = chunk[1:].text
 
             # check if noun chunk is concept in ConceptNet otherwise check if root is concept and add
-            if db.node(chunk_text) is not None:
+            if db.node(chunk_text):
                 concepts.add(chunk_text)
 
-            elif db.node(chunk.root.text) is not None:
+            elif db.node(chunk.root.text):
                 concepts.add(chunk.root.text)
 
     return concepts
@@ -69,7 +69,9 @@ def adapt_paths(
             for rel in path:
                 path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
-                path_candidate = filter_paths(path_candidates, concept, rule)
+                path_candidate = filter_paths(
+                    path_candidates, adapted_path, concept, rule
+                )
 
                 if path_candidate:
                     adapted_path = db.extend_path(adapted_path, path_candidate)
@@ -85,17 +87,22 @@ def adapt_paths(
 
 
 def filter_paths(
-    paths: t.Optional[t.Iterable[neo4j.Path]], concept: str, rule: t.Tuple[str, str],
+    paths: t.Optional[t.Iterable[neo4j.Path]],
+    adapted_path: neo4j.Path,
+    concept: str,
+    rule: t.Tuple[str, str],
 ) -> t.Optional[neo4j.Path]:
     diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
-    candidate_pair = (None, 1)
+    candidate_pair = (None, 1.0)
+    adapted_node_ids = [node.id for node in adapted_path.nodes]
 
     for path in paths:
-        diff_adapted = abs(nlp(path.end_node["name"]).vector - nlp(rule[1]).vector)
-        dist = distance.cosine(diff_reference, diff_adapted)
+        if path.end_node.id not in adapted_node_ids:
+            diff_adapted = abs(nlp(path.end_node["name"]).vector - nlp(rule[1]).vector)
+            dist = distance.cosine(diff_reference, diff_adapted)
 
-        if dist < candidate_pair[1]:
-            candidate_pair = (path, dist)
+            if dist < candidate_pair[1]:
+                candidate_pair = (path, dist)
 
     return candidate_pair[0]
 
