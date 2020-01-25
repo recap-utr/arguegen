@@ -2,11 +2,15 @@ from pathlib import Path
 
 import recap_argument_graph as ag
 import spacy
-import stackprinter
+import logging
 
 from .controller import concept
 from .model.config import Config
 from .model.database import Database
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__package__)
+
 
 config = Config.instance()
 db = Database("en")

@@ -1,15 +1,16 @@
-import math
+import logging
 import typing as t
 from collections import defaultdict
 
-import neo4j
 import recap_argument_graph as ag
-from scipy.spatial import distance
 import spacy
+from recap_argument_graph import graph
+from scipy.spatial import distance
 
-from ..model import conceptnet
+from ..model import conceptnet, graph
 from ..model.database import Database
 
+log = logging.getLogger(__package__)
 nlp = spacy.load("en_core_web_lg")
 
 
@@ -44,7 +45,7 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
 
 def reference_paths(
     db: Database, concepts: t.Iterable[str], rule: t.Tuple[str, str]
-) -> t.Dict[str, t.Optional[t.List[neo4j.Path]]]:
+) -> t.Dict[str, t.Optional[t.List[graph.Path]]]:
     return {
         concept: db.all_shortest_paths(rule[0], concept)
         for concept in concepts
@@ -54,9 +55,9 @@ def reference_paths(
 
 def adapt_paths(
     db: Database,
-    reference_paths: t.Dict[str, t.Optional[t.Iterable[neo4j.Path]]],
+    reference_paths: t.Dict[str, t.Optional[t.Iterable[graph.Path]]],
     rule: t.Tuple[str, str],
-) -> t.Dict[str, t.Optional[neo4j.Path]]:
+) -> t.Dict[str, t.Optional[graph.Path]]:
     adapted_paths = {}
 
     for concept, paths in reference_paths.items():
@@ -65,9 +66,9 @@ def adapt_paths(
 
         for path in paths:
             # We have to convert the target to a path object here.
-            adapted_path = db.single_path(rule[1])
+            adapted_path = graph.Path.from_node(db.node(rule[1]))
 
-            for rel in path:
+            for rel in path.relationships:
                 path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
                 path_candidate = filter_paths(
@@ -75,7 +76,7 @@ def adapt_paths(
                 )
 
                 if path_candidate:
-                    adapted_path = db.extend_path(adapted_path, path_candidate)
+                    adapted_path = graph.Path.merge(adapted_path, path_candidate)
 
             adaptation_candidates[adapted_path] += 1
 
@@ -83,23 +84,23 @@ def adapt_paths(
         adapted_paths[concept] = max(
             adaptation_candidates, key=adaptation_candidates.get
         )
+        log.info(f"{concept}: {adapted_paths[concept]}")
 
     return adapted_paths
 
 
 def filter_paths(
-    paths: t.Optional[t.Iterable[neo4j.Path]],
-    adapted_path: neo4j.Path,
+    paths: t.Optional[t.Iterable[graph.Path]],
+    adapted_path: graph.Path,
     concept: str,
     rule: t.Tuple[str, str],
-) -> t.Optional[neo4j.Path]:
+) -> t.Optional[graph.Path]:
     diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
     candidate_pair = (None, 1.0)
-    adapted_node_ids = [node.id for node in adapted_path.nodes]
 
     for path in paths:
-        if path.end_node.id not in adapted_node_ids:
-            diff_adapted = abs(nlp(path.end_node["name"]).vector - nlp(rule[1]).vector)
+        if path.end_node not in adapted_path.nodes:
+            diff_adapted = abs(nlp(path.end_node.name).vector - nlp(rule[1]).vector)
             dist = distance.cosine(diff_reference, diff_adapted)
 
             if dist < candidate_pair[1]:
@@ -109,10 +110,10 @@ def filter_paths(
 
 
 def adapt_graph(
-    graph: ag.Graph, adapted_paths: t.Dict[str, t.Optional[neo4j.Path]]
+    graph: ag.Graph, adapted_paths: t.Dict[str, t.Optional[graph.Path]]
 ) -> None:
     for concept, path in adapted_paths.items():
         for node in graph.inodes:
             node.text = node.text.replace(
-                concept, conceptnet.adapt_name(path.end_node["name"], concept),
+                concept, conceptnet.adapt_name(path.end_node.name, concept),
             )
