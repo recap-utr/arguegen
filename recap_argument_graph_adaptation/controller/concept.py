@@ -28,6 +28,7 @@ def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
 
             # special case 2: preceeding stop word: '[A] death penalty', '[THE] sexual orientation'
             # TODO: Make it more robust (stop words may occur in other positions than 0).
+            # TODO: stopwords other than at pos 0 may be relevant "catcher [IN] [THE] rye" to the chunk
             elif len(chunk) > 2 and chunk[0].is_stop:
                 chunk_text = chunk[1:].text
 
