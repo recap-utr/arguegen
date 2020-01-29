@@ -100,7 +100,7 @@ def adapt_shortest_path(
     for rel in shortest_path.relationships:
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
-        path_candidate = filter_similarity(path_candidates, adapted_path, concept, rule)
+        path_candidate = filter_difference(path_candidates, adapted_path, concept, rule)
 
         if path_candidate:
             adapted_path = graph.Path.merge(adapted_path, path_candidate)
