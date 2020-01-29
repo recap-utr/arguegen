@@ -20,6 +20,10 @@ class Node:
             id=obj.id, name=obj["name"], language=obj["language"], source=obj["source"]
         )
 
+    @property
+    def processed_name(self):
+        return self.name.replace("_", " ")
+
 
 @dataclass(frozen=True)
 class Relationship:

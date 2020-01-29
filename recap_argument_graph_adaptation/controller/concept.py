@@ -120,7 +120,9 @@ def filter_difference(
 
     for path in paths:
         if path.end_node not in existing_nodes:
-            diff_adapted = abs(nlp(path.end_node.name).vector - nlp(rule[1]).vector)
+            diff_adapted = abs(
+                nlp(path.end_node.processed_name).vector - nlp(rule[1]).vector
+            )
             dist = distance.cosine(diff_reference, diff_adapted)
 
             if dist < candidate_pair[1]:
@@ -135,14 +137,16 @@ def filter_similarity(
     concept: str,
     rule: t.Tuple[str, str],
 ) -> t.Optional[graph.Path]:
-    sim_reference = nlp(concept).similarity(nlp(rule[0]))
+    dist_reference = distance.cosine(nlp(concept).vector, nlp(rule[0]).vector)
     candidate_pair = (None, 1.0)
     existing_nodes = set(adapted_path.nodes)
 
     for path in paths:
         if path.end_node not in existing_nodes:
-            sim_adapted = nlp(path.end_node.name).similarity(nlp(rule[1]))
-            diff = abs(sim_reference - sim_adapted)
+            dist_adapted = distance.cosine(
+                nlp(path.end_node.processed_name).vector, nlp(rule[1]).vector
+            )
+            diff = abs(dist_reference - dist_adapted)
 
             if diff < candidate_pair[1]:
                 candidate_pair = (path, diff)
