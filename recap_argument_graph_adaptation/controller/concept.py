@@ -71,13 +71,20 @@ def adapt_paths(
         with multiprocessing.Pool() as pool:
             shortest_path_adaptations = pool.starmap(adapt_shortest_path, params)
 
-        adaptation_candidates = Counter(shortest_path_adaptations)
+        adaptation_candidates = defaultdict(int)
+        reference_length = len(all_shortest_paths[0].relationships)
+
+        for result in shortest_path_adaptations:
+            if len(result.relationships) == reference_length:
+                adaptation_candidates[result] += 1
 
         # TODO: Multiple paths with the same count might occur!!
         adapted_paths[concept] = max(
             adaptation_candidates, key=adaptation_candidates.get
         )
-        log.info(f"Adapt from {concept} to {adapted_paths[concept].end_node.name}")
+
+        adaptation_str = "->".join(node.name for node in adapted_paths[concept].nodes)
+        log.info(f"Adapt '{concept}' using '{adaptation_str}'.")
 
     return adapted_paths
 
