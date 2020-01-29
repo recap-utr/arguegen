@@ -100,7 +100,7 @@ def adapt_shortest_path(
     for rel in shortest_path.relationships:
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
-        path_candidate = filter_paths(path_candidates, adapted_path, concept, rule)
+        path_candidate = filter_similarity(path_candidates, adapted_path, concept, rule)
 
         if path_candidate:
             adapted_path = graph.Path.merge(adapted_path, path_candidate)
@@ -108,7 +108,7 @@ def adapt_shortest_path(
     return adapted_path
 
 
-def filter_paths(
+def filter_difference(
     paths: t.Optional[t.Iterable[graph.Path]],
     adapted_path: graph.Path,
     concept: str,
@@ -125,6 +125,27 @@ def filter_paths(
 
             if dist < candidate_pair[1]:
                 candidate_pair = (path, dist)
+
+    return candidate_pair[0]
+
+
+def filter_similarity(
+    paths: t.Optional[t.Iterable[graph.Path]],
+    adapted_path: graph.Path,
+    concept: str,
+    rule: t.Tuple[str, str],
+) -> t.Optional[graph.Path]:
+    sim_reference = nlp(concept).similarity(nlp(rule[0]))
+    candidate_pair = (None, 1.0)
+    existing_nodes = set(adapted_path.nodes)
+
+    for path in paths:
+        if path.end_node not in existing_nodes:
+            sim_adapted = nlp(path.end_node.name).similarity(nlp(rule[1]))
+            diff = abs(sim_reference - sim_adapted)
+
+            if diff < candidate_pair[1]:
+                candidate_pair = (path, diff)
 
     return candidate_pair[0]
 
