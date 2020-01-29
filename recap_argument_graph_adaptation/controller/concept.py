@@ -1,10 +1,11 @@
+import json
 import logging
+import multiprocessing
 import typing as t
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import recap_argument_graph as ag
 import spacy
-from recap_argument_graph import graph
 from scipy.spatial import distance
 
 from ..model import conceptnet, graph
@@ -60,33 +61,44 @@ def adapt_paths(
 ) -> t.Dict[str, t.Optional[graph.Path]]:
     adapted_paths = {}
 
-    for concept, paths in reference_paths.items():
+    for concept, all_shortest_paths in reference_paths.items():
         # We are using allShortestPaths, so we pick the one that has the highest number of matches.
-        adaptation_candidates = defaultdict(int)
 
-        for path in paths:
-            # We have to convert the target to a path object here.
-            adapted_path = graph.Path.from_node(db.node(rule[1]))
+        params = [
+            (shortest_path, concept, rule) for shortest_path in all_shortest_paths
+        ]
 
-            for rel in path.relationships:
-                path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
+        with multiprocessing.Pool() as pool:
+            shortest_path_adaptations = pool.starmap(adapt_shortest_path, params)
 
-                path_candidate = filter_paths(
-                    path_candidates, adapted_path, concept, rule
-                )
-
-                if path_candidate:
-                    adapted_path = graph.Path.merge(adapted_path, path_candidate)
-
-            adaptation_candidates[adapted_path] += 1
+        adaptation_candidates = Counter(shortest_path_adaptations)
 
         # TODO: Multiple paths with the same count might occur!!
         adapted_paths[concept] = max(
             adaptation_candidates, key=adaptation_candidates.get
         )
-        log.info(f"{concept}: {adapted_paths[concept]}")
+        log.info(f"Adapt from {concept} to {adapted_paths[concept].end_node.name}")
 
     return adapted_paths
+
+
+def adapt_shortest_path(
+    shortest_path: graph.Path, concept: str, rule: t.Tuple[str, str],
+):
+    db = Database("en")
+
+    # We have to convert the target to a path object here.
+    adapted_path = graph.Path.from_node(db.node(rule[1]))
+
+    for rel in shortest_path.relationships:
+        path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
+
+        path_candidate = filter_paths(path_candidates, adapted_path, concept, rule)
+
+        if path_candidate:
+            adapted_path = graph.Path.merge(adapted_path, path_candidate)
+
+    return adapted_path
 
 
 def filter_paths(
@@ -97,9 +109,10 @@ def filter_paths(
 ) -> t.Optional[graph.Path]:
     diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
     candidate_pair = (None, 1.0)
+    existing_nodes = set(adapted_path.nodes)
 
     for path in paths:
-        if path.end_node not in adapted_path.nodes:
+        if path.end_node not in existing_nodes:
             diff_adapted = abs(nlp(path.end_node.name).vector - nlp(rule[1]).vector)
             dist = distance.cosine(diff_reference, diff_adapted)
 

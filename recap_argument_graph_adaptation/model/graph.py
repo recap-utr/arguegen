@@ -36,11 +36,12 @@ class Relationship:
 
     @classmethod
     def from_neo4j(cls, obj: neo4j.Relationship) -> Relationship:
+        # TODO: The node objects in a relationship are not identical to the ones in a path object.
         return cls(
             id=obj.id,
             type=obj.type,
-            start_node=obj.start_node,
-            end_node=obj.end_node,
+            start_node=Node.from_neo4j(obj.start_node),
+            end_node=Node.from_neo4j(obj.end_node),
             weight=obj["weight"],
             source=obj["source"],
         )
@@ -75,12 +76,10 @@ class Path:
     @classmethod
     def merge(cls, *paths: Path) -> Path:
         nodes = paths[0].nodes
-        relationships = (path.relationships for path in paths)
+        relationships = paths[0].relationships
 
         for path in paths[1:]:
             nodes += path.nodes[1:]
+            relationships += path.relationships
 
-        return cls(
-            nodes=tuple(nodes),
-            relationships=tuple(itertools.chain.from_iterable(relationships)),
-        )
+        return cls(nodes=nodes, relationships=relationships,)
