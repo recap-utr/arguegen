@@ -5,7 +5,7 @@ import typing as t
 from collections import defaultdict, Counter
 
 import recap_argument_graph as ag
-import spacy
+import spacy, textacy.ke
 from scipy.spatial import distance
 
 from ..model import conceptnet, graph
@@ -15,31 +15,27 @@ log = logging.getLogger(__package__)
 nlp = spacy.load("en_core_web_lg")
 
 
-def from_graph(db: Database, graph: ag.Graph) -> t.Set[str]:
+def from_graph(db: Database, graph: ag.Graph, extractor = textacy.ke.textrank) -> t.Set[str]:
+    # extractor is in [textacy.ke.textrank, 
+    #                  textacy.ke.yake, 
+    #                  textacy.ke.scake, 
+    #                  textacy.ke.sgrank]
+    # "import textacy.ke" necessesaryto call modules
     concepts = set()
-
+    
     for node in graph.inodes:
-        doc = node.text  # nlp(node.text)
+        doc = node.text
+        key_terms = [key_term for (key_term, weight) in extractor(doc)]
+        
+        for key_term in key_terms:
+            
+            if db.node(key_term):
+                concepts.add(key_term)
 
-        for chunk in doc.noun_chunks:
-            chunk_text = chunk.text
-
-            # special case 1: noun chunk is single-word pronoun: them, they, it..
-            if len(chunk) == 1 and chunk[0].pos_ == "PRON":
-                continue
-
-            # special case 2: preceeding stop word: '[A] death penalty', '[THE] sexual orientation'
-            # TODO: Make it more robust (stop words may occur in other positions than 0).
-            # TODO: stopwords other than at pos 0 may be relevant "catcher [IN] [THE] rye" to the chunk
-            elif len(chunk) > 2 and chunk[0].is_stop:
-                chunk_text = chunk[1:].text
-
-            # check if noun chunk is concept in ConceptNet otherwise check if root is concept and add
-            if db.node(chunk_text):
-                concepts.add(chunk_text)
-
-            elif db.node(chunk.root.text):
-                concepts.add(chunk.root.text)
+            else:
+                root = next(nlp(key_term).noun_chunks).root
+                if db.node(root.text):
+                    concepts.add(root.text)
 
     return concepts
 
