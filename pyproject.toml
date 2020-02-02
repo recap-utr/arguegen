@@ -15,6 +15,7 @@ spacy = "^2.2.3"
 gibberish = "^0.4.0"
 stackprinter = "^0.2.3"
 scipy = "^1.4.1"
+textacy = "^0.9.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

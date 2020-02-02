@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import itertools
-from dataclasses import dataclass
 import typing as t
+from dataclasses import dataclass
 
 import neo4j
 

@@ -1,2 +1,6 @@
+[spacy]
+model = "en_core_web_lg"
+
 [neo4j]
+lang = "en"
 url = "bolt://136.199.130.136:7687"

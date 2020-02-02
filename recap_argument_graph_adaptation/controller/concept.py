@@ -1,34 +1,33 @@
-import json
 import logging
-import multiprocessing
 import typing as t
-from collections import defaultdict, Counter
 
 import recap_argument_graph as ag
-import spacy, textacy.ke
-from scipy.spatial import distance
+import spacy
+from textacy import ke
 
-from ..model import conceptnet, graph
+from . import adapt
+from ..model.config import config
 from ..model.database import Database
+from ..model import graph, adaptation
 
 log = logging.getLogger(__package__)
-nlp = spacy.load("en_core_web_lg")
+nlp = spacy.load(config["spacy"]["model"])
 
 
-def from_graph(db: Database, graph: ag.Graph, extractor = textacy.ke.textrank) -> t.Set[str]:
-    # extractor is in [textacy.ke.textrank, 
-    #                  textacy.ke.yake, 
-    #                  textacy.ke.scake, 
-    #                  textacy.ke.sgrank]
-    # "import textacy.ke" necessesaryto call modules
+def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[str]:
+    # extractor is in [ke.textrank,
+    #                  ke.yake,
+    #                  ke.scake,
+    #                  ke.sgrank]
     concepts = set()
-    
+    db = Database()
+
     for node in graph.inodes:
         doc = node.text
         key_terms = [key_term for (key_term, weight) in extractor(doc)]
-        
+
         for key_term in key_terms:
-            
+
             if db.node(key_term):
                 concepts.add(key_term)
 
@@ -40,121 +39,21 @@ def from_graph(db: Database, graph: ag.Graph, extractor = textacy.ke.textrank) -
     return concepts
 
 
-def reference_paths(
-    db: Database, concepts: t.Iterable[str], rule: t.Tuple[str, str]
+def paths(
+    concepts: t.Iterable[str], rule: t.Tuple[str, str], method: adaptation.Method
 ) -> t.Dict[str, t.Optional[t.List[graph.Path]]]:
-    return {
-        concept: db.all_shortest_paths(rule[0], concept)
-        for concept in concepts
-        if rule[0] != concept
-    }
+    db = Database()
 
+    if method == adaptation.Method.BETWEEN:
+        return {
+            concept: db.all_shortest_paths(rule[0], concept)
+            for concept in concepts
+            if rule[0] != concept
+        }
 
-def adapt_paths(
-    db: Database,
-    reference_paths: t.Dict[str, t.Optional[t.Iterable[graph.Path]]],
-    rule: t.Tuple[str, str],
-) -> t.Dict[str, t.Optional[graph.Path]]:
-    adapted_paths = {}
-
-    for concept, all_shortest_paths in reference_paths.items():
-        # We are using allShortestPaths, so we pick the one that has the highest number of matches.
-
-        params = [
-            (shortest_path, concept, rule) for shortest_path in all_shortest_paths
-        ]
-
-        with multiprocessing.Pool() as pool:
-            shortest_path_adaptations = pool.starmap(adapt_shortest_path, params)
-
-        adaptation_candidates = defaultdict(int)
-        reference_length = len(all_shortest_paths[0].relationships)
-
-        for result in shortest_path_adaptations:
-            if len(result.relationships) == reference_length:
-                adaptation_candidates[result] += 1
-
-        # TODO: Multiple paths with the same count might occur!!
-        adapted_paths[concept] = max(
-            adaptation_candidates, key=adaptation_candidates.get
-        )
-
-        adaptation_str = "->".join(node.name for node in adapted_paths[concept].nodes)
-        log.info(f"Adapt '{concept}' using '{adaptation_str}'.")
-
-    return adapted_paths
-
-
-def adapt_shortest_path(
-    shortest_path: graph.Path, concept: str, rule: t.Tuple[str, str],
-):
-    db = Database("en")
-
-    # We have to convert the target to a path object here.
-    adapted_path = graph.Path.from_node(db.node(rule[1]))
-
-    for rel in shortest_path.relationships:
-        path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
-
-        path_candidate = filter_difference(path_candidates, adapted_path, concept, rule)
-
-        if path_candidate:
-            adapted_path = graph.Path.merge(adapted_path, path_candidate)
-
-    return adapted_path
-
-
-def filter_difference(
-    paths: t.Optional[t.Iterable[graph.Path]],
-    adapted_path: graph.Path,
-    concept: str,
-    rule: t.Tuple[str, str],
-) -> t.Optional[graph.Path]:
-    diff_reference = abs(nlp(concept).vector - nlp(rule[0]).vector)
-    candidate_pair = (None, 1.0)
-    existing_nodes = set(adapted_path.nodes)
-
-    for path in paths:
-        if path.end_node not in existing_nodes:
-            diff_adapted = abs(
-                nlp(path.end_node.processed_name).vector - nlp(rule[1]).vector
-            )
-            dist = distance.cosine(diff_reference, diff_adapted)
-
-            if dist < candidate_pair[1]:
-                candidate_pair = (path, dist)
-
-    return candidate_pair[0]
-
-
-def filter_similarity(
-    paths: t.Optional[t.Iterable[graph.Path]],
-    adapted_path: graph.Path,
-    concept: str,
-    rule: t.Tuple[str, str],
-) -> t.Optional[graph.Path]:
-    dist_reference = distance.cosine(nlp(concept).vector, nlp(rule[0]).vector)
-    candidate_pair = (None, 1.0)
-    existing_nodes = set(adapted_path.nodes)
-
-    for path in paths:
-        if path.end_node not in existing_nodes:
-            dist_adapted = distance.cosine(
-                nlp(path.end_node.processed_name).vector, nlp(rule[1]).vector
-            )
-            diff = abs(dist_reference - dist_adapted)
-
-            if diff < candidate_pair[1]:
-                candidate_pair = (path, diff)
-
-    return candidate_pair[0]
-
-
-def adapt_graph(
-    graph: ag.Graph, adapted_paths: t.Dict[str, t.Optional[graph.Path]]
-) -> None:
-    for concept, path in adapted_paths.items():
-        for node in graph.inodes:
-            node.text = node.text.replace(
-                concept, conceptnet.adapt_name(path.end_node.name, concept),
-            )
+    elif method == adaptation.Method.WITHIN:
+        return {
+            concept: db.all_shortest_paths(rule[0], rule[1])
+            for concept in concepts
+            if rule[0] != concept
+        }

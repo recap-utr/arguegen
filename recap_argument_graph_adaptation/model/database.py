@@ -9,11 +9,11 @@ class Database:
     _driver: neo4j.Driver
     lang: str
 
-    def __init__(self, lang: str):
+    def __init__(self):
         self._driver = neo4j.GraphDatabase.driver(
             config["neo4j"]["url"], auth=None, encrypted=False
         )  # auth=("username", "password")
-        self.lang = lang
+        self.lang = config["neo4j"]["lang"]
 
     # NODE
 
