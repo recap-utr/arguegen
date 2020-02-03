@@ -73,11 +73,9 @@ def _adapt_shortest_path(
     for rel in shortest_path.relationships:
         # TODO: The constraint on rel.type is too strict! It could be the case that no matching relation is found.
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
-        filter_method = FilterMethod(config["filter_method"])
+        selector = adaptation.Selector(config["selector"])
 
-        path_candidate = _filter(
-            path_candidates, shortest_path, adapted_path, filter_method
-        )
+        path_candidate = _filter(path_candidates, shortest_path, adapted_path, selector)
 
         if path_candidate:
             adapted_path = graph.Path.merge(adapted_path, path_candidate)
@@ -85,16 +83,11 @@ def _adapt_shortest_path(
     return adapted_path
 
 
-class FilterMethod(Enum):
-    DIFFERENCE = "difference"
-    SIMILARITY = "similarity"
-
-
 def _filter(
     candidate_paths: t.Optional[t.Iterable[graph.Path]],
     reference_path: graph.Path,
     adapted_path: graph.Path,
-    filter_method: FilterMethod,
+    selector: adaptation.Selector,
 ) -> t.Optional[graph.Path]:
     end_index = len(adapted_path.nodes)
     start_index = end_index - 1
@@ -102,7 +95,7 @@ def _filter(
     val_reference = _aggregate_features(
         nlp(reference_path.nodes[start_index].processed_name).vector,
         nlp(reference_path.nodes[end_index].processed_name).vector,
-        filter_method,
+        selector,
     )
 
     solution_pair = (None, 1.0)
@@ -115,9 +108,9 @@ def _filter(
             val_adapted = _aggregate_features(
                 nlp(adapted_path.nodes[start_index].processed_name).vector,
                 nlp(candidate.processed_name).vector,
-                filter_method,
+                selector,
             )
-            val_solution = _compare_features(val_reference, val_adapted, filter_method)
+            val_solution = _compare_features(val_reference, val_adapted, selector)
 
             if val_solution < solution_pair[1]:
                 solution_pair = (candidate_path, val_solution)
@@ -126,20 +119,22 @@ def _filter(
 
 
 def _aggregate_features(
-    feat1: t.Any, feat2: t.Any, filter_method: FilterMethod
+    feat1: t.Any, feat2: t.Any, selector: adaptation.Selector
 ) -> t.Any:
-    if filter_method == FilterMethod.DIFFERENCE:
+    if selector == adaptation.Selector.DIFFERENCE:
         return abs(feat1 - feat2)
-    elif filter_method == FilterMethod.SIMILARITY:
+    elif selector == adaptation.Selector.SIMILARITY:
         return distance.cosine(feat1, feat2)
 
-    raise ValueError("Parameter 'filter_method' wrong.")
+    raise ValueError("Parameter 'selector' wrong.")
 
 
-def _compare_features(feat1: t.Any, feat2: t.Any, filter_method: FilterMethod) -> t.Any:
-    if filter_method == FilterMethod.DIFFERENCE:
+def _compare_features(
+    feat1: t.Any, feat2: t.Any, selector: adaptation.Selector
+) -> t.Any:
+    if selector == adaptation.Selector.DIFFERENCE:
         return distance.cosine(feat1, feat2)
-    elif filter_method == FilterMethod.SIMILARITY:
+    elif selector == adaptation.Selector.SIMILARITY:
         return abs(feat1 - feat2)
 
-    raise ValueError("Parameter 'filter_method' wrong.")
+    raise ValueError("Parameter 'selector' wrong.")

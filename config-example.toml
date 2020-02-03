@@ -1,5 +1,8 @@
-adaptation_method = "between"
-filter_method = "similarity"
+version = "2.0"
+
+[adaptation]
+method = "between"
+selector = "similarity"
 
 [spacy]
 model = "en_core_web_lg"
