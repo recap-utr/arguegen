@@ -52,7 +52,7 @@ class Database:
 
         return graph.Path.from_neo4j(result.value()) if result else None
 
-        # ALL SHORTEST PATHS
+    # ALL SHORTEST PATHS
 
     def all_shortest_paths(
         self, start: str, end: str

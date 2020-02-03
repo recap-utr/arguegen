@@ -44,16 +44,18 @@ def paths(
 ) -> t.Dict[str, t.Optional[t.List[graph.Path]]]:
     db = Database()
 
-    if method == adaptation.Method.BETWEEN:
+    if method == adaptation.Method.WITHIN:
         return {
             concept: db.all_shortest_paths(rule[0], concept)
             for concept in concepts
             if rule[0] != concept
         }
 
-    elif method == adaptation.Method.WITHIN:
+    elif method == adaptation.Method.BETWEEN:
         return {
             concept: db.all_shortest_paths(rule[0], rule[1])
             for concept in concepts
             if rule[0] != concept
         }
+
+    raise ValueError("The parameter 'method' is not set correctly.")
