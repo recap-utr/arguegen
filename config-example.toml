@@ -1,3 +1,6 @@
+adaptation_method = "between"
+filter_method = "similarity"
+
 [spacy]
 model = "en_core_web_lg"
 

@@ -73,7 +73,7 @@ def _adapt_shortest_path(
     for rel in shortest_path.relationships:
         # TODO: The constraint on rel.type is too strict! It could be the case that no matching relation is found.
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
-        filter_method = FilterMethod(config["adaptation"]["filter"])
+        filter_method = FilterMethod(config["filter_method"])
 
         path_candidate = _filter(
             path_candidates, shortest_path, adapted_path, filter_method
