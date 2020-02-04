@@ -20,7 +20,7 @@ adapted_graph = ag.Graph.open(Path("data/case-base/nodeset6366.json"))
 concepts = concept.from_graph(case_graph)
 
 adaptation_rules = [("death penalty", "punishment")]
-method = adaptation.Method(config["adaptation_method"])
+method = adaptation.Method(config["adaptation"]["method"])
 
 for rule in adaptation_rules:
     reference_paths = concept.paths(concepts, rule, method)
