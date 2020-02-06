@@ -1,4 +1,4 @@
-version = "2.0"
+version = "2.1"
 
 [adaptation]
 method = "between"
@@ -10,3 +10,17 @@ model = "en_core_web_lg"
 [neo4j]
 lang = "en"
 url = "bolt://136.199.130.136:7687"
+relation_types = [
+    "RelatedTo",
+    "IsA",
+    "SimilarTo",
+    "SymbolOf",
+    "Synonym",
+    "Antonym",
+    "HasA",
+    "AtLocation",
+    "HasProperty",
+    "PartOf",
+    "UsedFor"
+]
+max_relations = 10

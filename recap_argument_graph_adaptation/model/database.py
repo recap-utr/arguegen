@@ -34,19 +34,36 @@ class Database:
     # SHORTEST PATH
 
     def shortest_path(self, start: str, end: str) -> t.Optional[graph.Path]:
+        relation_types = config["neo4j"]["relation_types"]
+        max_relations = config["neo4j"]["max_relations"]
+
         with self._driver.session() as session:
-            return session.read_transaction(self._shortest_path, start, end, self.lang)
+            return session.read_transaction(
+                self._shortest_path,
+                start,
+                end,
+                relation_types,
+                max_relations,
+                self.lang,
+            )
 
     @staticmethod
     def _shortest_path(
-        tx: neo4j.Session, start: str, end: str, lang: str
+        tx: neo4j.Session,
+        start: str,
+        end: str,
+        relation_types: t.Collection[str],
+        max_relations: int,
+        lang: str,
     ) -> t.Optional[graph.Path]:
+        rel_query = _aggregate_relations(relation_types)
+
         result = tx.run(
-            "MATCH p = shortestPath((n:Concept {name: $start, language: $lang})-[*..10]-"
+            "MATCH p = shortestPath((n:Concept {name: $start, language: $lang})"
+            f"-[:{rel_query}*..{max_relations}]-"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
-            # max_relations=max_relations,
             lang=lang,
         ).single()
 
@@ -57,21 +74,36 @@ class Database:
     def all_shortest_paths(
         self, start: str, end: str
     ) -> t.Optional[t.List[graph.Path]]:
+        relation_types = config["neo4j"]["relation_types"]
+        max_relations = config["neo4j"]["max_relations"]
+
         with self._driver.session() as session:
             return session.read_transaction(
-                self._all_shortest_paths, start, end, self.lang
+                self._all_shortest_paths,
+                start,
+                end,
+                relation_types,
+                max_relations,
+                self.lang,
             )
 
     @staticmethod
     def _all_shortest_paths(
-        tx: neo4j.Session, start: str, end: str, lang: str
+        tx: neo4j.Session,
+        start: str,
+        end: str,
+        relation_types: t.Collection[str],
+        max_relations: int,
+        lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
+        rel_query = _aggregate_relations(relation_types)
+
         result = tx.run(
-            "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})-[*..10]-"
+            "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})"
+            f"-[:{rel_query}*..{max_relations}]-"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
-            # max_relations=max_relations,
             lang=lang,
         )
 
@@ -83,18 +115,24 @@ class Database:
     # EXPAND NODE
 
     def expand_node(
-        self, node: graph.Node, rel_types: t.Collection[str]
+        self, node: graph.Node, relation_types: t.Collection[str] = None
     ) -> t.Optional[t.List[graph.Path]]:
+        if not relation_types:
+            relation_types = config["neo4j"]["relation_types"]
+
         with self._driver.session() as session:
             return session.read_transaction(
-                self._expand_node, node, rel_types, self.lang
+                self._expand_node, node, relation_types, self.lang
             )
 
     @staticmethod
     def _expand_node(
-        tx: neo4j.Session, node: graph.Node, rel_types: t.Collection[str], lang: str
+        tx: neo4j.Session,
+        node: graph.Node,
+        relation_types: t.Collection[str],
+        lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
-        rel_query = "|:".join(rel_types)
+        rel_query = _aggregate_relations(relation_types)
         result = tx.run(
             f"MATCH p=(n:Concept {{language: $lang}})-[r:{rel_query}]-(m:Concept {{language: $lang}})"
             f"WHERE id(n)={node.id} RETURN p",
@@ -105,3 +143,7 @@ class Database:
             return [graph.Path.from_neo4j(path) for path in result.value()]
 
         return None
+
+
+def _aggregate_relations(relation_types: t.Collection[str]) -> str:
+    return "|:".join(relation_types)

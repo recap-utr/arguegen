@@ -12,7 +12,10 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__package__)
 
 
-nlp = spacy.load("en_core_web_lg")
+# TODO: Relationship FormOf is excluded, thus we need to lemmatize the words ourself!
+# TODO: Handle empty vectors! during filtering!
+
+nlp = spacy.load(config["spacy"]["model"])
 
 case_graph = ag.Graph.open(Path("data/case-base/nodeset6366.json"), nlp)
 adapted_graph = ag.Graph.open(Path("data/case-base/nodeset6366.json"))
@@ -24,7 +27,8 @@ method = adaptation.Method(config["adaptation"]["method"])
 
 for rule in adaptation_rules:
     reference_paths = concept.paths(concepts, rule, method)
-    adapted_paths = adapt.paths(reference_paths, rule, method)
-    adapt.argument_graph(adapted_graph, adapted_paths)
+    adapted_concepts = adapt.paths(reference_paths, rule, method)
+
+    adapt.argument_graph(adapted_graph, rule, adapted_concepts)
 
 adapted_graph.render(Path("data/out/"))

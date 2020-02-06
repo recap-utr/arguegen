@@ -16,9 +16,15 @@ log = logging.getLogger(__package__)
 nlp = spacy.load(config["spacy"]["model"])
 
 
-def argument_graph(graph: ag.Graph, adapted_concepts: t.Dict[str, str]) -> None:
-    for concept, adapted_concept in adapted_concepts.items():
-        for node in graph.inodes:
+def argument_graph(
+    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Dict[str, str]
+) -> None:
+    for node in graph.inodes:
+        # First perform the rule adaptation.
+        # Otherwise, 'death penalty' might already be replaced using the adaptation of 'death'.
+        node.text = node.text.replace(rule[0], rule[1])
+
+        for concept, adapted_concept in adapted_concepts.items():
             node.text = node.text.replace(concept, adapted_concept,)
 
 
@@ -29,11 +35,11 @@ def paths(
 ) -> t.Dict[str, str]:
     adapted_concepts = {}
 
-    for concept, all_shortest_paths in reference_paths.items():
+    for root_concept, all_shortest_paths in reference_paths.items():
         # We are using allShortestPaths, so we pick the one that has the highest number of matches.
 
         params = [
-            (shortest_path, concept, rule, adaptation_method)
+            (shortest_path, root_concept, rule, adaptation_method)
             for shortest_path in all_shortest_paths
         ]
 
@@ -47,13 +53,18 @@ def paths(
             if len(result.relationships) == reference_length:
                 adaptation_candidates[result.end_node.name] += 1
 
-        # TODO: Multiple paths with the same count might occur!!
         if adaptation_candidates:
-            adapted_name = max(adaptation_candidates, key=adaptation_candidates.get)
-            adapted_name = conceptnet.adapt_name(adapted_name, concept)
+            max_value = max(adaptation_candidates.values())
+            adapted_names = [
+                key
+                for key, value in adaptation_candidates.items()
+                if value == max_value
+            ]
+            adapted_name = _filter_concepts(adapted_names, root_concept)
+            adapted_name = conceptnet.adapt_name(adapted_name, root_concept)
 
-            adapted_concepts[concept] = adapted_name
-            log.info(f"Adapt '{concept}' to '{adapted_name}'.")
+            adapted_concepts[root_concept] = adapted_name
+            log.info(f"Adapt '{root_concept}' to '{adapted_name}'.")
 
     return adapted_concepts
 
@@ -65,17 +76,21 @@ def _adapt_shortest_path(
     adaptation_method: adaptation.Method,
 ) -> graph.Path:
     db = Database()
+    selector = adaptation.Selector(config["adaptation"]["selector"])
 
     # We have to convert the target to a path object here.
     start_name = rule[1] if adaptation_method == adaptation.Method.WITHIN else concept
     adapted_path = graph.Path.from_node(db.node(start_name))
 
     for rel in shortest_path.relationships:
-        # TODO: The constraint on rel.type is too strict! It could be the case that no matching relation is found.
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
-        selector = adaptation.Selector(config["adaptation"]["selector"])
 
-        path_candidate = _filter(path_candidates, shortest_path, adapted_path, selector)
+        if not path_candidates:  # Relax the relation constraint
+            path_candidates = db.expand_node(adapted_path.end_node)
+
+        path_candidate = _filter_paths(
+            path_candidates, shortest_path, adapted_path, selector
+        )
 
         if path_candidate:
             adapted_path = graph.Path.merge(adapted_path, path_candidate)
@@ -83,7 +98,22 @@ def _adapt_shortest_path(
     return adapted_path
 
 
-def _filter(
+def _filter_concepts(adapted_concepts: t.Sequence[str], root_concept: str) -> str:
+    root_nlp = nlp(root_concept)
+
+    best_match = (adapted_concepts[0], 0.0)
+
+    for concept in adapted_concepts:
+        concept_nlp = nlp(concept)
+        sim = root_nlp.similarity(concept_nlp)
+
+        if sim > best_match[1]:
+            best_match = (concept, sim)
+
+    return best_match[0]
+
+
+def _filter_paths(
     candidate_paths: t.Optional[t.Iterable[graph.Path]],
     reference_path: graph.Path,
     adapted_path: graph.Path,
