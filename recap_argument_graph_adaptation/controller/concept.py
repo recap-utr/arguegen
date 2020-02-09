@@ -24,6 +24,8 @@ def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[str]:
 
     for node in graph.inodes:
         doc = node.text
+
+        # The keywords are already lemmatized -> FormOf is not necessary
         key_terms = [key_term for (key_term, weight) in extractor(doc)]
 
         for key_term in key_terms:

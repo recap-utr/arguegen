@@ -51,7 +51,7 @@ def paths(
 
         for result in shortest_path_adaptations:
             if len(result.relationships) == reference_length:
-                adaptation_candidates[result.end_node.name] += 1
+                adaptation_candidates[result.end_node.processed_name] += 1
 
         if adaptation_candidates:
             max_value = max(adaptation_candidates.values())
@@ -98,12 +98,13 @@ def _adapt_shortest_path(
     return adapted_path
 
 
-def _filter_concepts(adapted_concepts: t.Sequence[str], root_concept: str) -> str:
+def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: str) -> str:
     root_nlp = nlp(root_concept)
+    adapted_concepts_iter = iter(adapted_concepts)
 
-    best_match = (adapted_concepts[0], 0.0)
+    best_match = (next(adapted_concepts_iter), 0.0)
 
-    for concept in adapted_concepts:
+    for concept in adapted_concepts_iter:
         concept_nlp = nlp(concept)
         sim = root_nlp.similarity(concept_nlp)
 
