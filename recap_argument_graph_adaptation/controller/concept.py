@@ -49,7 +49,7 @@ def paths(
 
     if method == adaptation.Method.WITHIN:
         return {
-            concept: db.all_shortest_paths(rule[0], coencept)
+            concept: db.all_shortest_paths(rule[0], concept)
             for concept in concepts
             if rule[0] != concept
         }
