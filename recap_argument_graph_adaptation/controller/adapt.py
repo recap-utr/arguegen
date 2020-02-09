@@ -31,7 +31,6 @@ def argument_graph(
 def paths(
     reference_paths: t.Mapping[str, t.Optional[t.Iterable[graph.Path]]],
     rule: t.Tuple[str, str],
-    adaptation_method: adaptation.Method,
 ) -> t.Dict[str, str]:
     adapted_concepts = {}
 
@@ -39,8 +38,7 @@ def paths(
         # We are using allShortestPaths, so we pick the one that has the highest number of matches.
 
         params = [
-            (shortest_path, root_concept, rule, adaptation_method)
-            for shortest_path in all_shortest_paths
+            (shortest_path, root_concept, rule) for shortest_path in all_shortest_paths
         ]
 
         with multiprocessing.Pool() as pool:
@@ -70,16 +68,14 @@ def paths(
 
 
 def _adapt_shortest_path(
-    shortest_path: graph.Path,
-    concept: str,
-    rule: t.Tuple[str, str],
-    adaptation_method: adaptation.Method,
+    shortest_path: graph.Path, concept: str, rule: t.Tuple[str, str],
 ) -> graph.Path:
     db = Database()
     selector = adaptation.Selector(config["adaptation"]["selector"])
+    method = adaptation.Method(config["adaptation"]["method"])
 
     # We have to convert the target to a path object here.
-    start_name = rule[1] if adaptation_method == adaptation.Method.WITHIN else concept
+    start_name = rule[1] if method == adaptation.Method.WITHIN else concept
     adapted_path = graph.Path.from_node(db.node(start_name))
 
     for rel in shortest_path.relationships:

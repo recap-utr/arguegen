@@ -60,7 +60,7 @@ class Database:
 
         result = tx.run(
             "MATCH p = shortestPath((n:Concept {name: $start, language: $lang})"
-            f"-[:{rel_query}*..{max_relations}]-"
+            f"-[{rel_query}*..{max_relations}]-"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
@@ -100,7 +100,7 @@ class Database:
 
         result = tx.run(
             "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})"
-            f"-[:{rel_query}*..{max_relations}]-"
+            f"-[{rel_query}*..{max_relations}]-"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
@@ -134,7 +134,7 @@ class Database:
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _aggregate_relations(relation_types)
         result = tx.run(
-            f"MATCH p=(n:Concept {{language: $lang}})-[r:{rel_query}]-(m:Concept {{language: $lang}})"
+            f"MATCH p=(n:Concept {{language: $lang}})-[r{rel_query}]-(m:Concept {{language: $lang}})"
             f"WHERE id(n)={node.id} RETURN p",
             lang=lang,
         )
@@ -146,4 +146,7 @@ class Database:
 
 
 def _aggregate_relations(relation_types: t.Collection[str]) -> str:
-    return "|:".join(relation_types)
+    if relation_types:
+        return ":" + "|:".join(relation_types)
+
+    return ""

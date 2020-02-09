@@ -42,13 +42,14 @@ def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[str]:
 
 
 def paths(
-    concepts: t.Iterable[str], rule: t.Tuple[str, str], method: adaptation.Method
+    concepts: t.Iterable[str], rule: t.Tuple[str, str]
 ) -> t.Dict[str, t.Optional[t.List[graph.Path]]]:
     db = Database()
+    method = adaptation.Method(config["adaptation"]["method"])
 
     if method == adaptation.Method.WITHIN:
         return {
-            concept: db.all_shortest_paths(rule[0], concept)
+            concept: db.all_shortest_paths(rule[0], coencept)
             for concept in concepts
             if rule[0] != concept
         }
