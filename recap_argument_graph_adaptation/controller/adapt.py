@@ -3,6 +3,7 @@ import multiprocessing
 import typing as t
 from collections import defaultdict
 from enum import Enum
+import warnings
 
 import recap_argument_graph as ag
 import spacy
@@ -35,34 +36,34 @@ def paths(
     adapted_concepts = {}
 
     for root_concept, all_shortest_paths in reference_paths.items():
-        # We are using allShortestPaths, so we pick the one that has the highest number of matches.
-
-        params = [
-            (shortest_path, root_concept, rule) for shortest_path in all_shortest_paths
-        ]
-
-        with multiprocessing.Pool() as pool:
-            shortest_path_adaptations = pool.starmap(_adapt_shortest_path, params)
-
-        adaptation_candidates = defaultdict(int)
-        reference_length = len(all_shortest_paths[0].relationships)
-
-        for result in shortest_path_adaptations:
-            if len(result.relationships) == reference_length:
-                adaptation_candidates[result.end_node.processed_name] += 1
-
-        if adaptation_candidates:
-            max_value = max(adaptation_candidates.values())
-            adapted_names = [
-                key
-                for key, value in adaptation_candidates.items()
-                if value == max_value
+        if all_shortest_paths:
+            params = [
+                (shortest_path, root_concept, rule)
+                for shortest_path in all_shortest_paths
             ]
-            adapted_name = _filter_concepts(adapted_names, root_concept)
-            adapted_name = conceptnet.adapt_name(adapted_name, root_concept)
 
-            adapted_concepts[root_concept] = adapted_name
-            log.info(f"Adapt '{root_concept}' to '{adapted_name}'.")
+            with multiprocessing.Pool() as pool:
+                shortest_path_adaptations = pool.starmap(_adapt_shortest_path, params)
+
+            adaptation_candidates = defaultdict(int)
+            reference_length = len(all_shortest_paths[0].relationships)
+
+            for result in shortest_path_adaptations:
+                if len(result.relationships) == reference_length:
+                    adaptation_candidates[result.end_node.processed_name] += 1
+
+            if adaptation_candidates:
+                max_value = max(adaptation_candidates.values())
+                adapted_names = [
+                    key
+                    for key, value in adaptation_candidates.items()
+                    if value == max_value
+                ]
+                adapted_name = _filter_concepts(adapted_names, root_concept)
+                adapted_name = conceptnet.adapt_name(adapted_name, root_concept)
+
+                adapted_concepts[root_concept] = adapted_name
+                log.info(f"Adapt '{root_concept}' to '{adapted_name}'.")
 
     return adapted_concepts
 
@@ -102,7 +103,10 @@ def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: str) -> st
 
     for concept in adapted_concepts_iter:
         concept_nlp = nlp(concept)
-        sim = root_nlp.similarity(concept_nlp)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sim = root_nlp.similarity(concept_nlp)
 
         if sim > best_match[1]:
             best_match = (concept, sim)
@@ -151,7 +155,7 @@ def _aggregate_features(
     if selector == adaptation.Selector.DIFFERENCE:
         return abs(feat1 - feat2)
     elif selector == adaptation.Selector.SIMILARITY:
-        return distance.cosine(feat1, feat2)
+        return _cosine(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
 
@@ -160,8 +164,14 @@ def _compare_features(
     feat1: t.Any, feat2: t.Any, selector: adaptation.Selector
 ) -> t.Any:
     if selector == adaptation.Selector.DIFFERENCE:
-        return distance.cosine(feat1, feat2)
+        return _cosine(feat1, feat2)
     elif selector == adaptation.Selector.SIMILARITY:
         return abs(feat1 - feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
+
+
+def _cosine(feat1, feat2):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return distance.cosine(feat1, feat2)

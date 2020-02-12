@@ -1,24 +1,20 @@
 version = "2.2"
 
-
 [path]
 input = "data/input"
 output = "data/output"
 
-
 [adaptation]
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
-method = "within"
+method = "between"
 
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 selector = "similarity"
 
-
 [spacy]
 model = "en_core_web_lg"
-
 
 [neo4j]
 lang = "en"
