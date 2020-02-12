@@ -22,6 +22,8 @@ out_path = Path(
 )
 
 for case in cases:
+    log.info(f"Processing '{case.graph.name}'.")
+
     concepts = concept.from_graph(case.graph)
     adaptation_results = {}
     stats_path = out_path / f"{case.graph.name}.json"
