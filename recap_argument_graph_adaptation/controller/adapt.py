@@ -33,6 +33,8 @@ def argument_graph(
 def paths(
     reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
     rule: t.Tuple[str, str],
+    selector: adaptation.Selector,
+    method: adaptation.Method,
 ) -> t.Tuple[t.Dict[Concept, str], t.Dict[Concept, t.List[graph.Path]]]:
     adapted_concepts = {}
     adapted_paths = {}
@@ -41,7 +43,8 @@ def paths(
         log.debug(f"Adapting '{root_concept}'.")
 
         params = [
-            (shortest_path, root_concept, rule) for shortest_path in all_shortest_paths
+            (shortest_path, root_concept, rule, selector, method)
+            for shortest_path in all_shortest_paths
         ]
 
         with multiprocessing.Pool() as pool:
@@ -79,11 +82,13 @@ def paths(
 
 
 def _adapt_shortest_path(
-    shortest_path: graph.Path, concept: Concept, rule: t.Tuple[str, str],
+    shortest_path: graph.Path,
+    concept: Concept,
+    rule: t.Tuple[str, str],
+    selector: adaptation.Selector,
+    method: adaptation.Method,
 ) -> graph.Path:
     db = Database()
-    selector = adaptation.Selector(config["adaptation"]["selector"])
-    method = adaptation.Method(config["adaptation"]["method"])
 
     # We have to convert the target to a path object here.
     start_name = (

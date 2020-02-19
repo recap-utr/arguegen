@@ -1,10 +1,13 @@
-version = "2.2"
+version = "2.3"
 
 [path]
 input = "data/input"
 output = "data/output"
 
 [adaptation]
+# If true, the following adaptation parameter will be ignored.
+gridsearch = true
+
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
 method = "between"
@@ -23,11 +26,11 @@ max_relations = 10
 relation_types = [
     "Antonym",
     "AtLocation",
+    "DerivedFrom",
     "HasA",
     "HasProperty",
     "IsA",
     "PartOf",
-    "RelatedTo",
     "SimilarTo",
     "SymbolOf",
     "Synonym",

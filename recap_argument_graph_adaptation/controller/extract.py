@@ -41,11 +41,10 @@ def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
 
 
 def paths(
-    concepts: t.Iterable[Concept], rule: t.Tuple[str, str]
+    concepts: t.Iterable[Concept], rule: t.Tuple[str, str], method: adaptation.Method
 ) -> t.Dict[Concept, t.List[graph.Path]]:
     db = Database()
     result = {}
-    method = adaptation.Method(config["adaptation"]["method"])
 
     log.debug(f"Found the following reference paths:")
 
