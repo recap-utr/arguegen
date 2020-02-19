@@ -17,7 +17,16 @@ class Selector(Enum):
 Rule = t.Tuple[str, str]
 
 
-@dataclass
+@dataclass(frozen=True)
 class Case:
     graph: ag.Graph
     rules: t.List[Rule]
+
+
+@dataclass(frozen=True)
+class Concept:
+    original_name: str
+    conceptnet_name: str
+
+    def __str__(self):
+        return self.conceptnet_name

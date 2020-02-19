@@ -6,15 +6,16 @@ import spacy
 from textacy import ke
 
 from . import adapt
+from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
 from ..model import graph, adaptation
 
-log = logging.getLogger(__package__)
+log = logging.getLogger(__name__)
 nlp = spacy.load(config["spacy"]["model"])
 
 
-def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[str]:
+def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
     # extractor is in [ke.textrank,
     #                  ke.yake,
     #                  ke.scake,
@@ -25,40 +26,56 @@ def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[str]:
     for node in graph.inodes:
         doc = nlp(node.text)
 
-        # The keywords are already lemmatized -> FormOf is not necessary
-        key_terms = [key_term for (key_term, weight) in extractor(doc)]
+        terms = [key_term for (key_term, weight) in extractor(doc, normalize=None)]
+        terms_lemmatized = [key_term for (key_term, weight) in extractor(doc)]
 
-        for key_term in key_terms:
-
-            if db.node(key_term):
-                concepts.add(key_term)
-
+        for term, lemma in zip(terms, terms_lemmatized):
+            if db.node(term):
+                concepts.add(Concept(term, term))
+            elif db.node(lemma):
+                concepts.add(Concept(term, lemma))
             else:
-                root = next(nlp(key_term).noun_chunks).root
+                root = next(nlp(term).noun_chunks).root
                 if db.node(root.text):
-                    concepts.add(root.text)
+                    concepts.add(Concept(term, root.text))
 
     return concepts
 
 
 def paths(
-    concepts: t.Iterable[str], rule: t.Tuple[str, str]
-) -> t.Dict[str, t.Optional[t.List[graph.Path]]]:
+    concepts: t.Iterable[Concept], rule: t.Tuple[str, str]
+) -> t.Dict[Concept, t.List[graph.Path]]:
     db = Database()
+    result = {}
     method = adaptation.Method(config["adaptation"]["method"])
 
+    log.debug(f"Found the following reference paths:")
+
     if method == adaptation.Method.WITHIN:
-        return {
-            concept: db.all_shortest_paths(rule[0], concept)
-            for concept in concepts
-            if rule[0] != concept
-        }
+        for concept in concepts:
+            if rule[0] != concept.original_name:
+                paths = db.all_shortest_paths(rule[0], concept.conceptnet_name)
+
+                if paths:
+                    result[concept] = paths
+                    _log_paths(paths)
 
     elif method == adaptation.Method.BETWEEN:
-        return {
-            concept: db.all_shortest_paths(rule[0], rule[1])
-            for concept in concepts
-            if rule[0] != concept
-        }
+        paths = db.all_shortest_paths(rule[0], rule[1])
 
-    raise ValueError("The parameter 'method' is not set correctly.")
+        if paths:
+            _log_paths(paths)
+
+            for concept in concepts:
+                if rule[0] != concept.original_name:
+                    result[concept] = paths
+
+    else:
+        raise ValueError("The parameter 'method' is not set correctly.")
+
+    return result
+
+
+def _log_paths(paths: t.Optional[t.Iterable[graph.Path]]):
+    if paths:
+        log.debug(", ".join((str(path) for path in paths)))

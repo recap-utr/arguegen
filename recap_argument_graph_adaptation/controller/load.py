@@ -11,7 +11,7 @@ def cases() -> t.List[adaptation.Case]:
     case_folder = Path(config["path"]["input"])
     result = []
 
-    for graph_file in case_folder.rglob("*.json"):
+    for graph_file in sorted(case_folder.rglob("*.json")):
         graph = ag.Graph.open(graph_file)
         rule_file = graph_file.with_suffix(".csv")
 

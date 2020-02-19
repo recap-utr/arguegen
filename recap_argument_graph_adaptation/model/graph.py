@@ -13,6 +13,9 @@ class Node:
     language: str
     source: str
 
+    def __str__(self):
+        return f"({self.name})"
+
     @classmethod
     def from_neo4j(cls, obj: neo4j.Node) -> Node:
         return cls(
@@ -36,6 +39,9 @@ class Relationship:
     @property
     def nodes(self) -> t.Tuple[Node, Node]:
         return (self.start_node, self.end_node)
+
+    def __str__(self):
+        return f"{self.start_node}-[{self.type}]->{self.end_node}"
 
     @classmethod
     def from_neo4j(cls, obj: neo4j.Relationship) -> Relationship:
@@ -62,6 +68,15 @@ class Path:
     @property
     def end_node(self) -> Node:
         return self.nodes[-1]
+
+    def __str__(self):
+        out = f"{self.start_node}"
+
+        if len(self.nodes) > 1:
+            for node, rel in zip(self.nodes[1:], self.relationships):
+                out += f"-[{rel.type}]-{node}"
+
+        return out
 
     @classmethod
     def from_neo4j(cls, obj: neo4j.Path) -> Path:

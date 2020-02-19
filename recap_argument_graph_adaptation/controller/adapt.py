@@ -10,15 +10,16 @@ import spacy
 from scipy.spatial import distance
 
 from ..model import conceptnet, graph, adaptation
+from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
 
-log = logging.getLogger(__package__)
+log = logging.getLogger(__name__)
 nlp = spacy.load(config["spacy"]["model"])
 
 
 def argument_graph(
-    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Dict[str, str]
+    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Dict[Concept, str]
 ) -> None:
     for node in graph.inodes:
         # First perform the rule adaptation.
@@ -26,57 +27,68 @@ def argument_graph(
         node.text = node.text.replace(rule[0], rule[1])
 
         for concept, adapted_concept in adapted_concepts.items():
-            node.text = node.text.replace(concept, adapted_concept,)
+            node.text = node.text.replace(concept.original_name, adapted_concept,)
 
 
 def paths(
-    reference_paths: t.Mapping[str, t.Optional[t.Iterable[graph.Path]]],
+    reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
     rule: t.Tuple[str, str],
-) -> t.Dict[str, str]:
+) -> t.Tuple[t.Dict[Concept, str], t.Dict[Concept, t.List[graph.Path]]]:
     adapted_concepts = {}
+    adapted_paths = {}
 
     for root_concept, all_shortest_paths in reference_paths.items():
-        if all_shortest_paths:
-            params = [
-                (shortest_path, root_concept, rule)
-                for shortest_path in all_shortest_paths
+        log.debug(f"Adapting '{root_concept}'.")
+
+        params = [
+            (shortest_path, root_concept, rule) for shortest_path in all_shortest_paths
+        ]
+
+        with multiprocessing.Pool() as pool:
+            shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
+
+        adaptation_candidates = defaultdict(int)
+        reference_length = len(all_shortest_paths[0].relationships)
+
+        log.debug(
+            f"Found the following candidates: {', '.join((str(path) for path in shortest_paths_adaptations))}"
+        )
+
+        for result in shortest_paths_adaptations:
+            if len(result.relationships) == reference_length:
+                adaptation_candidates[result.end_node.processed_name] += 1
+
+        if adaptation_candidates:
+            max_value = max(adaptation_candidates.values())
+            adapted_names = [
+                key
+                for key, value in adaptation_candidates.items()
+                if value == max_value
             ]
+            adapted_name = _filter_concepts(adapted_names, root_concept)
+            adapted_name = conceptnet.adapt_name(
+                adapted_name, root_concept.original_name
+            )
 
-            with multiprocessing.Pool() as pool:
-                shortest_path_adaptations = pool.starmap(_adapt_shortest_path, params)
+            adapted_concepts[root_concept] = adapted_name
+            adapted_paths[root_concept] = shortest_paths_adaptations
 
-            adaptation_candidates = defaultdict(int)
-            reference_length = len(all_shortest_paths[0].relationships)
+            log.info(f"Adapt '{root_concept}'->'{adapted_name}'.")
 
-            for result in shortest_path_adaptations:
-                if len(result.relationships) == reference_length:
-                    adaptation_candidates[result.end_node.processed_name] += 1
-
-            if adaptation_candidates:
-                max_value = max(adaptation_candidates.values())
-                adapted_names = [
-                    key
-                    for key, value in adaptation_candidates.items()
-                    if value == max_value
-                ]
-                adapted_name = _filter_concepts(adapted_names, root_concept)
-                adapted_name = conceptnet.adapt_name(adapted_name, root_concept)
-
-                adapted_concepts[root_concept] = adapted_name
-                log.info(f"Adapt '{root_concept}' to '{adapted_name}'.")
-
-    return adapted_concepts
+    return adapted_concepts, adapted_paths
 
 
 def _adapt_shortest_path(
-    shortest_path: graph.Path, concept: str, rule: t.Tuple[str, str],
+    shortest_path: graph.Path, concept: Concept, rule: t.Tuple[str, str],
 ) -> graph.Path:
     db = Database()
     selector = adaptation.Selector(config["adaptation"]["selector"])
     method = adaptation.Method(config["adaptation"]["method"])
 
     # We have to convert the target to a path object here.
-    start_name = rule[1] if method == adaptation.Method.WITHIN else concept
+    start_name = (
+        rule[1] if method == adaptation.Method.WITHIN else concept.conceptnet_name
+    )
     adapted_path = graph.Path.from_node(db.node(start_name))
 
     for rel in shortest_path.relationships:
@@ -95,8 +107,8 @@ def _adapt_shortest_path(
     return adapted_path
 
 
-def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: str) -> str:
-    root_nlp = nlp(root_concept)
+def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -> str:
+    root_nlp = nlp(root_concept.conceptnet_name)
     adapted_concepts_iter = iter(adapted_concepts)
 
     best_match = (next(adapted_concepts_iter), 0.0)
