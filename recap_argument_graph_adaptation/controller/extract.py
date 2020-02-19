@@ -15,11 +15,9 @@ log = logging.getLogger(__name__)
 nlp = spacy.load(config["spacy"]["model"])
 
 
-def from_graph(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
-    # extractor is in [ke.textrank,
-    #                  ke.yake,
-    #                  ke.scake,
-    #                  ke.sgrank]
+def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
+    # ke.textrank, ke.yake, ke.scake, ke.sgrank
+
     concepts = set()
     db = Database()
 

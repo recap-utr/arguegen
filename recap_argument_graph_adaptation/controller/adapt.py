@@ -2,14 +2,14 @@ import logging
 import multiprocessing
 import typing as t
 from collections import defaultdict
-from enum import Enum
 import warnings
 
 import recap_argument_graph as ag
 import spacy
 from scipy.spatial import distance
 
-from ..model import conceptnet, graph, adaptation
+from ..model import graph, adaptation
+from ..util import conceptnet
 from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database

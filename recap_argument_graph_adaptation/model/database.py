@@ -1,7 +1,7 @@
 import neo4j
 from .config import config
-from . import conceptnet, graph
-from gibberish import Gibberish
+from . import graph
+from ..util import conceptnet
 import typing as t
 
 
