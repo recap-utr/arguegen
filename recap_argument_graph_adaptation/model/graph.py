@@ -74,7 +74,7 @@ class Path:
 
         if len(self.nodes) > 1:
             for node, rel in zip(self.nodes[1:], self.relationships):
-                out += f"-[{rel.type}]-{node}"
+                out += f"-[{rel.type}]->{node}"
 
         return out
 

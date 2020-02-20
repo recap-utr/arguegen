@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 nlp = spacy.load(config["spacy"]["model"])
 
 # TODO: Many adapted paths have shorter lengths and thus are not considered!
+# TODO: Concepts without an adaption result should be logged and appear in statistics!
 
 
 def run():
@@ -61,13 +62,15 @@ def _perform_adaptation(
     adaptation_results = {}
 
     for rule in case.rules:
+        log.info(f"Adapt '{rule[0]}'->'{rule[1]}'.")
+
         reference_paths = extract.paths(concepts, rule, adaptation_method)
         adapted_concepts, adapted_paths = adapt.paths(
             reference_paths, rule, adaptation_selector, adaptation_method
         )
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
-        adaptation_results[f"{rule[0]}->{rule[1]}"] = export.statistic(
+        adaptation_results[f"({rule[0]})->({rule[1]})"] = export.statistic(
             concepts, reference_paths, adapted_concepts, adapted_paths
         )
 
