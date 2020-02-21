@@ -56,6 +56,8 @@ def paths(
                 if paths:
                     result[concept] = paths
                     _log_paths(paths)
+                else:
+                    log.info(f"No reference path found for '{concept}'.")
 
     elif method == adaptation.Method.BETWEEN:
         paths = db.all_shortest_paths(rule[0], rule[1])
@@ -66,6 +68,8 @@ def paths(
             for concept in concepts:
                 if rule[0] != concept.original_name:
                     result[concept] = paths
+        else:
+            log.error(f"No matching path found. Nothing else to do.")
 
     else:
         raise ValueError("The parameter 'method' is not set correctly.")

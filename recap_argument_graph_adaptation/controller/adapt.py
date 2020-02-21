@@ -78,6 +78,9 @@ def paths(
 
             log.info(f"Adapt '{root_concept}'->'{adapted_name}'.")
 
+        else:
+            log.info(f"No adaptation for '{root_concept}'.")
+
     return adapted_concepts, adapted_paths
 
 
@@ -152,16 +155,16 @@ def _filter_paths(
     for candidate_path in candidate_paths:
         candidate = candidate_path.end_node
 
-        if candidate not in existing_nodes:
-            val_adapted = _aggregate_features(
-                nlp(adapted_path.nodes[start_index].processed_name).vector,
-                nlp(candidate.processed_name).vector,
-                selector,
-            )
-            val_solution = _compare_features(val_reference, val_adapted, selector)
+        # if candidate not in existing_nodes:
+        val_adapted = _aggregate_features(
+            nlp(adapted_path.nodes[start_index].processed_name).vector,
+            nlp(candidate.processed_name).vector,
+            selector,
+        )
+        val_solution = _compare_features(val_reference, val_adapted, selector)
 
-            if val_solution < solution_pair[1]:
-                solution_pair = (candidate_path, val_solution)
+        if val_solution < solution_pair[1]:
+            solution_pair = (candidate_path, val_solution)
 
     return solution_pair[0]
 
