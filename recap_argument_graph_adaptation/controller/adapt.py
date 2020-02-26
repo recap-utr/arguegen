@@ -76,10 +76,10 @@ def paths(
             adapted_concepts[root_concept] = adapted_name
             adapted_paths[root_concept] = shortest_paths_adaptations
 
-            log.info(f"Adapt '{root_concept}'->'{adapted_name}'.")
+            log.info(f"Adapt ({root_concept})->({adapted_name}).")
 
         else:
-            log.info(f"No adaptation for '{root_concept}'.")
+            log.info(f"No adaptation for ({root_concept}).")
 
     return adapted_concepts, adapted_paths
 

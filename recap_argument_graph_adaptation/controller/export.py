@@ -18,9 +18,9 @@ def statistic(
         out[key] = {
             "original_name": concept.original_name,
             "conceptnet_name": concept.conceptnet_name,
-            "adapted_name": adapted_concepts.get(concept),
             "reference_paths": reference_paths.get(concept),
             "adapted_paths": adapted_paths.get(concept),
+            "adapted_name": adapted_concepts.get(concept),
         }
 
     return out
