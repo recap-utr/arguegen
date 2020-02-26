@@ -52,13 +52,14 @@ def paths(
 
         adaptation_candidates = defaultdict(int)
         reference_length = len(all_shortest_paths[0].relationships)
+        adapted_paths[root_concept] = shortest_paths_adaptations
 
         log.debug(
             f"Found the following candidates: {', '.join((str(path) for path in shortest_paths_adaptations))}"
         )
 
         for result in shortest_paths_adaptations:
-            if len(result.relationships) == reference_length:
+            if result and len(result.relationships) == reference_length:
                 adaptation_candidates[result.end_node.processed_name] += 1
 
         if adaptation_candidates:
@@ -74,7 +75,6 @@ def paths(
             )
 
             adapted_concepts[root_concept] = adapted_name
-            adapted_paths[root_concept] = shortest_paths_adaptations
 
             log.info(f"Adapt ({root_concept})->({adapted_name}).")
 
@@ -90,7 +90,7 @@ def _adapt_shortest_path(
     rule: t.Tuple[str, str],
     selector: adaptation.Selector,
     method: adaptation.Method,
-) -> graph.Path:
+) -> t.Optional[graph.Path]:
     db = Database()
 
     # We have to convert the target to a path object here.
@@ -111,6 +111,8 @@ def _adapt_shortest_path(
 
         if path_candidate:
             adapted_path = graph.Path.merge(adapted_path, path_candidate)
+        else:
+            return None
 
     return adapted_path
 
