@@ -5,14 +5,13 @@ import recap_argument_graph as ag
 import spacy
 from textacy import ke
 
-from . import adapt
+from . import adapt, load
 from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
 from ..model import graph, adaptation
 
 log = logging.getLogger(__name__)
-nlp = spacy.load(config["spacy"]["model"])
 
 
 def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
@@ -20,6 +19,7 @@ def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
 
     concepts = set()
     db = Database()
+    nlp = load.spacy_nlp()
 
     for node in graph.inodes:
         doc = nlp(node.text)

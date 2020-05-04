@@ -8,6 +8,7 @@ import recap_argument_graph as ag
 import spacy
 from scipy.spatial import distance
 
+from . import load
 from ..model import graph, adaptation
 from ..util import conceptnet
 from ..model.adaptation import Concept
@@ -15,7 +16,6 @@ from ..model.config import config
 from ..model.database import Database
 
 log = logging.getLogger(__name__)
-nlp = spacy.load(config["spacy"]["model"])
 
 
 def argument_graph(
@@ -118,6 +118,8 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -> str:
+    nlp = load.spacy_nlp()
+
     root_nlp = nlp(root_concept.conceptnet_name)
     adapted_concepts_iter = iter(adapted_concepts)
 
@@ -142,6 +144,8 @@ def _filter_paths(
     adapted_path: graph.Path,
     selector: adaptation.Selector,
 ) -> t.Optional[graph.Path]:
+    nlp = load.spacy_nlp()
+
     end_index = len(adapted_path.nodes)
     start_index = end_index - 1
 

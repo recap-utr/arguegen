@@ -13,8 +13,6 @@ from .model.config import config
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-nlp = spacy.load(config["spacy"]["model"])
-
 
 def run():
     log.info("Initializing.")

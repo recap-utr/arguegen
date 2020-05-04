@@ -1,4 +1,6 @@
 import csv
+
+import spacy
 import typing as t
 from pathlib import Path
 
@@ -33,3 +35,13 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
             rules.append((row[0], row[1]))
 
     return rules
+
+
+spacy_models = {"en": "en_core_web_lg", "de": "de_core_news_md"}
+
+
+def spacy_nlp():
+    lang = config["nlp"]["lang"]
+    model = spacy_models[lang]
+
+    return spacy.load(model)

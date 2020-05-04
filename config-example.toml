@@ -1,4 +1,7 @@
-version = "2.4"
+version = "2.5"
+
+[nlp]
+lang = "en"
 
 [path]
 input = "data/input"
@@ -16,11 +19,7 @@ method = "within"
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 selector = "similarity"
 
-[spacy]
-model = "en_core_web_lg"
-
 [neo4j]
-lang = "en"
 url = "bolt://136.199.130.136:7687"
 max_relations = 10
 relation_types = [
