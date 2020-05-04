@@ -3,9 +3,6 @@ import logging
 from pathlib import Path
 import typing as t
 
-import recap_argument_graph as ag
-import spacy
-
 from .controller import adapt, extract, load, export
 from .model import graph, adaptation
 from .model.config import config

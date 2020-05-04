@@ -149,6 +149,6 @@ class Database:
 
 def _aggregate_relations(relation_types: t.Collection[str]) -> str:
     if relation_types:
-        return ":" + "|:".join(relation_types)
+        return ":" + "|".join(relation_types)
 
     return ""
