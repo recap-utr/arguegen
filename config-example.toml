@@ -20,7 +20,9 @@ method = "within"
 selector = "similarity"
 
 [neo4j]
-url = "bolt://136.199.130.136:7687"
+url = "bolt://localhost:7687"
+username = "neo4j"
+password = "password"
 max_relations = 10
 relation_types = [
 #    "Antonym",
