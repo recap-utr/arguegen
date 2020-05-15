@@ -15,6 +15,9 @@ spacy = "^2.2.4"
 textacy = "^0.10.0"
 scikit-learn = "^0.22.2"
 packaging = "^20.3"
+sentence-transformers = "^0.2.6"
+stanza = "^1.0.1"
+yake = {git = "https://github.com/LIAAD/yake"}
 
 [tool.poetry.dev-dependencies]
 

@@ -14,7 +14,7 @@ from ..model import graph, adaptation
 log = logging.getLogger(__name__)
 
 
-def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
+def keywords(graph: ag.Graph, extractor=ke.yake) -> t.Set[Concept]:
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
     concepts = set()
@@ -22,7 +22,7 @@ def keywords(graph: ag.Graph, extractor=ke.textrank) -> t.Set[Concept]:
     nlp = load.spacy_nlp()
 
     for node in graph.inodes:
-        doc = nlp(node.text)
+        doc = nlp(node.plain_text)
 
         terms = [key_term for (key_term, weight) in extractor(doc, normalize=None)]
         terms_lemmatized = [key_term for (key_term, weight) in extractor(doc)]

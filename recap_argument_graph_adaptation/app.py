@@ -17,9 +17,9 @@ def run():
 
     for case in cases:
         concepts = extract.keywords(case.graph)
-        # log.info(
-        #     f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
-        # )
+        log.info(
+            f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
+        )
 
         adaptation_methods = [adaptation.Method(config["adaptation"]["method"])]
         adaptation_selectors = [adaptation.Selector(config["adaptation"]["selector"])]
