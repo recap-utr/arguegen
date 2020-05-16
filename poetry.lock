@@ -313,18 +313,6 @@ murmurhash = ">=0.28.0,<1.1.0"
 
 [[package]]
 category = "main"
-description = "Protocol Buffers"
-name = "protobuf"
-optional = false
-python-versions = "*"
-version = "3.11.3"
-
-[package.dependencies]
-setuptools = "*"
-six = ">=1.9"
-
-[[package]]
-category = "main"
 description = "A Python wrapper for Ofir Pele and Michael Werman's implementation of the Earth Mover's Distance."
 name = "pyemd"
 optional = false
@@ -461,17 +449,6 @@ numpy = ">=1.13.3"
 
 [[package]]
 category = "main"
-description = "sentence segmentation and word tokenization tools"
-name = "segtok"
-optional = false
-python-versions = "*"
-version = "1.5.10"
-
-[package.dependencies]
-regex = "*"
-
-[[package]]
-category = "main"
 description = "Sentence Embeddings using BERT / RoBERTa / XLNet"
 name = "sentence-transformers"
 optional = false
@@ -545,36 +522,6 @@ name = "srsly"
 optional = false
 python-versions = "*"
 version = "1.0.2"
-
-[[package]]
-category = "main"
-description = "A Python NLP Library for Many Human Languages, by the Stanford NLP Group"
-name = "stanza"
-optional = false
-python-versions = ">=3.6"
-version = "1.0.1"
-
-[package.dependencies]
-numpy = "*"
-protobuf = "*"
-requests = "*"
-torch = ">=1.3.0"
-tqdm = "*"
-
-[package.extras]
-dev = ["check-manifest"]
-test = ["coverage"]
-
-[[package]]
-category = "main"
-description = "Pretty-print tabular data"
-name = "tabulate"
-optional = false
-python-versions = "*"
-version = "0.8.7"
-
-[package.extras]
-widechars = ["wcwidth"]
 
 [[package]]
 category = "main"
@@ -753,26 +700,6 @@ mecab = ["mecab-python3"]
 
 [[package]]
 category = "main"
-description = "Keyword extraction Python package"
-name = "yake"
-optional = false
-python-versions = "*"
-version = "0.4.3"
-
-[package.dependencies]
-click = ">=6.0"
-jellyfish = "*"
-networkx = "*"
-numpy = "*"
-segtok = "*"
-tabulate = "*"
-
-[package.source]
-reference = "283bfd3c86b19b9fd23e84017c1b2f6c8426accd"
-type = "git"
-url = "https://github.com/LIAAD/yake"
-[[package]]
-category = "main"
 description = "Backport of pathlib-compatible object wrapper for zip files"
 marker = "python_version < \"3.8\""
 name = "zipp"
@@ -785,7 +712,7 @@ docs = ["sphinx", "jaraco.packaging (>=3.2)", "rst.linker (>=1.9)"]
 testing = ["jaraco.itertools", "func-timeout"]
 
 [metadata]
-content-hash = "2a5b4d08af8f55f7fbbfb2cb96b0714477c61c3ee3a13b6dff265d86773e919d"
+content-hash = "1703cbaea9aee2a4503fbee7cf9da9d31eb32500443c40300403363a1e065a91"
 python-versions = "^3.7"
 
 [metadata.files]
@@ -1028,27 +955,6 @@ preshed = [
     {file = "preshed-3.0.2-cp38-cp38-win_amd64.whl", hash = "sha256:190345724eb3f7aeaeb2a758740d698bd6c017c2cdf07c71c16b34820973d114"},
     {file = "preshed-3.0.2.tar.gz", hash = "sha256:61d73468c97c1d6d5a048de0b01d5a6fd052123358aca4823cdb277e436436cb"},
 ]
-protobuf = [
-    {file = "protobuf-3.11.3-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:ef2c2e56aaf9ee914d3dccc3408d42661aaf7d9bb78eaa8f17b2e6282f214481"},
-    {file = "protobuf-3.11.3-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:dd9aa4401c36785ea1b6fff0552c674bdd1b641319cb07ed1fe2392388e9b0d7"},
-    {file = "protobuf-3.11.3-cp35-cp35m-macosx_10_9_intel.whl", hash = "sha256:310a7aca6e7f257510d0c750364774034272538d51796ca31d42c3925d12a52a"},
-    {file = "protobuf-3.11.3-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:e512b7f3a4dd780f59f1bf22c302740e27b10b5c97e858a6061772668cd6f961"},
-    {file = "protobuf-3.11.3-cp35-cp35m-win32.whl", hash = "sha256:fdfb6ad138dbbf92b5dbea3576d7c8ba7463173f7d2cb0ca1bd336ec88ddbd80"},
-    {file = "protobuf-3.11.3-cp35-cp35m-win_amd64.whl", hash = "sha256:e2f8a75261c26b2f5f3442b0525d50fd79a71aeca04b5ec270fc123536188306"},
-    {file = "protobuf-3.11.3-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:c40973a0aee65422d8cb4e7d7cbded95dfeee0199caab54d5ab25b63bce8135a"},
-    {file = "protobuf-3.11.3-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:adf0e4d57b33881d0c63bb11e7f9038f98ee0c3e334c221f0858f826e8fb0151"},
-    {file = "protobuf-3.11.3-cp36-cp36m-win32.whl", hash = "sha256:0bae429443cc4748be2aadfdaf9633297cfaeb24a9a02d0ab15849175ce90fab"},
-    {file = "protobuf-3.11.3-cp36-cp36m-win_amd64.whl", hash = "sha256:e11df1ac6905e81b815ab6fd518e79be0a58b5dc427a2cf7208980f30694b956"},
-    {file = "protobuf-3.11.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:7774bbbaac81d3ba86de646c39f154afc8156717972bf0450c9dbfa1dc8dbea2"},
-    {file = "protobuf-3.11.3-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:8eb9c93798b904f141d9de36a0ba9f9b73cc382869e67c9e642c0aba53b0fc07"},
-    {file = "protobuf-3.11.3-cp37-cp37m-win32.whl", hash = "sha256:fac513a9dc2a74b99abd2e17109b53945e364649ca03d9f7a0b96aa8d1807d0a"},
-    {file = "protobuf-3.11.3-cp37-cp37m-win_amd64.whl", hash = "sha256:82d7ac987715d8d1eb4068bf997f3053468e0ce0287e2729c30601feb6602fee"},
-    {file = "protobuf-3.11.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:73152776dc75f335c476d11d52ec6f0f6925774802cd48d6189f4d5d7fe753f4"},
-    {file = "protobuf-3.11.3-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:52e586072612c1eec18e1174f8e3bb19d08f075fc2e3f91d3b16c919078469d0"},
-    {file = "protobuf-3.11.3-py2.7.egg", hash = "sha256:2affcaba328c4662f3bc3c0e9576ea107906b2c2b6422344cdad961734ff6b93"},
-    {file = "protobuf-3.11.3-py2.py3-none-any.whl", hash = "sha256:24e3b6ad259544d717902777b33966a1a069208c885576254c112663e6a5bb0f"},
-    {file = "protobuf-3.11.3.tar.gz", hash = "sha256:c77c974d1dadf246d789f6dad1c24426137c9091e930dbf50e0a29c1fcf00b1f"},
-]
 pyemd = [
     {file = "pyemd-0.5.1-cp36-cp36m-macosx_10_13_x86_64.whl", hash = "sha256:15750113757ace54a03d2efef7bbc2c5a4782cba30555e7fd401bcafcfa0ecb2"},
     {file = "pyemd-0.5.1.tar.gz", hash = "sha256:fc81c2116f8573e559dfbb8d73e03d9f73c22d0770559f406516984302e07e70"},
@@ -1153,9 +1059,6 @@ scipy = [
     {file = "scipy-1.4.1-cp38-cp38-win_amd64.whl", hash = "sha256:2cce3f9847a1a51019e8c5b47620da93950e58ebc611f13e0d11f4980ca5fecb"},
     {file = "scipy-1.4.1.tar.gz", hash = "sha256:dee1bbf3a6c8f73b6b218cb28eed8dd13347ea2f87d572ce19b289d6fd3fbc59"},
 ]
-segtok = [
-    {file = "segtok-1.5.10.tar.gz", hash = "sha256:2ed6525e840a669ec7ba3be61353a4f660264aecfc726834dbe4b01eb4ef7804"},
-]
 sentence-transformers = [
     {file = "sentence-transformers-0.2.6.1.tar.gz", hash = "sha256:68250e1e272ad7013c879a633deca710bbaf7b8cec4080095e88904b93eed128"},
 ]
@@ -1213,14 +1116,6 @@ srsly = [
     {file = "srsly-1.0.2-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:18bad26c34cf5a8853fbf018fd168a7bf2ea7ce661e66476c25dac711cb79c9b"},
     {file = "srsly-1.0.2-cp38-cp38-win_amd64.whl", hash = "sha256:29434753a77481ec6129991f4116f983085cc8005c1ad963261124842e8c05fc"},
     {file = "srsly-1.0.2.tar.gz", hash = "sha256:59258b81d567df207f8a0a33c4b5fa232afccf1d927c8ce3ba5395bfd64c0ed8"},
-]
-stanza = [
-    {file = "stanza-1.0.1-py3-none-any.whl", hash = "sha256:c6119d595f4b72266ffb90731ce1d12815b1a5a86d533a2fa2f75b410fa569ce"},
-    {file = "stanza-1.0.1.tar.gz", hash = "sha256:953d09f8ac12fdd245f1b205cd1395686696d30e35616bba7f74334dac6c8eed"},
-]
-tabulate = [
-    {file = "tabulate-0.8.7-py3-none-any.whl", hash = "sha256:ac64cb76d53b1231d364babcd72abbb16855adac7de6665122f97b593f1eb2ba"},
-    {file = "tabulate-0.8.7.tar.gz", hash = "sha256:db2723a20d04bcda8522165c73eea7c300eda74e0ce852d9022e0159d7895007"},
 ]
 textacy = [
     {file = "textacy-0.10.0-py3-none-any.whl", hash = "sha256:733f10231125486de51ac66d6aea23587ae517629cfc6d5f56de9f3ca6069f19"},
@@ -1296,7 +1191,6 @@ wasabi = [
 wordfreq = [
     {file = "wordfreq-2.3.2.tar.gz", hash = "sha256:a9e69ca285e6ab01e3eed2d3d20a731b2d2bc01f3805595cbbb128c1749da34d"},
 ]
-yake = []
 zipp = [
     {file = "zipp-3.1.0-py3-none-any.whl", hash = "sha256:aa36550ff0c0b7ef7fa639055d797116ee891440eac1a56f378e2d3179e0320b"},
     {file = "zipp-3.1.0.tar.gz", hash = "sha256:c599e4d75c98f6798c509911d08a22e6c021d074469042177c8c86fb92eefd96"},
