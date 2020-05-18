@@ -4,6 +4,7 @@ import spacy
 import typing as t
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
+from scipy.spatial import distance
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import adaptation
@@ -67,7 +68,6 @@ class TransformerModel(object):
     def __call__(self, doc):
         doc.user_hooks["vector"] = self.vector
         doc.user_span_hooks["vector"] = self.vector
-        doc.user_token_hooks["vector"] = self.vector
 
         return doc
 

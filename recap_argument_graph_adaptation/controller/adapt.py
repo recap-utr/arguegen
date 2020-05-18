@@ -47,8 +47,13 @@ def paths(
             for shortest_path in all_shortest_paths
         ]
 
-        with multiprocessing.Pool() as pool:
-            shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
+        if config["debug"]:
+            shortest_paths_adaptations = [
+                _adapt_shortest_path(*param) for param in params
+            ]
+        else:
+            with multiprocessing.Pool(config["threads"]) as pool:
+                shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
 
         adaptation_candidates = defaultdict(int)
         reference_length = len(all_shortest_paths[0].relationships)

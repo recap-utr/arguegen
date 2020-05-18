@@ -7,7 +7,6 @@ from .controller import adapt, extract, load, export
 from .model import graph, adaptation
 from .model.config import config
 
-logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
