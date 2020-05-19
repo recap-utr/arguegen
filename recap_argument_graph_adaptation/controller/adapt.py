@@ -52,7 +52,7 @@ def paths(
                 _adapt_shortest_path(*param) for param in params
             ]
         else:
-            with multiprocessing.Pool(config["threads"]) as pool:
+            with multiprocessing.Pool() as pool:
                 shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
 
         adaptation_candidates = defaultdict(int)
@@ -110,14 +110,15 @@ def _adapt_shortest_path(
         if config["adaptation"]["relax_relationship_types"] and not path_candidates:
             path_candidates = db.expand_node(adapted_path.end_node)
 
-        path_candidate = _filter_paths(
-            path_candidates, shortest_path, adapted_path, selector
-        )
+        if path_candidates:
+            path_candidate = _filter_paths(
+                path_candidates, shortest_path, adapted_path, selector
+            )
 
-        if path_candidate:
-            adapted_path = graph.Path.merge(adapted_path, path_candidate)
-        else:
-            return None
+            if path_candidate:
+                adapted_path = graph.Path.merge(adapted_path, path_candidate)
+            else:
+                return None
 
     return adapted_path
 
@@ -144,7 +145,7 @@ def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -
 
 
 def _filter_paths(
-    candidate_paths: t.Optional[t.Iterable[graph.Path]],
+    candidate_paths: t.Iterable[graph.Path],
     reference_path: graph.Path,
     adapted_path: graph.Path,
     selector: adaptation.Selector,

@@ -68,8 +68,13 @@ class TransformerModel(object):
     def __call__(self, doc):
         doc.user_hooks["vector"] = self.vector
         doc.user_span_hooks["vector"] = self.vector
+        doc.user_token_hooks["vector"] = self.vector
 
         return doc
 
     def vector(self, obj):
-        return self._model.encode([str(obj)])[0]
+        # The function `encode` expects a list of strings.
+        sentences = [obj.text]
+        embeddings = self._model.encode(sentences)
+
+        return embeddings[0]
