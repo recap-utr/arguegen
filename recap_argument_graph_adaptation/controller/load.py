@@ -5,6 +5,7 @@ import typing as t
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
 from scipy.spatial import distance
+import lmproof
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import adaptation
@@ -40,6 +41,7 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
 
 
 spacy_cache = {"en": None, "de": None}
+proof_reader_cache = {"en": None, "de": None}
 spacy_models = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 transformer_models = {
     "en": "distiluse-base-multilingual-cased",
@@ -57,6 +59,15 @@ def spacy_nlp():
         spacy_cache[lang] = model
 
     return spacy_cache[lang]
+
+
+def proof_reader() -> lmproof.Proofreader:
+    lang = config["nlp"]["lang"]
+
+    if not proof_reader_cache[lang]:
+        proof_reader_cache[lang] = lmproof.load(lang)
+
+    return proof_reader_cache[lang]
 
 
 # https://spacy.io/usage/processing-pipelines#custom-components-user-hooks

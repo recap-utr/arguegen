@@ -21,13 +21,17 @@ log = logging.getLogger(__name__)
 def argument_graph(
     graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Dict[Concept, str]
 ) -> None:
+    pr = load.proof_reader()
+
     for node in graph.inodes:
         # First perform the rule adaptation.
         # Otherwise, 'death penalty' might already be replaced using the adaptation of 'death'.
         node.text = node.text.replace(rule[0], rule[1])
 
         for concept, adapted_concept in adapted_concepts.items():
-            node.text = node.text.replace(concept.original_name, adapted_concept,)
+            node.text = node.text.replace(concept.original_name, adapted_concept)
+
+        node.text = pr.proofread(node.text)
 
 
 def paths(

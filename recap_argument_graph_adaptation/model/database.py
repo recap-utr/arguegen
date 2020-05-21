@@ -29,9 +29,11 @@ class Database:
             "MATCH (n:Concept {name: $name, language: $lang}) RETURN n",
             name=conceptnet.concept_name(name, lang),
             lang=lang,
-        ).single()
+        )
 
-        return graph.Node.from_neo4j(result.value()) if result else None
+        record = result.single()
+
+        return graph.Node.from_neo4j(record.value()) if record else None
 
     # SHORTEST PATH
 
@@ -67,9 +69,11 @@ class Database:
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
             lang=lang,
-        ).single()
+        )
 
-        return graph.Path.from_neo4j(result.value()) if result else None
+        record = result.single()
+
+        return graph.Path.from_neo4j(record.value()) if record else None
 
     # ALL SHORTEST PATHS
 
@@ -110,7 +114,7 @@ class Database:
         )
 
         if result:
-            return [graph.Path.from_neo4j(path) for path in result.value()]
+            return [graph.Path.from_neo4j(record.value()) for record in result]
 
         return None
 
@@ -142,7 +146,7 @@ class Database:
         )
 
         if result:
-            return [graph.Path.from_neo4j(path) for path in result.value()]
+            return [graph.Path.from_neo4j(record.value()) for record in result]
 
         return None
 
