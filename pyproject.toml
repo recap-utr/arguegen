@@ -7,7 +7,7 @@ authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 recap-argument-graph = "^0.1.29"
-neo4j = "^4.0.0a4"
+neo4j = "^4.0.0"
 scipy = "^1.4.1"
 tomlkit = "^0.6.0"
 wordfreq = "^2.3.2"
