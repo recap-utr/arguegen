@@ -19,8 +19,12 @@ Rule = t.Tuple[str, str]
 
 @dataclass(frozen=True)
 class Case:
+    name: str
+    query: str
     graph: ag.Graph
     rules: t.List[Rule]
+    benchmark_graph: ag.Graph
+    benchmark_rules: t.List[Rule]
 
 
 @dataclass(frozen=True)

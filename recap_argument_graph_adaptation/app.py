@@ -1,18 +1,25 @@
 import json
 import logging
-from pathlib import Path
 import typing as t
+from pathlib import Path
 
-from .controller import adapt, extract, load, export
+import pendulum
+
+from .controller import adapt, export, extract, load
 from .model import adaptation
 from .model.config import config
 
 log = logging.getLogger(__name__)
 
 
+def _timestamp() -> str:
+    return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
+
+
 def run():
     log.info("Initializing.")
     cases = load.cases()
+    out_path = Path(config["path"]["output"], _timestamp())
 
     for case in cases:
         concepts = extract.keywords(case.graph)
@@ -30,7 +37,7 @@ def run():
         for adaptation_method in adaptation_methods:
             for adaptation_selector in adaptation_selectors:
                 _perform_adaptation(
-                    case, concepts, adaptation_method, adaptation_selector
+                    case, concepts, adaptation_method, adaptation_selector, out_path
                 )
 
 
@@ -39,16 +46,22 @@ def _perform_adaptation(
     concepts: t.Set[adaptation.Concept],
     adaptation_method: adaptation.Method,
     adaptation_selector: adaptation.Selector,
+    out_path: Path,
 ) -> None:
     log.info(
-        f"Processing '{case.graph.name}' "
+        f"Processing '{case.name}' "
         f"with method '{adaptation_method.value}' "
         f"and selector '{adaptation_selector.value}'."
     )
 
-    out_path = Path(
-        config["path"]["output"], adaptation_method.value, adaptation_selector.value,
-    )
+    nested_out_path: Path = out_path / case.name
+
+    if config["adaptation"]["gridsearch"]:
+        nested_out_path = (
+            nested_out_path / adaptation_method.value / adaptation_selector.value
+        )
+
+    nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adaptation_results = {}
 
@@ -65,9 +78,9 @@ def _perform_adaptation(
             concepts, reference_paths, adapted_concepts, adapted_paths
         )
 
-    case.graph.render(out_path)
-    case.graph.save(out_path)
-    stats_path = out_path / f"{case.graph.name}-stats.json"
+    case.graph.save(nested_out_path / "case.json")
+    case.graph.render(nested_out_path / "case.pdf")
+    stats_path = nested_out_path / "stats.json"
 
     with stats_path.open("w") as file:
         json.dump(

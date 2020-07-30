@@ -13,17 +13,30 @@ from recap_argument_graph_adaptation.model.config import config
 
 
 def cases() -> t.List[adaptation.Case]:
-    case_folder = Path(config["path"]["input"])
+    input_path = Path(config["path"]["input"])
     result = []
 
-    for graph_file in sorted(case_folder.rglob("*.json")):
-        graph = ag.Graph.open(graph_file)
-        rule_file = graph_file.with_suffix(".csv")
+    for folder in sorted(input_path.iterdir()):
+        if folder.is_dir():
+            input_graph = ag.Graph.open(folder / "case.json")
+            input_rules = _parse_rules(folder / "case.csv")
 
-        if rule_file.is_file():
-            rules = _parse_rules(rule_file)
+            benchmark_graph = ag.Graph.open(folder / "benchmark.json")
+            benchmark_rules = _parse_rules(folder / "benchmark.csv")
 
-            result.append(adaptation.Case(graph=graph, rules=rules))
+            with (folder / "query.txt").open() as file:
+                query = file.read()
+
+            result.append(
+                adaptation.Case(
+                    folder.name,
+                    query,
+                    input_graph,
+                    input_rules,
+                    benchmark_graph,
+                    benchmark_rules,
+                )
+            )
 
     return result
 

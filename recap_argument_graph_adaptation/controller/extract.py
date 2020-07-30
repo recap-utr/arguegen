@@ -56,9 +56,12 @@ def paths(
 
                 if paths:
                     result[concept] = paths
-                    _log_paths(paths)
+                    log.info(
+                        f"Found {len(paths)} reference paths for ({rule[0]})->({concept})."
+                    )
+                    log.debug(", ".join((str(path) for path in paths)))
                 else:
-                    log.info(f"No reference path for ({concept}).")
+                    log.info(f"Found 0 reference paths for ({rule[0]})->({concept}).")
 
     elif method == adaptation.Method.BETWEEN:
         paths = db.all_shortest_paths(rule[0], rule[1])
@@ -76,8 +79,3 @@ def paths(
         raise ValueError("The parameter 'method' is not set correctly.")
 
     return result
-
-
-def _log_paths(paths: t.Optional[t.Iterable[graph.Path]]):
-    if paths:
-        log.debug(", ".join((str(path) for path in paths)))
