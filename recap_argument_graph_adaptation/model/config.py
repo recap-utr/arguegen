@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import collections
 from pathlib import Path
 import typing as t
@@ -13,11 +15,9 @@ class Config(collections.MutableMapping):
     _template = Path("config-example.toml")
 
     @classmethod
-    def instance(cls):
+    def instance(cls) -> Config:
         """ Static access method. """
-        if cls._instance is None:
-            cls()
-        return cls._instance
+        return cls._instance or cls()
 
     def __init__(self):
         """ Private constructor."""

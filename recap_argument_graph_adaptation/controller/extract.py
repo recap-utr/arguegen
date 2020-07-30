@@ -14,7 +14,8 @@ from ..model import graph, adaptation
 log = logging.getLogger(__name__)
 
 
-def keywords(graph: ag.Graph, extractor=ke.yake) -> t.Set[Concept]:
+def keywords(graph: ag.Graph) -> t.Set[Concept]:
+    extractor = ke.yake
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
     concepts = set()

@@ -4,7 +4,7 @@ from pathlib import Path
 import typing as t
 
 from .controller import adapt, extract, load, export
-from .model import graph, adaptation
+from .model import adaptation
 from .model.config import config
 
 log = logging.getLogger(__name__)

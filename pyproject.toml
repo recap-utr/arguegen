@@ -7,15 +7,15 @@ authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 [tool.poetry.dependencies]
 python = "^3.7"
 recap-argument-graph = "^0.1.29"
-neo4j = "^4.0.0"
-scipy = "^1.4.1"
+neo4j = "^4.1.0"
+scipy = "^1.5.2"
 tomlkit = "^0.6.0"
 wordfreq = "^2.3.2"
-spacy = "^2.2.4"
+spacy = "^2.3.2"
 textacy = "^0.10.0"
-scikit-learn = "^0.22.2"
-packaging = "^20.3"
-sentence-transformers = "^0.2.6"
+scikit-learn = "^0.23.1"
+packaging = "^20.4"
+sentence-transformers = "^0.3.2"
 lmproof = "^0.3.0"
 
 [tool.poetry.dev-dependencies]
