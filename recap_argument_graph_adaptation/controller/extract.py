@@ -29,12 +29,13 @@ def keywords(graph: ag.Graph) -> t.Set[Concept]:
         terms_lemmatized = [key_term for (key_term, weight) in extractor(doc)]
 
         for term, lemma in zip(terms, terms_lemmatized):
-            if db.node(term):
+            if db.node(term):  # original term is in conceptnet
                 concepts.add(Concept(term, term))
-            elif db.node(lemma):
+            elif db.node(lemma):  # lemma is in conceptnet
                 concepts.add(Concept(term, lemma))
-            else:
+            else:  # test if the root word is in conceptnet
                 root = next(nlp(term).noun_chunks).root
+
                 if db.node(root.text):
                     concepts.add(Concept(term, root.text))
 

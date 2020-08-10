@@ -6,16 +6,19 @@ import typing as t
 
 
 class Database:
-    _driver: neo4j.Driver
+    _driver: neo4j.Neo4jDriver
     lang: str
 
     def __init__(self):
-        self._driver = neo4j.GraphDatabase.driver(
+        driver = neo4j.GraphDatabase.driver(
             config["neo4j"]["url"],
             auth=(config["neo4j"]["username"], config["neo4j"]["password"]),
             encrypted=False,
         )
-        self.lang = config["nlp"]["lang"]
+
+        if isinstance(driver, neo4j.Neo4jDriver):
+            self._driver = driver
+            self.lang = config["nlp"]["lang"]
 
     # NODE
 
@@ -25,8 +28,11 @@ class Database:
 
     @staticmethod
     def _node(tx: neo4j.Session, name: str, lang: str) -> t.Optional[graph.Node]:
+        # We follow all available 'FormOf' relations to simplify path construction
+
         result = tx.run(
-            "MATCH (n:Concept {name: $name, language: $lang}) RETURN n",
+            # "MATCH (n:Concept {name: $name, language: $lang}) RETURN n",
+            "MATCH p=((n:Concept {name: $name, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1",
             name=conceptnet.concept_name(name, lang),
             lang=lang,
         )
