@@ -78,18 +78,25 @@ def _perform_adaptation(
             concepts, reference_paths, adapted_concepts, adapted_paths
         )
 
-    case.graph.save(nested_out_path / "case.json")
-    case.graph.render(nested_out_path / "case.pdf")
-    stats_path = nested_out_path / "stats.json"
+    _write_output(case, adaptation_results, nested_out_path)
+
+
+def _write_output(
+    case: adaptation.Case, adaptation_results: t.Mapping[str, t.Any], path: Path
+) -> None:
+    case.graph.save(path / "case.json")
+    case.graph.render(path / "case.pdf")
+    stats_path = path / "stats.json"
+
+    stats = {"adaptations": adaptation_results, "config": dict(config)}
 
     with stats_path.open("w") as file:
         json.dump(
-            adaptation_results,
+            stats,
             file,
             ensure_ascii=False,
             indent=4,
-            default=lambda x: str(x),
-            # default=lambda x: x.__dict__,
+            # default=lambda x: str(x),
         )
 
 

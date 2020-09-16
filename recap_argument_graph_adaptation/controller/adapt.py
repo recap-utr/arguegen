@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import re
 import typing as t
 from collections import defaultdict
 import warnings
@@ -19,19 +20,25 @@ log = logging.getLogger(__name__)
 
 
 def argument_graph(
-    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Dict[Concept, str]
+    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Mapping[Concept, str]
 ) -> None:
     pr = load.proof_reader()
+    substitutuions = {
+        concept.original_name: adapted_concept
+        for concept, adapted_concept in adapted_concepts.items()
+    }
+    substitutuions[rule[0]] = rule[1]
 
     for node in graph.inodes:
-        # First perform the rule adaptation.
-        # Otherwise, 'death penalty' might already be replaced using the adaptation of 'death'.
-        node.text = node.text.replace(rule[0], rule[1])
-
-        for concept, adapted_concept in adapted_concepts.items():
-            node.text = node.text.replace(concept.original_name, adapted_concept)
-
+        node.text = _replace(node.text, substitutuions)
         node.text = pr.proofread(node.text)
+
+
+def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
+    substrings = sorted(substitutions.keys(), key=len, reverse=True)
+    regex = re.compile("|".join(map(re.escape, substrings)))
+
+    return regex.sub(lambda match: substitutions[match.group(0)], input_text)
 
 
 def paths(

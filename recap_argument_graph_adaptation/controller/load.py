@@ -18,27 +18,32 @@ def cases() -> t.List[adaptation.Case]:
 
     for folder in sorted(input_path.iterdir()):
         if folder.is_dir():
-            input_graph = ag.Graph.open(folder / "case.json")
-            input_rules = _parse_rules(folder / "case.csv")
+            result.append(_case(folder))
 
-            benchmark_graph = ag.Graph.open(folder / "benchmark.json")
-            benchmark_rules = _parse_rules(folder / "benchmark.csv")
-
-            with (folder / "query.txt").open() as file:
-                query = file.read()
-
-            result.append(
-                adaptation.Case(
-                    folder.name,
-                    query,
-                    input_graph,
-                    input_rules,
-                    benchmark_graph,
-                    benchmark_rules,
-                )
-            )
+    if not result:  # no nested folders were found
+        result.append(_case(input_path))
 
     return result
+
+
+def _case(path: Path) -> adaptation.Case:
+    input_graph = ag.Graph.open(path / "case.json")
+    input_rules = _parse_rules(path / "case.csv")
+
+    benchmark_graph = ag.Graph.open(path / "benchmark.json")
+    benchmark_rules = _parse_rules(path / "benchmark.csv")
+
+    with (path / "query.txt").open() as file:
+        query = file.read()
+
+    return adaptation.Case(
+        path.name,
+        query,
+        input_graph,
+        input_rules,
+        benchmark_graph,
+        benchmark_rules,
+    )
 
 
 def _parse_rules(path: Path) -> t.List[adaptation.Rule]:

@@ -18,9 +18,15 @@ def statistic(
         out[key] = {
             "original_name": concept.original_name,
             "conceptnet_name": concept.conceptnet_name,
-            "reference_paths": reference_paths.get(concept),
-            "adapted_paths": adapted_paths.get(concept),
+            "reference_paths": list_str(reference_paths.get(concept)),
+            "adapted_paths": list_str(adapted_paths.get(concept)),
             "adapted_name": adapted_concepts.get(concept),
         }
 
     return out
+
+
+def list_str(paths: t.Optional[t.Iterable[graph.Path]]) -> t.Optional[t.List[str]]:
+    """Convert a list of paths into a list of strings to serialize as json"""
+
+    return [str(path) for path in paths] if paths else None
