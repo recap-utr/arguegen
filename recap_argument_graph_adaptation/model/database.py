@@ -28,11 +28,14 @@ class Database:
 
     @staticmethod
     def _node(tx: neo4j.Session, name: str, lang: str) -> t.Optional[graph.Node]:
+        query = "MATCH (n:Concept {name: $name, language: $lang}) RETURN n"
+
         # We follow all available 'FormOf' relations to simplify path construction
+        if config["neo4j"]["concept_root_form"]:
+            query = "MATCH p=((n:Concept {name: $name, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1"
 
         result = tx.run(
-            # "MATCH (n:Concept {name: $name, language: $lang}) RETURN n",
-            "MATCH p=((n:Concept {name: $name, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1",
+            query,
             name=conceptnet.concept_name(name, lang),
             lang=lang,
         )
@@ -70,7 +73,7 @@ class Database:
 
         result = tx.run(
             "MATCH p = shortestPath((n:Concept {name: $start, language: $lang})"
-            f"-[{rel_query}*..{max_relations}]->"
+            f"-[{rel_query}*..{max_relations}]{_arrow()}"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
@@ -112,7 +115,7 @@ class Database:
 
         result = tx.run(
             "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})"
-            f"-[{rel_query}*..{max_relations}]->"
+            f"-[{rel_query}*..{max_relations}]{_arrow()}"
             "(m:Concept {name: $end, language: $lang})) RETURN p",
             start=conceptnet.concept_name(start, lang),
             end=conceptnet.concept_name(end, lang),
@@ -145,8 +148,9 @@ class Database:
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _aggregate_relations(relation_types)
+
         result = tx.run(
-            f"MATCH p=(n:Concept {{language: $lang}})-[r{rel_query}]->(m:Concept {{language: $lang}})"
+            f"MATCH p=(n:Concept {{language: $lang}})-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
             f"WHERE id(n)={node.id} RETURN p",
             lang=lang,
         )
@@ -162,3 +166,7 @@ def _aggregate_relations(relation_types: t.Collection[str]) -> str:
         return ":" + "|".join(relation_types)
 
     return ""
+
+
+def _arrow() -> str:
+    return "->" if config["neo4j"]["directed_relations"] else "-"

@@ -1,4 +1,6 @@
 import csv
+import logging
+import warnings
 
 import spacy
 import typing as t
@@ -53,7 +55,7 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            rules.append((row[0], row[1]))
+            rules.append(adaptation.Rule(row[0], row[1]))
 
     return rules
 

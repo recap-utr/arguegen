@@ -1,4 +1,4 @@
-version = "2.6"
+version = "2.7"
 debug = true
 
 [nlp]
@@ -9,7 +9,7 @@ input = "data/input"
 output = "data/output"
 
 [adaptation]
-relax_relationship_types = false
+relax_relation_types = false
 gridsearch = false # If true, the following  parameters will be ignored.
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
@@ -25,6 +25,8 @@ url = "neo4j://localhost:7687"
 username = "neo4j"
 password = "password"
 max_relations = 10
+directed_relations = false
+concept_root_form = true
 relation_types = [
 #    "Antonym",
 #    "AtLocation",

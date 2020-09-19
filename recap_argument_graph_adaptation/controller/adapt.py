@@ -118,7 +118,7 @@ def _adapt_shortest_path(
     for rel in shortest_path.relationships:
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
 
-        if config["adaptation"]["relax_relationship_types"] and not path_candidates:
+        if config["adaptation"]["relax_relation_types"] and not path_candidates:
             path_candidates = db.expand_node(adapted_path.end_node)
 
         if path_candidates:
