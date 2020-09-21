@@ -9,6 +9,7 @@ from .controller import adapt, export, extract, load
 from .model import adaptation
 from .model.config import config
 
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
@@ -66,7 +67,9 @@ def _perform_adaptation(
     adaptation_results = {}
 
     for rule in case.rules:
-        log.info(f"Processing rule ({rule[0]})->({rule[1]}).")
+        log.info(
+            f"Processing rule ({rule.source})->({rule.target}) as ({rule.source_conceptnet})->({rule.target_conceptnet})."
+        )
 
         reference_paths = extract.paths(concepts, rule, adaptation_method)
         adapted_concepts, adapted_paths = adapt.paths(

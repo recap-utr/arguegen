@@ -100,4 +100,7 @@ class Path:
             nodes += path.nodes[1:]
             relationships += path.relationships
 
-        return cls(nodes=nodes, relationships=relationships,)
+        return cls(
+            nodes=nodes,
+            relationships=relationships,
+        )

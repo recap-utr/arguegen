@@ -85,7 +85,9 @@ def proof_reader() -> lmproof.Proofreader:
     lang = config["nlp"]["lang"]
 
     if not proof_reader_cache[lang]:
-        proof_reader_cache[lang] = lmproof.load(lang)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            proof_reader_cache[lang] = lmproof.load(lang)
 
     return proof_reader_cache[lang]
 

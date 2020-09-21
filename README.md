@@ -1,5 +1,9 @@
 # ReCAP Argument Graph Adaptation
 
+## TODO
+
+-   POS tags sind wichtig für die Zuordnung (Nomen drug vs. Verb drug/drag). Evtl. muss man sie doch nutzen.
+
 ## Installation
 
 TODO

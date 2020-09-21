@@ -54,8 +54,6 @@ def paths(
     db = Database()
     result = {}
 
-    log.debug(f"Found the following reference paths:")
-
     if method == adaptation.Method.WITHIN:
         for concept in concepts:
             if rule[0] != concept.original_name:

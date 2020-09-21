@@ -1,3 +1,4 @@
+import logging
 from recap_argument_graph_adaptation.model.database import Database
 from recap_argument_graph_adaptation.model import database
 import recap_argument_graph as ag
