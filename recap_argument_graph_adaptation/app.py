@@ -68,7 +68,7 @@ def _perform_adaptation(
 
     for rule in case.rules:
         log.info(
-            f"Processing rule ({rule.source})->({rule.target}) as ({rule.source_conceptnet})->({rule.target_conceptnet})."
+            f"Processing rule ({rule.source})->({rule.target}) as ({rule.source.node})->({rule.target.node})."
         )
 
         reference_paths = extract.paths(concepts, rule, adaptation_method)
@@ -77,7 +77,7 @@ def _perform_adaptation(
         )
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
-        adaptation_results[f"({rule[0]})->({rule[1]})"] = export.statistic(
+        adaptation_results[f"({rule.source})->({rule.target})"] = export.statistic(
             concepts, reference_paths, adapted_concepts, adapted_paths
         )
 

@@ -13,11 +13,11 @@ def statistic(
     out = {}
 
     for concept in concepts:
-        key = f"({concept.original_name})->({adapted_concepts.get(concept)})"
+        key = f"({concept.name})->({adapted_concepts.get(concept)})"
 
         out[key] = {
-            "original_name": concept.original_name,
-            "conceptnet_name": concept.conceptnet_name,
+            "concept": str(concept),
+            "node": str(concept.node),
             "reference_paths": list_str(reference_paths.get(concept)),
             "adapted_paths": list_str(adapted_paths.get(concept)),
             "adapted_name": adapted_concepts.get(concept),

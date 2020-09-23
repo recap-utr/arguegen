@@ -20,17 +20,17 @@ log = logging.getLogger(__name__)
 
 
 def argument_graph(
-    graph: ag.Graph, rule: t.Tuple[str, str], adapted_concepts: t.Mapping[Concept, str]
+    graph: ag.Graph, rule: adaptation.Rule, adapted_concepts: t.Mapping[Concept, str]
 ) -> None:
     pr = load.proof_reader()
-    substitutuions = {
-        concept.original_name: adapted_concept
+    substitutions = {
+        concept.name: adapted_concept
         for concept, adapted_concept in adapted_concepts.items()
     }
-    substitutuions[rule[0]] = rule[1]
+    substitutions[rule.source.name] = rule.target.name
 
     for node in graph.inodes:
-        node.text = _replace(node.text, substitutuions)
+        node.text = _replace(node.text, substitutions)
         node.text = pr.proofread(node.text)
 
 
@@ -43,7 +43,7 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
 
 def paths(
     reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
-    rule: t.Tuple[str, str],
+    rule: adaptation.Rule,
     selector: adaptation.Selector,
     method: adaptation.Method,
 ) -> t.Tuple[t.Dict[Concept, str], t.Dict[Concept, t.List[graph.Path]]]:
@@ -86,9 +86,7 @@ def paths(
                 if value == max_value
             ]
             adapted_name = _filter_concepts(adapted_names, root_concept)
-            adapted_name = conceptnet.adapt_name(
-                adapted_name, root_concept.original_name
-            )
+            adapted_name = conceptnet.adapt_name(adapted_name, root_concept.name)
 
             adapted_concepts[root_concept] = adapted_name
 
@@ -103,17 +101,17 @@ def paths(
 def _adapt_shortest_path(
     shortest_path: graph.Path,
     concept: Concept,
-    rule: t.Tuple[str, str],
+    rule: adaptation.Rule,
     selector: adaptation.Selector,
     method: adaptation.Method,
 ) -> t.Optional[graph.Path]:
     db = Database()
 
     # We have to convert the target to a path object here.
-    start_name = (
-        rule[1] if method == adaptation.Method.WITHIN else concept.conceptnet_name
+    start_node = (
+        rule.target.node if method == adaptation.Method.WITHIN else concept.node
     )
-    adapted_path = graph.Path.from_node(db.node(start_name))
+    adapted_path = graph.Path.from_node(start_node)
 
     for rel in shortest_path.relationships:
         path_candidates = db.expand_node(adapted_path.end_node, [rel.type])
@@ -137,7 +135,7 @@ def _adapt_shortest_path(
 def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -> str:
     nlp = load.spacy_nlp()
 
-    root_nlp = nlp(root_concept.conceptnet_name)
+    root_nlp = nlp(root_concept.node.name)
     adapted_concepts_iter = iter(adapted_concepts)
 
     best_match = (next(adapted_concepts_iter), 0.0)

@@ -1,3 +1,4 @@
+from recap_argument_graph_adaptation.model.adaptation import Concept
 import neo4j
 from .config import config
 from . import graph
@@ -22,31 +23,44 @@ class Database:
 
     # NODE
 
-    def node(self, name: str) -> t.Optional[graph.Node]:
+    def node(self, name: str, pos: graph.POS) -> t.Optional[graph.Node]:
         with self._driver.session() as session:
-            return session.read_transaction(self._node, name, self.lang)
+            return session.read_transaction(self._node, name, pos, self.lang)
 
     @staticmethod
-    def _node(tx: neo4j.Session, name: str, lang: str) -> t.Optional[graph.Node]:
-        query = "MATCH (n:Concept {name: $name, language: $lang}) RETURN n"
+    def _node(
+        tx: neo4j.Session, name: str, pos: graph.POS, lang: str
+    ) -> t.Optional[graph.Node]:
+        query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
 
         # We follow all available 'FormOf' relations to simplify path construction
         if config["neo4j"]["concept_root_form"]:
-            query = "MATCH p=((n:Concept {name: $name, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1"
+            query = "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1"
 
-        result = tx.run(
+        # First, run the query with the given POS.
+        # If no concept is found, retry the query without specifying a POS.
+        record = tx.run(
             query,
             name=conceptnet.concept_name(name, lang),
+            pos=pos.value,
             lang=lang,
-        )
+        ).single()
 
-        record = result.single()
+        if not record:
+            record = tx.run(
+                query,
+                name=conceptnet.concept_name(name, lang),
+                pos=graph.POS.OTHER.value,
+                lang=lang,
+            ).single()
 
         return graph.Node.from_neo4j(record.value()) if record else None
 
     # SHORTEST PATH
 
-    def shortest_path(self, start: str, end: str) -> t.Optional[graph.Path]:
+    def shortest_path(
+        self, start: graph.Node, end: graph.Node
+    ) -> t.Optional[graph.Path]:
         relation_types = config["neo4j"]["relation_types"]
         max_relations = config["neo4j"]["max_relations"]
 
@@ -63,31 +77,45 @@ class Database:
     @staticmethod
     def _shortest_path(
         tx: neo4j.Session,
-        start: str,
-        end: str,
+        start: graph.Node,
+        end: graph.Node,
         relation_types: t.Collection[str],
         max_relations: int,
         lang: str,
     ) -> t.Optional[graph.Path]:
         rel_query = _aggregate_relations(relation_types)
 
-        result = tx.run(
-            "MATCH p = shortestPath((n:Concept {name: $start, language: $lang})"
+        query = (
+            "MATCH p = shortestPath((n:Concept {name: $start_name, pos: $start_pos, language: $lang})"
             f"-[{rel_query}*..{max_relations}]{_arrow()}"
-            "(m:Concept {name: $end, language: $lang})) RETURN p",
-            start=conceptnet.concept_name(start, lang),
-            end=conceptnet.concept_name(end, lang),
-            lang=lang,
+            "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
         )
 
-        record = result.single()
+        record = tx.run(
+            query,
+            start_name=start.name,
+            start_pos=start.pos.value,
+            end_name=end.name,
+            end_pos=end.pos.value,
+            lang=lang,
+        ).single()
+
+        if not record:
+            record = tx.run(
+                query,
+                start_name=start.name,
+                start_pos=graph.POS.OTHER.value,
+                end_name=end.name,
+                end_pos=graph.POS.OTHER.value,
+                lang=lang,
+            ).single()
 
         return graph.Path.from_neo4j(record.value()) if record else None
 
     # ALL SHORTEST PATHS
 
     def all_shortest_paths(
-        self, start: str, end: str
+        self, start: graph.Node, end: graph.Node
     ) -> t.Optional[t.List[graph.Path]]:
         relation_types = config["neo4j"]["relation_types"]
         max_relations = config["neo4j"]["max_relations"]
@@ -105,25 +133,41 @@ class Database:
     @staticmethod
     def _all_shortest_paths(
         tx: neo4j.Session,
-        start: str,
-        end: str,
+        start: graph.Node,
+        end: graph.Node,
         relation_types: t.Collection[str],
         max_relations: int,
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _aggregate_relations(relation_types)
 
-        result = tx.run(
-            "MATCH p = allShortestPaths((n:Concept {name: $start, language: $lang})"
+        query = (
+            "MATCH p = allShortestPaths((n:Concept {name: $start_name, pos: $start_pos, language: $lang})"
             f"-[{rel_query}*..{max_relations}]{_arrow()}"
-            "(m:Concept {name: $end, language: $lang})) RETURN p",
-            start=conceptnet.concept_name(start, lang),
-            end=conceptnet.concept_name(end, lang),
+            "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
+        )
+
+        records = tx.run(
+            query,
+            start_name=start.name,
+            start_pos=start.pos.value,
+            end_name=end.name,
+            end_pos=end.pos.value,
             lang=lang,
         )
 
-        if result:
-            return [graph.Path.from_neo4j(record.value()) for record in result]
+        if not records:
+            records = tx.run(
+                query,
+                start_name=start.name,
+                start_pos=graph.POS.OTHER.value,
+                end_name=end.name,
+                end_pos=graph.POS.OTHER.value,
+                lang=lang,
+            )
+
+        if records:
+            return [graph.Path.from_neo4j(record.value()) for record in records]
 
         return None
 
@@ -150,7 +194,7 @@ class Database:
         rel_query = _aggregate_relations(relation_types)
 
         result = tx.run(
-            f"MATCH p=(n:Concept {{language: $lang}})-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
+            f"MATCH p=(n:Concept)-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
             f"WHERE id(n)={node.id} RETURN p",
             lang=lang,
         )

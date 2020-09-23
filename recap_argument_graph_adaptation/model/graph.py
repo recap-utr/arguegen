@@ -2,24 +2,60 @@ from __future__ import annotations
 
 import typing as t
 from dataclasses import dataclass
+from enum import Enum
 
 import neo4j
+
+
+class Language(Enum):
+    EN = "en"
+    DE = "de"
+
+
+class POS(Enum):
+    NOUN = "noun"
+    VERB = "verb"
+    ADJECTIVE = "adjective"
+    ADVERB = "adverb"
+    OTHER = "other"
+
+
+spacy_pos_mapping = {
+    "NOUN": POS.NOUN,
+    "PROPN": POS.NOUN,
+    "VERB": POS.VERB,
+    "ADJ": POS.ADJECTIVE,
+    "ADV": POS.ADVERB,
+}
+
+
+class Source(Enum):
+    CONCEPTNET = "conceptnet"
+    RECAP = "recap"
 
 
 @dataclass(frozen=True)
 class Node:
     id: int
     name: str
-    language: str
-    source: str
+    pos: POS
+    language: Language
+    source: Source
 
     def __str__(self):
-        return f"({self.name})"
+        if self.pos != POS.OTHER:
+            return f"{self.name}/{self.pos.value}"
+
+        return self.name
 
     @classmethod
     def from_neo4j(cls, obj: neo4j.Node) -> Node:
         return cls(
-            id=obj.id, name=obj["name"], language=obj["language"], source=obj["source"]
+            id=obj.id,
+            name=obj["name"],
+            language=Language(obj["language"]),
+            pos=POS(obj["pos"]),
+            source=Source(obj["source"]),
         )
 
     @property
@@ -34,7 +70,7 @@ class Relationship:
     start_node: Node
     end_node: Node
     weight: float
-    source: str
+    source: Source
 
     @property
     def nodes(self) -> t.Tuple[Node, Node]:
@@ -52,7 +88,7 @@ class Relationship:
             start_node=Node.from_neo4j(obj.start_node),
             end_node=Node.from_neo4j(obj.end_node),
             weight=obj["weight"],
-            source=obj["source"],
+            source=Source(obj["source"]),
         )
 
 

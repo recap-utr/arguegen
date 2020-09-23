@@ -9,9 +9,12 @@ from . import adapt, load
 from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
-from ..model import graph, adaptation
+from ..model import adaptation
+from ..model.graph import POS, Path, spacy_pos_mapping
 
 log = logging.getLogger(__name__)
+
+spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ", "ADV"]
 
 
 def keywords(graph: ag.Graph) -> t.Set[Concept]:
@@ -22,44 +25,55 @@ def keywords(graph: ag.Graph) -> t.Set[Concept]:
     db = Database()
     nlp = load.spacy_nlp()
 
-    for node in graph.inodes:
-        doc = nlp(node.plain_text)
+    for spacy_pos_tag in spacy_pos_tags:
+        pos_tag = spacy_pos_mapping[spacy_pos_tag]
 
-        terms = [key_term for (key_term, weight) in extractor(doc, normalize=None)]
-        terms_lemmatized = [key_term for (key_term, weight) in extractor(doc)]
+        for node in graph.inodes:
+            doc = nlp(node.plain_text)
 
-        for term, lemma in zip(terms, terms_lemmatized):
-            term_node = db.node(term)
-            lemma_node = db.node(lemma)
+            terms = [
+                key_term
+                for (key_term, weight) in extractor(
+                    doc, normalize=None, include_pos=spacy_pos_tag
+                )
+            ]
+            terms_lemmatized = [
+                key_term
+                for (key_term, weight) in extractor(doc, include_pos=spacy_pos_tag)
+            ]
 
-            if term_node:  # original term is in conceptnet
-                concepts.add(Concept(term, term_node.name))
+            for term, lemma in zip(terms, terms_lemmatized):
+                term_node = db.node(term, pos_tag)
+                lemma_node = db.node(lemma, pos_tag)
 
-            elif lemma_node:  # lemma is in conceptnet
-                concepts.add(Concept(term, lemma_node.name))
+                if term_node:  # original term is in conceptnet
+                    concepts.add(Concept(term, pos_tag, term_node))
 
-            else:  # test if the root word is in conceptnet
-                root = next(nlp(term).noun_chunks).root
-                root_node = db.node(root.text)
+                elif lemma_node:  # lemma is in conceptnet
+                    concepts.add(Concept(term, pos_tag, lemma_node))
 
-                if root_node:
-                    concepts.add(Concept(term, root_node.name))
+                else:  # test if the root word is in conceptnet
+                    root = next(nlp(term).noun_chunks).root
+                    root_node = db.node(root.text, pos_tag)
+
+                    if root_node:
+                        concepts.add(Concept(term, pos_tag, root_node))
 
     return concepts
 
 
 def paths(
-    concepts: t.Iterable[Concept], rule: t.Tuple[str, str], method: adaptation.Method
-) -> t.Dict[Concept, t.List[graph.Path]]:
+    concepts: t.Iterable[Concept], rule: adaptation.Rule, method: adaptation.Method
+) -> t.Dict[Concept, t.List[Path]]:
     db = Database()
     result = {}
 
     if method == adaptation.Method.WITHIN:
         for concept in concepts:
-            if rule[0] != concept.original_name:
-                paths = db.all_shortest_paths(rule[0], concept.conceptnet_name)
+            if rule.source != concept:
+                paths = db.all_shortest_paths(rule.source.node, concept.node)
                 log.info(
-                    f"Found {len(paths) if paths else 0} reference paths for ({rule[0]})->({concept})."
+                    f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({concept})."
                 )
 
                 if paths:
@@ -67,14 +81,14 @@ def paths(
                     log.debug(", ".join((str(path) for path in paths)))
 
     elif method == adaptation.Method.BETWEEN:
-        paths = db.all_shortest_paths(rule[0], rule[1])
+        paths = db.all_shortest_paths(rule.source.node, rule.target.node)
         log.info(
-            f"Found {len(paths) if paths else 0} reference paths for ({rule[0]})->({rule[1]})."
+            f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({rule.target})."
         )
 
         if paths:
             for concept in concepts:
-                if rule[0] != concept.original_name:
+                if rule.source != concept:
                     result[concept] = paths
 
     else:

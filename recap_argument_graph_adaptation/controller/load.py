@@ -1,8 +1,11 @@
 import csv
 import logging
+from recap_argument_graph_adaptation.model.adaptation import Concept
+from recap_argument_graph_adaptation.model.database import Database
 import warnings
 
 import spacy
+from spacy.language import Language
 import typing as t
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
@@ -10,7 +13,7 @@ from scipy.spatial import distance
 import lmproof
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.model import adaptation
+from recap_argument_graph_adaptation.model import adaptation, graph
 from recap_argument_graph_adaptation.model.config import config
 
 
@@ -29,11 +32,11 @@ def cases() -> t.List[adaptation.Case]:
 
 
 def _case(path: Path) -> adaptation.Case:
-    input_graph = ag.Graph.open(path / "case.json")
-    input_rules = _parse_rules(path / "case.csv")
+    input_graph = ag.Graph.open(path / "case-graph.json")
+    input_rules = _parse_rules(path / "case-rules.csv")
 
-    benchmark_graph = ag.Graph.open(path / "benchmark.json")
-    benchmark_rules = _parse_rules(path / "benchmark.csv")
+    benchmark_graph = ag.Graph.open(path / "benchmark-graph.json")
+    benchmark_rules = _parse_rules(path / "benchmark-rules.csv")
 
     with (path / "query.txt").open() as file:
         query = file.read()
@@ -55,9 +58,29 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            rules.append(adaptation.Rule(row[0], row[1]))
+            source = _parse_rule_concept(row[0])
+            target = _parse_rule_concept(row[1])
+
+            rules.append(adaptation.Rule(source, target))
 
     return rules
+
+
+def _parse_rule_concept(rule: str) -> Concept:
+    rule_parts = rule.split("/")
+    name = rule_parts[0]
+    pos = graph.POS.OTHER
+
+    if len(rule_parts) > 1:
+        pos = graph.POS(rule_parts[1])
+
+    db = Database()
+    node = db.node(name, pos)
+
+    if not node:
+        raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
+
+    return Concept(name, pos, node)
 
 
 spacy_cache = {"en": None, "de": None}
@@ -69,7 +92,7 @@ transformer_models = {
 }
 
 
-def spacy_nlp():
+def spacy_nlp() -> Language:
     lang = config["nlp"]["lang"]
 
     if not spacy_cache[lang]:
@@ -78,7 +101,7 @@ def spacy_nlp():
 
         spacy_cache[lang] = model
 
-    return spacy_cache[lang]
+    return spacy_cache[lang]  # type: ignore
 
 
 def proof_reader() -> lmproof.Proofreader:
@@ -87,9 +110,9 @@ def proof_reader() -> lmproof.Proofreader:
     if not proof_reader_cache[lang]:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            proof_reader_cache[lang] = lmproof.load(lang)
+            proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
 
-    return proof_reader_cache[lang]
+    return proof_reader_cache[lang]  # type: ignore
 
 
 # https://spacy.io/usage/processing-pipelines#custom-components-user-hooks
