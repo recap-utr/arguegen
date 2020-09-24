@@ -35,26 +35,27 @@ class Database:
 
         # We follow all available 'FormOf' relations to simplify path construction
         if config["neo4j"]["concept_root_form"]:
-            query = "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})-[:FormOf*0..]->(m:Concept {language: $lang})) RETURN m ORDER BY length(p) DESC LIMIT 1"
+            query = (
+                "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
+                "-[:FormOf*0..]->"
+                "(m:Concept {language: $lang})) "
+                "RETURN m ORDER BY length(p) DESC LIMIT 1"
+            )
 
         # First, run the query with the given POS.
         # If no concept is found, retry the query without specifying a POS.
-        record = tx.run(
-            query,
-            name=conceptnet.concept_name(name, lang),
-            pos=pos.value,
-            lang=lang,
-        ).single()
-
-        if not record:
+        for pos_tag in (pos, graph.POS.OTHER):
             record = tx.run(
                 query,
                 name=conceptnet.concept_name(name, lang),
-                pos=graph.POS.OTHER.value,
+                pos=pos_tag.value,
                 lang=lang,
             ).single()
 
-        return graph.Node.from_neo4j(record.value()) if record else None
+            if record:
+                return graph.Node.from_neo4j(record.value())
+
+        return None
 
     # SHORTEST PATH
 
@@ -91,26 +92,21 @@ class Database:
             "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
         )
 
-        record = tx.run(
-            query,
-            start_name=start.name,
-            start_pos=start.pos.value,
-            end_name=end.name,
-            end_pos=end.pos.value,
-            lang=lang,
-        ).single()
+        for start_pos in (start.pos, graph.POS.OTHER):
+            for end_pos in (end.pos, graph.POS.OTHER):
+                record = tx.run(
+                    query,
+                    start_name=start.name,
+                    start_pos=start_pos.value,
+                    end_name=end.name,
+                    end_pos=end_pos.value,
+                    lang=lang,
+                ).single()
 
-        if not record:
-            record = tx.run(
-                query,
-                start_name=start.name,
-                start_pos=graph.POS.OTHER.value,
-                end_name=end.name,
-                end_pos=graph.POS.OTHER.value,
-                lang=lang,
-            ).single()
+                if record:
+                    return graph.Path.from_neo4j(record.value())
 
-        return graph.Path.from_neo4j(record.value()) if record else None
+        return None
 
     # ALL SHORTEST PATHS
 
@@ -147,27 +143,19 @@ class Database:
             "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
         )
 
-        records = tx.run(
-            query,
-            start_name=start.name,
-            start_pos=start.pos.value,
-            end_name=end.name,
-            end_pos=end.pos.value,
-            lang=lang,
-        )
+        for start_pos in (start.pos, graph.POS.OTHER):
+            for end_pos in (end.pos, graph.POS.OTHER):
+                records = tx.run(
+                    query,
+                    start_name=start.name,
+                    start_pos=start_pos.value,
+                    end_name=end.name,
+                    end_pos=end_pos.value,
+                    lang=lang,
+                )
 
-        if not records:
-            records = tx.run(
-                query,
-                start_name=start.name,
-                start_pos=graph.POS.OTHER.value,
-                end_name=end.name,
-                end_pos=graph.POS.OTHER.value,
-                lang=lang,
-            )
-
-        if records:
-            return [graph.Path.from_neo4j(record.value()) for record in records]
+                if records:
+                    return [graph.Path.from_neo4j(record.value()) for record in records]
 
         return None
 
@@ -193,14 +181,28 @@ class Database:
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _aggregate_relations(relation_types)
 
-        result = tx.run(
-            f"MATCH p=(n:Concept)-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
-            f"WHERE id(n)={node.id} RETURN p",
-            lang=lang,
+        # query = (
+        #     f"MATCH p=(n:Concept)-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
+        #     f"WHERE id(n)={node.id} RETURN p",
+        # )
+
+        query = (
+            "MATCH p=(n:Concept {name: $name, pos: $pos, language: $lang})"
+            f"-[r{rel_query}]{_arrow()}"
+            "(m:Concept {language: $lang}) "
+            f"RETURN p"
         )
 
-        if result:
-            return [graph.Path.from_neo4j(record.value()) for record in result]
+        for pos in (node.pos, graph.POS.OTHER):
+            records = tx.run(
+                query,
+                name=node.name,
+                pos=pos.value,
+                lang=lang,
+            )
+
+            if records:
+                return [graph.Path.from_neo4j(record.value()) for record in records]
 
         return None
 

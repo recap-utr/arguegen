@@ -17,6 +17,59 @@ from recap_argument_graph_adaptation.model import adaptation, graph
 from recap_argument_graph_adaptation.model.config import config
 
 
+spacy_cache = {"en": None, "de": None}
+proof_reader_cache = {"en": None, "de": None}
+spacy_models = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
+transformer_models = {
+    "en": "distiluse-base-multilingual-cased",
+    "de": "distiluse-base-multilingual-cased",
+}
+
+
+def spacy_nlp() -> Language:
+    lang = config["nlp"]["lang"]
+
+    if not spacy_cache[lang]:
+        model = spacy.load(spacy_models[lang])
+        model.add_pipe(TransformerModel(lang), first=True)
+
+        spacy_cache[lang] = model
+
+    return spacy_cache[lang]  # type: ignore
+
+
+def proof_reader() -> lmproof.Proofreader:
+    lang = config["nlp"]["lang"]
+
+    if not proof_reader_cache[lang]:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
+
+    return proof_reader_cache[lang]  # type: ignore
+
+
+# https://spacy.io/usage/processing-pipelines#custom-components-user-hooks
+# https://github.com/explosion/spaCy/issues/3823
+class TransformerModel(object):
+    def __init__(self, lang):
+        self._model = SentenceTransformer(transformer_models[lang])
+
+    def __call__(self, doc):
+        doc.user_hooks["vector"] = self.vector
+        doc.user_span_hooks["vector"] = self.vector
+        doc.user_token_hooks["vector"] = self.vector
+
+        return doc
+
+    def vector(self, obj):
+        # The function `encode` expects a list of strings.
+        sentences = [obj.text]
+        embeddings = self._model.encode(sentences)
+
+        return embeddings[0]
+
+
 def cases() -> t.List[adaptation.Case]:
     input_path = Path(config["path"]["input"])
     result = []
@@ -73,6 +126,10 @@ def _parse_rule_concept(rule: str) -> Concept:
 
     if len(rule_parts) > 1:
         pos = graph.POS(rule_parts[1])
+    else:
+        nlp = spacy_nlp()
+        spacy_pos = nlp(name)[0].pos_  # POS tags are only available on token level.
+        pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
     node = db.node(name, pos)
@@ -81,56 +138,3 @@ def _parse_rule_concept(rule: str) -> Concept:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
 
     return Concept(name, pos, node)
-
-
-spacy_cache = {"en": None, "de": None}
-proof_reader_cache = {"en": None, "de": None}
-spacy_models = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
-transformer_models = {
-    "en": "distiluse-base-multilingual-cased",
-    "de": "distiluse-base-multilingual-cased",
-}
-
-
-def spacy_nlp() -> Language:
-    lang = config["nlp"]["lang"]
-
-    if not spacy_cache[lang]:
-        model = spacy.load(spacy_models[lang])
-        model.add_pipe(TransformerModel(lang), first=True)
-
-        spacy_cache[lang] = model
-
-    return spacy_cache[lang]  # type: ignore
-
-
-def proof_reader() -> lmproof.Proofreader:
-    lang = config["nlp"]["lang"]
-
-    if not proof_reader_cache[lang]:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
-
-    return proof_reader_cache[lang]  # type: ignore
-
-
-# https://spacy.io/usage/processing-pipelines#custom-components-user-hooks
-# https://github.com/explosion/spaCy/issues/3823
-class TransformerModel(object):
-    def __init__(self, lang):
-        self._model = SentenceTransformer(transformer_models[lang])
-
-    def __call__(self, doc):
-        doc.user_hooks["vector"] = self.vector
-        doc.user_span_hooks["vector"] = self.vector
-        doc.user_token_hooks["vector"] = self.vector
-
-        return doc
-
-    def vector(self, obj):
-        # The function `encode` expects a list of strings.
-        sentences = [obj.text]
-        embeddings = self._model.encode(sentences)
-
-        return embeddings[0]

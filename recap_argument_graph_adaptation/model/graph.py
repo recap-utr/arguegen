@@ -4,7 +4,7 @@ import typing as t
 from dataclasses import dataclass
 from enum import Enum
 
-import neo4j
+import neo4j.data as neo4j
 
 
 class Language(Enum):
@@ -40,6 +40,7 @@ class Node:
     name: str
     pos: POS
     language: Language
+    uri: str
     source: Source
 
     def __str__(self):
@@ -52,10 +53,11 @@ class Node:
     def from_neo4j(cls, obj: neo4j.Node) -> Node:
         return cls(
             id=obj.id,
-            name=obj["name"],
-            language=Language(obj["language"]),
+            name=obj["name"],  # type: ignore
+            language=Language(obj["language"]),  # type: ignore
             pos=POS(obj["pos"]),
-            source=Source(obj["source"]),
+            uri=obj["uri"],  # type: ignore
+            source=Source(obj["source"]),  # type: ignore
         )
 
     @property
@@ -69,6 +71,7 @@ class Relationship:
     type: str
     start_node: Node
     end_node: Node
+    uri: str
     weight: float
     source: Source
 
@@ -85,10 +88,11 @@ class Relationship:
         return cls(
             id=obj.id,
             type=obj.type,
-            start_node=Node.from_neo4j(obj.start_node),
-            end_node=Node.from_neo4j(obj.end_node),
-            weight=obj["weight"],
-            source=Source(obj["source"]),
+            start_node=Node.from_neo4j(obj.start_node),  # type: ignore
+            end_node=Node.from_neo4j(obj.end_node),  # type: ignore
+            uri=obj["uri"],  # type: ignore
+            weight=obj["weight"],  # type: ignore
+            source=Source(obj["source"]),  # type: ignore
         )
 
 
