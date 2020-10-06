@@ -75,21 +75,21 @@ def _perform_adaptation(
         )
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
-        adaptation_results[f"({rule.source})->({rule.target})"] = export.statistic(
+        adaptation_results[str(rule)] = export.statistic(
             concepts, reference_paths, adapted_concepts, adapted_paths
         )
 
-    _write_output(case, adaptation_results, nested_out_path)
+    stats = {"results": adaptation_results, "config": dict(config)}
+
+    _write_output(case, stats, nested_out_path)
 
 
 def _write_output(
-    case: adaptation.Case, adaptation_results: t.Mapping[str, t.Any], path: Path
+    case: adaptation.Case, stats: t.Mapping[str, t.Any], path: Path
 ) -> None:
     case.graph.save(path / "case.json")
     case.graph.render(path / "case.pdf")
     stats_path = path / "stats.json"
-
-    stats = {"adaptations": adaptation_results, "config": dict(config)}
 
     with stats_path.open("w") as file:
         json.dump(
