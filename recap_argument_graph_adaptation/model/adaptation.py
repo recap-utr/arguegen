@@ -39,6 +39,9 @@ class Rule:
     source: Concept
     target: Concept
 
+    def __str__(self) -> str:
+        return f"({self.source})->({self.target}) [nodes ({self.source.node})->({self.target.node})]"
+
 
 @dataclass(frozen=True)
 class Case:

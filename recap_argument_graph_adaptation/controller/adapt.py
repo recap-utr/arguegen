@@ -35,6 +35,8 @@ def argument_graph(
 
 
 def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
+    """Perform multiple replacements in a single run."""
+
     substrings = sorted(substitutions.keys(), key=len, reverse=True)
     regex = re.compile("|".join(map(re.escape, substrings)))
 

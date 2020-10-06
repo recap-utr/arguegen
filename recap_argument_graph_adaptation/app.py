@@ -67,9 +67,7 @@ def _perform_adaptation(
     adaptation_results = {}
 
     for rule in case.rules:
-        log.info(
-            f"Processing rule ({rule.source})->({rule.target}) as ({rule.source.node})->({rule.target.node})."
-        )
+        log.info(f"Processing rule {str(rule)}.")
 
         reference_paths = extract.paths(concepts, rule, adaptation_method)
         adapted_concepts, adapted_paths = adapt.paths(
