@@ -6,7 +6,7 @@ import spacy
 from textacy import ke
 
 from . import adapt, load
-from ..model.adaptation import Concept
+from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
 from ..model import adaptation
@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ", "ADV"]
 
 
-def keywords(graph: ag.Graph) -> t.Set[Concept]:
+def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
     extractor = ke.yake
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
@@ -31,33 +31,40 @@ def keywords(graph: ag.Graph) -> t.Set[Concept]:
         for node in graph.inodes:
             doc = nlp(node.plain_text)
 
+            # TODO: The weight could be used in conjunction with the semantic similarity.
             terms = [
-                key_term
+                nlp(key_term)
                 for (key_term, weight) in extractor(
                     doc, normalize=None, include_pos=spacy_pos_tag
                 )
             ]
             terms_lemmatized = [
-                key_term
+                nlp(key_term)
                 for (key_term, weight) in extractor(doc, include_pos=spacy_pos_tag)
             ]
 
             for term, lemma in zip(terms, terms_lemmatized):
-                term_node = db.node(term, pos_tag)
-                lemma_node = db.node(lemma, pos_tag)
+                term_node = db.node(term.text, pos_tag)
+                lemma_node = db.node(lemma.text, pos_tag)
+
+                relevance = term.similarity(rule.source.name)
 
                 if term_node:  # original term is in conceptnet
-                    concepts.add(Concept(term, pos_tag, term_node))
+                    concepts.add(Concept(term, pos_tag, term_node, relevance))
 
                 elif lemma_node:  # lemma is in conceptnet
-                    concepts.add(Concept(term, pos_tag, lemma_node))
+                    concepts.add(Concept(term, pos_tag, lemma_node, relevance))
 
                 else:  # test if the root word is in conceptnet
                     root = next(nlp(term).noun_chunks).root
                     root_node = db.node(root.text, pos_tag)
 
                     if root_node:
-                        concepts.add(Concept(term, pos_tag, root_node))
+                        concepts.add(Concept(term, pos_tag, root_node, relevance))
+
+    log.info(
+        f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
+    )
 
     return concepts
 

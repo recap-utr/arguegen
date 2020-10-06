@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 import recap_argument_graph as ag
+from spacy.tokens import Doc
 
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
@@ -23,9 +24,10 @@ class Selector(Enum):
 
 @dataclass(frozen=True)
 class Concept:
-    name: str
-    pos: graph.POS
+    name: Doc
+    pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     node: graph.Node
+    relevance: float
 
     def __str__(self):
         if self.pos != graph.POS.OTHER:

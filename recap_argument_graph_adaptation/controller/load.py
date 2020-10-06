@@ -120,21 +120,22 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
 
 
 def _parse_rule_concept(rule: str) -> Concept:
+    nlp = spacy_nlp()
+
     rule_parts = rule.split("/")
-    name = rule_parts[0]
+    name = nlp(rule_parts[0])
     pos = graph.POS.OTHER
 
     if len(rule_parts) > 1:
         pos = graph.POS(rule_parts[1])
     else:
-        nlp = spacy_nlp()
-        spacy_pos = nlp(name)[0].pos_  # POS tags are only available on token level.
+        spacy_pos = name[0].pos_  # POS tags are only available on token level.
         pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
-    node = db.node(name, pos)
+    node = db.node(name.text, pos)
 
     if not node:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
 
-    return Concept(name, pos, node)
+    return Concept(name, pos, node, 1.0)

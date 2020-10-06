@@ -20,14 +20,16 @@ log = logging.getLogger(__name__)
 
 
 def argument_graph(
-    graph: ag.Graph, rule: adaptation.Rule, adapted_concepts: t.Mapping[Concept, str]
+    graph: ag.Graph,
+    rule: adaptation.Rule,
+    adapted_concepts: t.Mapping[Concept, Concept],
 ) -> None:
     pr = load.proof_reader()
     substitutions = {
-        concept.name: adapted_concept
+        concept.name.text: adapted_concept.name.text
         for concept, adapted_concept in adapted_concepts.items()
     }
-    substitutions[rule.source.name] = rule.target.name
+    substitutions[rule.source.name.text] = rule.target.name.text
 
     for node in graph.inodes:
         node.text = _replace(node.text, substitutions)
@@ -48,7 +50,9 @@ def paths(
     rule: adaptation.Rule,
     selector: adaptation.Selector,
     method: adaptation.Method,
-) -> t.Tuple[t.Dict[Concept, str], t.Dict[Concept, t.List[graph.Path]]]:
+) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
+    nlp = load.spacy_nlp()
+
     adapted_concepts = {}
     adapted_paths = {}
 
@@ -68,7 +72,7 @@ def paths(
             with multiprocessing.Pool() as pool:
                 shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
 
-        adaptation_candidates = defaultdict(int)
+        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
         reference_length = len(all_shortest_paths[0].relationships)
         adapted_paths[root_concept] = shortest_paths_adaptations
 
@@ -78,21 +82,33 @@ def paths(
 
         for result in shortest_paths_adaptations:
             if result and len(result.relationships) == reference_length:
-                adaptation_candidates[result.end_node.processed_name] += 1
+                name = nlp(result.end_node.processed_name)
+                candidate = Concept(
+                    name,
+                    result.end_node.pos,
+                    result.end_node,
+                    name.similarity(rule.target),
+                )
+
+                adaptation_candidates[candidate] += 1
 
         if adaptation_candidates:
-            max_value = max(adaptation_candidates.values())
-            adapted_names = [
-                key
-                for key, value in adaptation_candidates.items()
-                if value == max_value
+            max_score = max(adaptation_candidates.values())
+            most_frequent_concepts = [
+                concept
+                for concept, score in adaptation_candidates.items()
+                if score == max_score
             ]
-            adapted_name = _filter_concepts(adapted_names, root_concept)
-            adapted_name = conceptnet.adapt_name(adapted_name, root_concept.name)
 
-            adapted_concepts[root_concept] = adapted_name
+            adapted_concept = _filter_concepts(most_frequent_concepts, root_concept)
 
-            log.info(f"Adapt ({root_concept})->({adapted_name}).")
+            # In this step, the concept is correctly capitalized.
+            # Not necessary due to later grammatical correction.
+            # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
+
+            adapted_concepts[root_concept] = adapted_concept
+
+            log.info(f"Adapt ({root_concept})->({adapted_concept}).")
 
         else:
             log.info(f"No adaptation for ({root_concept}).")
@@ -134,10 +150,11 @@ def _adapt_shortest_path(
     return adapted_path
 
 
-def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -> str:
+def _filter_concepts(
+    adapted_concepts: t.Iterable[Concept], root_concept: Concept
+) -> Concept:
     nlp = load.spacy_nlp()
 
-    root_nlp = nlp(root_concept.node.name)
     adapted_concepts_iter = iter(adapted_concepts)
 
     best_match = (next(adapted_concepts_iter), 0.0)
@@ -147,7 +164,7 @@ def _filter_concepts(adapted_concepts: t.Iterable[str], root_concept: Concept) -
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            sim = root_nlp.similarity(concept_nlp)
+            sim = root_concept.name.similarity(concept_nlp)
 
         if sim > best_match[1]:
             best_match = (concept, sim)

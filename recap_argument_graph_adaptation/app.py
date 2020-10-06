@@ -23,11 +23,6 @@ def run():
     out_path = Path(config["path"]["output"], _timestamp())
 
     for case in cases:
-        concepts = extract.keywords(case.graph)
-        log.info(
-            f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
-        )
-
         adaptation_methods = [adaptation.Method(config["adaptation"]["method"])]
         adaptation_selectors = [adaptation.Selector(config["adaptation"]["selector"])]
 
@@ -38,13 +33,12 @@ def run():
         for adaptation_method in adaptation_methods:
             for adaptation_selector in adaptation_selectors:
                 _perform_adaptation(
-                    case, concepts, adaptation_method, adaptation_selector, out_path
+                    case, adaptation_method, adaptation_selector, out_path
                 )
 
 
 def _perform_adaptation(
     case: adaptation.Case,
-    concepts: t.Set[adaptation.Concept],
     adaptation_method: adaptation.Method,
     adaptation_selector: adaptation.Selector,
     out_path: Path,
@@ -69,6 +63,7 @@ def _perform_adaptation(
     for rule in case.rules:
         log.info(f"Processing rule {str(rule)}.")
 
+        concepts = extract.keywords(case.graph, rule)
         reference_paths = extract.paths(concepts, rule, adaptation_method)
         adapted_concepts, adapted_paths = adapt.paths(
             reference_paths, rule, adaptation_selector, adaptation_method

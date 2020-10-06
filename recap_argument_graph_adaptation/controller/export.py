@@ -13,7 +13,7 @@ def statistic(
     out = {}
 
     for concept in concepts:
-        key = f"({concept.name})->({adapted_concepts.get(concept)})"
+        key = f"({concept})->({adapted_concepts.get(concept)})"
 
         out[key] = {
             "concept": str(concept),
