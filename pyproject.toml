@@ -15,7 +15,7 @@ spacy = "^2.3.2"
 textacy = "^0.10.0"
 scikit-learn = "^0.23.1"
 packaging = "^20.4"
-sentence-transformers = "^0.3.2"
+sentence-transformers = "^0.3.7"
 lmproof = "^0.3.0"
 pendulum = "^2.1.2"
 

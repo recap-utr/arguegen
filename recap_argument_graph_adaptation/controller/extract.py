@@ -56,7 +56,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                     concepts.add(Concept(term, pos_tag, lemma_node, relevance))
 
                 else:  # test if the root word is in conceptnet
-                    root = next(nlp(term).noun_chunks).root
+                    root = next(term.noun_chunks).root
                     root_node = db.node(root.text, pos_tag)
 
                     if root_node:

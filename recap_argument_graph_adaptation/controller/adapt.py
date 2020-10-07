@@ -19,6 +19,9 @@ from ..model.database import Database
 log = logging.getLogger(__name__)
 
 
+# TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
+
+
 def argument_graph(
     graph: ag.Graph,
     rule: adaptation.Rule,
@@ -87,7 +90,7 @@ def paths(
                     name,
                     result.end_node.pos,
                     result.end_node,
-                    name.similarity(rule.target),
+                    name.similarity(rule.target.name),
                 )
 
                 adaptation_candidates[candidate] += 1
@@ -160,11 +163,9 @@ def _filter_concepts(
     best_match = (next(adapted_concepts_iter), 0.0)
 
     for concept in adapted_concepts_iter:
-        concept_nlp = nlp(concept)
-
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            sim = root_concept.name.similarity(concept_nlp)
+            sim = root_concept.name.similarity(concept.name)
 
         if sim > best_match[1]:
             best_match = (concept, sim)

@@ -21,7 +21,7 @@ spacy_cache = {"en": None, "de": None}
 proof_reader_cache = {"en": None, "de": None}
 spacy_models = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
 transformer_models = {
-    "en": "distiluse-base-multilingual-cased",
+    "en": "roberta-large-nli-stsb-mean-tokens",
     "de": "distiluse-base-multilingual-cased",
 }
 
@@ -60,6 +60,10 @@ class TransformerModel(object):
         doc.user_span_hooks["vector"] = self.vector
         doc.user_token_hooks["vector"] = self.vector
 
+        doc.user_hooks["similarity"] = self.similarity
+        doc.user_span_hooks["similarity"] = self.similarity
+        doc.user_token_hooks["similarity"] = self.similarity
+
         return doc
 
     def vector(self, obj):
@@ -68,6 +72,9 @@ class TransformerModel(object):
         embeddings = self._model.encode(sentences)
 
         return embeddings[0]
+
+    def similarity(self, obj1, obj2):
+        return 1 - distance.cosine(obj1.vector, obj2.vector)
 
 
 def cases() -> t.List[adaptation.Case]:
