@@ -50,17 +50,24 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                 relevance = term.similarity(rule.source.name)
 
                 if term_node:  # original term is in conceptnet
-                    concepts.add(Concept(term, pos_tag, term_node, relevance))
+                    distance = db.distance(term_node, rule.source.node)
+                    concepts.add(Concept(term, pos_tag, term_node, relevance, distance))
 
                 elif lemma_node:  # lemma is in conceptnet
-                    concepts.add(Concept(term, pos_tag, lemma_node, relevance))
+                    distance = db.distance(lemma_node, rule.source.node)
+                    concepts.add(
+                        Concept(term, pos_tag, lemma_node, relevance, distance)
+                    )
 
                 else:  # test if the root word is in conceptnet
                     root = next(term.noun_chunks).root
                     root_node = db.node(root.text, pos_tag)
 
                     if root_node:
-                        concepts.add(Concept(term, pos_tag, root_node, relevance))
+                        distance = db.distance(root_node, rule.source.node)
+                        concepts.add(
+                            Concept(term, pos_tag, root_node, relevance, distance)
+                        )
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

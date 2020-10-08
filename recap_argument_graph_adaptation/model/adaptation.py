@@ -28,6 +28,7 @@ class Concept:
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     node: graph.Node
     relevance: float
+    distance: int
 
     def __str__(self):
         if self.pos != graph.POS.OTHER:

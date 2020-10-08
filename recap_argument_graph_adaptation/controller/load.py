@@ -145,4 +145,4 @@ def _parse_rule_concept(rule: str) -> Concept:
     if not node:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
 
-    return Concept(name, pos, node, 1.0)
+    return Concept(name, pos, node, 1.0, 0)

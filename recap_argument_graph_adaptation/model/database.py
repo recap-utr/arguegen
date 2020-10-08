@@ -44,7 +44,7 @@ class Database:
 
         # First, run the query with the given POS.
         # If no concept is found, retry the query without specifying a POS.
-        for pos_tag in (pos, graph.POS.OTHER):
+        for pos_tag in set([pos, graph.POS.OTHER]):
             record = tx.run(
                 query,
                 name=conceptnet.concept_name(name, lang),
@@ -92,8 +92,8 @@ class Database:
             "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
         )
 
-        for start_pos in (start.pos, graph.POS.OTHER):
-            for end_pos in (end.pos, graph.POS.OTHER):
+        for start_pos in set([start.pos, graph.POS.OTHER]):
+            for end_pos in set([end.pos, graph.POS.OTHER]):
                 record = tx.run(
                     query,
                     start_name=start.name,
@@ -143,8 +143,8 @@ class Database:
             "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
         )
 
-        for start_pos in (start.pos, graph.POS.OTHER):
-            for end_pos in (end.pos, graph.POS.OTHER):
+        for start_pos in set([start.pos, graph.POS.OTHER]):
+            for end_pos in set([end.pos, graph.POS.OTHER]):
                 records = tx.run(
                     query,
                     start_name=start.name,
@@ -193,7 +193,7 @@ class Database:
             f"RETURN p"
         )
 
-        for pos in (node.pos, graph.POS.OTHER):
+        for pos in set([node.pos, graph.POS.OTHER]):
             records = tx.run(
                 query,
                 name=node.name,
@@ -205,6 +205,48 @@ class Database:
                 return [graph.Path.from_neo4j(record.value()) for record in records]
 
         return None
+
+    # DISTANCE
+
+    def distance(self, node1: graph.Node, node2: graph.Node) -> int:
+        max_relations = 200
+        relation_types = ["RelatedTo"]
+
+        with self._driver.session() as session:
+            return session.read_transaction(
+                self._distance, node1, node2, relation_types, max_relations, self.lang
+            )
+
+    @staticmethod
+    def _distance(
+        tx: neo4j.Session,
+        node1: graph.Node,
+        node2: graph.Node,
+        relation_types: t.Collection[str],
+        max_relations: int,
+        lang: str,
+    ) -> int:
+        rel_query = _aggregate_relations(relation_types)
+        shortest_length = max_relations
+
+        query = (
+            "MATCH p = shortestPath((n:Concept {name: $node1_name, language: $lang})"
+            f"-[{rel_query}*..{max_relations}]-"
+            "(m:Concept {name: $node2_name, language: $lang}))"
+            "RETURN LENGTH(p)"
+        )
+
+        record = tx.run(
+            query,
+            node1_name=node1.name,
+            node2_name=node2.name,
+            lang=lang,
+        )
+
+        if record:
+            shortest_length = min(record.value())
+
+        return shortest_length
 
 
 def _aggregate_relations(relation_types: t.Collection[str]) -> str:

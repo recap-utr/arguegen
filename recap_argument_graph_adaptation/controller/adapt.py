@@ -55,6 +55,7 @@ def paths(
     method: adaptation.Method,
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
     nlp = load.spacy_nlp()
+    db = Database()
 
     adapted_concepts = {}
     adapted_paths = {}
@@ -91,6 +92,7 @@ def paths(
                     result.end_node.pos,
                     result.end_node,
                     name.similarity(rule.target.name),
+                    db.distance(result.end_node, rule.target.node),
                 )
 
                 adaptation_candidates[candidate] += 1
