@@ -1,3 +1,4 @@
+import json
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import neo4j
 from .config import config
@@ -63,7 +64,7 @@ class Database:
     def shortest_path(
         self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[graph.Path]:
-        relation_types = config["neo4j"]["relation_types"]
+        relation_types = config["adaptation"]["relation_types"]
         max_relations = config["neo4j"]["max_relations"]
 
         with self._driver.session() as session:
@@ -73,7 +74,6 @@ class Database:
                 end_nodes,
                 relation_types,
                 max_relations,
-                self.lang,
             )
 
     @staticmethod
@@ -83,7 +83,6 @@ class Database:
         end_nodes: t.Sequence[graph.Node],
         relation_types: t.Collection[str],
         max_relations: int,
-        lang: str,
     ) -> t.Optional[graph.Path]:
         rel_query = _include_relations(relation_types)
 
@@ -110,95 +109,79 @@ class Database:
     # ALL SHORTEST PATHS
 
     def all_shortest_paths(
-        self, start: graph.Node, end: graph.Node
+        self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[t.List[graph.Path]]:
-        relation_types = config["neo4j"]["relation_types"]
+        relation_types = config["adaptation"]["relation_types"]
         max_relations = config["neo4j"]["max_relations"]
 
         with self._driver.session() as session:
             return session.read_transaction(
                 self._all_shortest_paths,
-                start,
-                end,
+                start_nodes,
+                end_nodes,
                 relation_types,
                 max_relations,
-                self.lang,
             )
 
     @staticmethod
     def _all_shortest_paths(
         tx: neo4j.Session,
-        start: graph.Node,
-        end: graph.Node,
+        start_nodes: t.Sequence[graph.Node],
+        end_nodes: t.Sequence[graph.Node],
         relation_types: t.Collection[str],
         max_relations: int,
-        lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _include_relations(relation_types)
 
         query = (
-            "MATCH p = allShortestPaths((n:Concept {name: $start_name, pos: $start_pos, language: $lang})"
+            "MATCH p = allShortestPaths((n:Concept)"
             f"-[{rel_query}*..{max_relations}]{_arrow()}"
-            "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
+            "(m:Concept)) "
+            "WHERE id(n) = $start_id AND id(m) = $end_id"
+            "RETURN p"
         )
 
-        for start_pos in set([start.pos, graph.POS.OTHER]):
-            for end_pos in set([end.pos, graph.POS.OTHER]):
-                records = tx.run(
-                    query,
-                    start_name=start.name,
-                    start_pos=start_pos.value,
-                    end_name=end.name,
-                    end_pos=end_pos.value,
-                    lang=lang,
-                )
+        nodes_iter = _iterate_nodes(start_nodes, end_nodes)
 
-                if records:
-                    return [graph.Path.from_neo4j(record.value()) for record in records]
+        for nodes_pair in nodes_iter:
+            records = tx.run(query, start_id=nodes_pair[0].id, end_id=nodes_pair[1].id)
 
+            if records:
+                return [graph.Path.from_neo4j(record.value()) for record in records]
         return None
 
     # EXPAND NODE
 
-    def expand_node(
-        self, node: graph.Node, relation_types: t.Collection[str] = None
+    def expand_nodes(
+        self, nodes: t.Sequence[graph.Node], relation_types: t.Collection[str] = None
     ) -> t.Optional[t.List[graph.Path]]:
         if not relation_types:
-            relation_types = config["neo4j"]["relation_types"]
+            relation_types = config["adaptation"]["relation_types"]
 
         with self._driver.session() as session:
             return session.read_transaction(
-                self._expand_node, node, relation_types, self.lang
+                self._expand_nodes, nodes, relation_types, self.lang
             )
 
     @staticmethod
-    def _expand_node(
+    def _expand_nodes(
         tx: neo4j.Session,
-        node: graph.Node,
+        nodes: t.Sequence[graph.Node],
         relation_types: t.Collection[str],
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
         rel_query = _include_relations(relation_types)
 
-        # query = (
-        #     f"MATCH p=(n:Concept)-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
-        #     f"WHERE id(n)={node.id} RETURN p",
-        # )
-
         query = (
-            "MATCH p=(n:Concept {name: $name, pos: $pos, language: $lang})"
+            "MATCH p=(n:Concept)"
             f"-[r{rel_query}]{_arrow()}"
             "(m:Concept {language: $lang}) "
-            f"RETURN p"
+            f"WHERE id(n)=$node_id "
+            "RETURN p",
         )
 
-        for pos in set([node.pos, graph.POS.OTHER]):
-            records = tx.run(
-                query,
-                name=node.name,
-                pos=pos.value,
-                lang=lang,
-            )
+        for node in nodes:
+            records = tx.run(query, node_id=node.id, lang=lang)
 
             if records:
                 return [graph.Path.from_neo4j(record.value()) for record in records]
@@ -207,40 +190,40 @@ class Database:
 
     # DISTANCE
 
-    def distance(self, node1: graph.Node, node2: graph.Node) -> int:
+    def distance(
+        self, nodes1: t.Sequence[graph.Node], nodes2: t.Sequence[graph.Node]
+    ) -> int:
         max_relations = 200
         relation_types = ["RelatedTo"]
 
         with self._driver.session() as session:
             return session.read_transaction(
-                self._distance, node1, node2, relation_types, max_relations, self.lang
+                self._distance, nodes1, nodes2, relation_types, max_relations
             )
 
     @staticmethod
     def _distance(
         tx: neo4j.Session,
-        node1: graph.Node,
-        node2: graph.Node,
+        nodes1: t.Sequence[graph.Node],
+        nodes2: t.Sequence[graph.Node],
         relation_types: t.Collection[str],
         max_relations: int,
-        lang: str,
     ) -> int:
-        rel_query = _exclude_relations(relation_types, "r")
+        rel_query = _exclude_relations(relation_types)
         shortest_length = max_relations
 
         query = (
-            "MATCH p = shortestPath((n:Concept {name: $node1_name, language: $lang})"
-            f"-[r*..{max_relations}]-"
-            "(m:Concept {name: $node2_name, language: $lang}))"
-            f"WHERE {rel_query}"
+            "MATCH p = shortestPath((n:Concept)"
+            f"-[r{rel_query}*..{max_relations}]-"
+            "(m:Concept)) "
+            f"WHERE id(n) IN $ids1 AND id(m) IN $ids2 "
             "RETURN LENGTH(p)"
         )
 
         record = tx.run(
             query,
-            node1_name=node1.name,
-            node2_name=node2.name,
-            lang=lang,
+            ids1=_node_ids(nodes1),
+            ids2=_node_ids(nodes2),
         )
 
         if record:
@@ -253,22 +236,25 @@ def _arrow() -> str:
     return "->" if config["neo4j"]["directed_relations"] else "-"
 
 
-def _include_relations(relation_types: t.Collection[str]) -> str:
-    if relation_types:
-        return ":" + "|".join(relation_types)
+def _include_relations(allowed_types: t.Collection[str]) -> str:
+    if allowed_types:
+        return ":" + "|".join(allowed_types)
 
     return ""
 
 
-def _exclude_relations(relation_types: t.Collection[str], relation_name: str) -> str:
-    if relation_types:
-        constraint = " OR ".join(
-            [f"type(rel)='{relation_type}'" for relation_type in relation_types]
-        )
+def _exclude_relations(forbidden_types: t.Collection[str]) -> str:
+    allowed_types = [
+        rel_type
+        for rel_type in config["neo4j"]["all_relation_types"]
+        if rel_type not in forbidden_types
+    ]
 
-        return f"NONE(rel in {relation_name} WHERE {constraint})"
+    return _include_relations(allowed_types)
 
-    return ""
+
+def _node_ids(nodes: t.Iterable[graph.Node]) -> str:
+    return json.dumps([node.id for node in nodes])
 
 
 def _iterate_nodes(
