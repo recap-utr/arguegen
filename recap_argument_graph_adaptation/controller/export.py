@@ -7,7 +7,7 @@ from recap_argument_graph_adaptation.model.adaptation import Concept
 def statistic(
     concepts: t.Iterable[Concept],
     reference_paths: t.Mapping[Concept, t.Iterable[graph.Path]],
-    adapted_concepts: t.Mapping[Concept, str],
+    adapted_concepts: t.Mapping[Concept, Concept],
     adapted_paths: t.Mapping[Concept, t.Iterable[graph.Path]],
 ) -> t.Dict[str, t.Any]:
     out = {}

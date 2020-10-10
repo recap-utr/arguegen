@@ -87,12 +87,14 @@ def paths(
         for result in shortest_paths_adaptations:
             if result and len(result.relationships) == reference_length:
                 name = nlp(result.end_node.processed_name)
+                end_nodes = tuple([result.end_node])
+
                 candidate = Concept(
                     name,
                     result.end_node.pos,
-                    result.end_node,
+                    end_nodes,
                     name.similarity(rule.target.name),
-                    db.distance(result.end_node, rule.target.node),
+                    db.distance(end_nodes, rule.target.nodes),
                 )
 
                 adaptation_candidates[candidate] += 1

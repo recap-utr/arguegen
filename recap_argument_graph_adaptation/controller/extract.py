@@ -44,19 +44,21 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
             ]
 
             for term, lemma in zip(terms, terms_lemmatized):
-                term_node = db.nodes(term.text, pos_tag)
-                lemma_node = db.nodes(lemma.text, pos_tag)
+                term_nodes = db.nodes(term.text, pos_tag)
+                lemma_nodes = db.nodes(lemma.text, pos_tag)
 
                 relevance = term.similarity(rule.source.name)
 
-                if term_node:  # original term is in conceptnet
-                    distance = db.distance(term_node, rule.source.node)
-                    concepts.add(Concept(term, pos_tag, term_node, relevance, distance))
-
-                elif lemma_node:  # lemma is in conceptnet
-                    distance = db.distance(lemma_node, rule.source.node)
+                if term_nodes:  # original term is in conceptnet
+                    distance = db.distance(term_nodes, rule.source.nodes)
                     concepts.add(
-                        Concept(term, pos_tag, lemma_node, relevance, distance)
+                        Concept(term, pos_tag, term_nodes, relevance, distance)
+                    )
+
+                elif lemma_nodes:  # lemma is in conceptnet
+                    distance = db.distance(lemma_nodes, rule.source.nodes)
+                    concepts.add(
+                        Concept(term, pos_tag, lemma_nodes, relevance, distance)
                     )
 
                 else:  # test if the root word is in conceptnet
@@ -64,7 +66,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                     root_node = db.nodes(root.text, pos_tag)
 
                     if root_node:
-                        distance = db.distance(root_node, rule.source.node)
+                        distance = db.distance(root_node, rule.source.nodes)
                         concepts.add(
                             Concept(term, pos_tag, root_node, relevance, distance)
                         )

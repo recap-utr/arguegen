@@ -47,7 +47,7 @@ class Rule:
     target: Concept
 
     def __str__(self) -> str:
-        return f"({self.source})->({self.target}) [nodes ({self.source.node})->({self.target.node})]"
+        return f"({self.source})->({self.target})"
 
 
 @dataclass(frozen=True)
