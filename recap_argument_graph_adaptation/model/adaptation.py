@@ -26,9 +26,13 @@ class Selector(Enum):
 class Concept:
     name: Doc
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
-    node: graph.Node
-    relevance: float
-    distance: int
+    nodes: t.Tuple[graph.Node, ...]
+    semantic_similarity: float
+    conceptual_distance: int
+
+    @property
+    def best_node(self) -> graph.Node:
+        return self.nodes[0]
 
     def __str__(self):
         if self.pos != graph.POS.OTHER:

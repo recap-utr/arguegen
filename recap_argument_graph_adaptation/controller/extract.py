@@ -44,8 +44,8 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
             ]
 
             for term, lemma in zip(terms, terms_lemmatized):
-                term_node = db.node(term.text, pos_tag)
-                lemma_node = db.node(lemma.text, pos_tag)
+                term_node = db.nodes(term.text, pos_tag)
+                lemma_node = db.nodes(lemma.text, pos_tag)
 
                 relevance = term.similarity(rule.source.name)
 
@@ -61,7 +61,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
                 else:  # test if the root word is in conceptnet
                     root = next(term.noun_chunks).root
-                    root_node = db.node(root.text, pos_tag)
+                    root_node = db.nodes(root.text, pos_tag)
 
                     if root_node:
                         distance = db.distance(root_node, rule.source.node)

@@ -140,7 +140,7 @@ def _parse_rule_concept(rule: str) -> Concept:
         pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
-    node = db.node(name.text, pos)
+    node = db.nodes(name.text, pos)
 
     if not node:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")

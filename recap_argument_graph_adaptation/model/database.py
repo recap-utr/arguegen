@@ -23,14 +23,15 @@ class Database:
 
     # NODE
 
-    def node(self, name: str, pos: graph.POS) -> t.Optional[graph.Node]:
+    def nodes(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
         with self._driver.session() as session:
-            return session.read_transaction(self._node, name, pos, self.lang)
+            return session.read_transaction(self._nodes, name, pos, self.lang)
 
     @staticmethod
-    def _node(
+    def _nodes(
         tx: neo4j.Session, name: str, pos: graph.POS, lang: str
-    ) -> t.Optional[graph.Node]:
+    ) -> t.Tuple[graph.Node, ...]:
+        nodes = []
         query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
 
         # We follow all available 'FormOf' relations to simplify path construction
@@ -53,14 +54,14 @@ class Database:
             ).single()
 
             if record:
-                return graph.Node.from_neo4j(record.value())
+                nodes.append(graph.Node.from_neo4j(record.value()))
 
-        return None
+        return tuple(nodes)
 
     # SHORTEST PATH
 
     def shortest_path(
-        self, start: graph.Node, end: graph.Node
+        self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[graph.Path]:
         relation_types = config["neo4j"]["relation_types"]
         max_relations = config["neo4j"]["max_relations"]
@@ -68,8 +69,8 @@ class Database:
         with self._driver.session() as session:
             return session.read_transaction(
                 self._shortest_path,
-                start,
-                end,
+                start_nodes,
+                end_nodes,
                 relation_types,
                 max_relations,
                 self.lang,
@@ -78,33 +79,31 @@ class Database:
     @staticmethod
     def _shortest_path(
         tx: neo4j.Session,
-        start: graph.Node,
-        end: graph.Node,
+        start_nodes: t.Sequence[graph.Node],
+        end_nodes: t.Sequence[graph.Node],
         relation_types: t.Collection[str],
         max_relations: int,
         lang: str,
     ) -> t.Optional[graph.Path]:
-        rel_query = _aggregate_relations(relation_types)
+        rel_query = _include_relations(relation_types)
 
         query = (
-            "MATCH p = shortestPath((n:Concept {name: $start_name, pos: $start_pos, language: $lang})"
+            "MATCH p = shortestPath((n:Concept)"
             f"-[{rel_query}*..{max_relations}]{_arrow()}"
-            "(m:Concept {name: $end_name, pos: $end_pos, language: $lang})) RETURN p"
+            "(m:Concept)) "
+            "WHERE id(n) = $start_id AND id(m) = $end_id"
+            "RETURN p"
         )
 
-        for start_pos in set([start.pos, graph.POS.OTHER]):
-            for end_pos in set([end.pos, graph.POS.OTHER]):
-                record = tx.run(
-                    query,
-                    start_name=start.name,
-                    start_pos=start_pos.value,
-                    end_name=end.name,
-                    end_pos=end_pos.value,
-                    lang=lang,
-                ).single()
+        nodes_iter = _iterate_nodes(start_nodes, end_nodes)
 
-                if record:
-                    return graph.Path.from_neo4j(record.value())
+        for nodes_pair in nodes_iter:
+            record = tx.run(
+                query, start_id=nodes_pair[0].id, end_id=nodes_pair[1].id
+            ).single()
+
+            if record:
+                return graph.Path.from_neo4j(record.value())
 
         return None
 
@@ -135,7 +134,7 @@ class Database:
         max_relations: int,
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
-        rel_query = _aggregate_relations(relation_types)
+        rel_query = _include_relations(relation_types)
 
         query = (
             "MATCH p = allShortestPaths((n:Concept {name: $start_name, pos: $start_pos, language: $lang})"
@@ -179,7 +178,7 @@ class Database:
         relation_types: t.Collection[str],
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
-        rel_query = _aggregate_relations(relation_types)
+        rel_query = _include_relations(relation_types)
 
         # query = (
         #     f"MATCH p=(n:Concept)-[r{rel_query}]{_arrow()}(m:Concept {{language: $lang}})"
@@ -226,13 +225,14 @@ class Database:
         max_relations: int,
         lang: str,
     ) -> int:
-        rel_query = _aggregate_relations(relation_types)
+        rel_query = _exclude_relations(relation_types, "r")
         shortest_length = max_relations
 
         query = (
             "MATCH p = shortestPath((n:Concept {name: $node1_name, language: $lang})"
-            f"-[{rel_query}*..{max_relations}]-"
+            f"-[r*..{max_relations}]-"
             "(m:Concept {name: $node2_name, language: $lang}))"
+            f"WHERE {rel_query}"
             "RETURN LENGTH(p)"
         )
 
@@ -249,12 +249,38 @@ class Database:
         return shortest_length
 
 
-def _aggregate_relations(relation_types: t.Collection[str]) -> str:
+def _arrow() -> str:
+    return "->" if config["neo4j"]["directed_relations"] else "-"
+
+
+def _include_relations(relation_types: t.Collection[str]) -> str:
     if relation_types:
         return ":" + "|".join(relation_types)
 
     return ""
 
 
-def _arrow() -> str:
-    return "->" if config["neo4j"]["directed_relations"] else "-"
+def _exclude_relations(relation_types: t.Collection[str], relation_name: str) -> str:
+    if relation_types:
+        constraint = " OR ".join(
+            [f"type(rel)='{relation_type}'" for relation_type in relation_types]
+        )
+
+        return f"NONE(rel in {relation_name} WHERE {constraint})"
+
+    return ""
+
+
+def _iterate_nodes(
+    nodes1: t.Sequence[graph.Node], nodes2: t.Sequence[graph.Node]
+) -> t.Iterator[t.Tuple[graph.Node, graph.Node]]:
+    iterator = []
+
+    for index1 in range(len(nodes1)):
+        for index2 in range(len(nodes2)):
+            iterator.append((index1, index2))
+
+    iterator.sort(key=lambda x: (sum(x), abs(x[0] - x[1])))
+
+    for entry in iterator:
+        yield (nodes1[entry[0]], nodes2[entry[1]])
