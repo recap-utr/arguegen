@@ -87,7 +87,7 @@ def paths(
     if method == adaptation.Method.WITHIN:
         for concept in concepts:
             if rule.source != concept:
-                paths = db.all_shortest_paths(rule.source.node, concept.node)
+                paths = db.all_shortest_paths(rule.source.nodes, concept.nodes)
                 log.info(
                     f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({concept})."
                 )
@@ -97,7 +97,7 @@ def paths(
                     log.debug(", ".join((str(path) for path in paths)))
 
     elif method == adaptation.Method.BETWEEN:
-        paths = db.all_shortest_paths(rule.source.node, rule.target.node)
+        paths = db.all_shortest_paths(rule.source.nodes, rule.target.nodes)
         log.info(
             f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({rule.target})."
         )

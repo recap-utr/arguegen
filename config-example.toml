@@ -1,4 +1,4 @@
-version = "2.7"
+version = "2.8"
 debug = true
 
 [nlp]
@@ -9,34 +9,76 @@ input = "data/input"
 output = "data/output"
 
 [adaptation]
-relax_relation_types = false
 gridsearch = false # If true, the following  parameters will be ignored.
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
-method = "within"
+method = "between"
 
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 selector = "similarity"
 
+
+[conceptnet]
+[conceptnet.nodes]
+root_form = true
+
+[conceptnet.relations]
+generalization_types = [
+    "DerivedFrom",
+    "IsA",
+    "PartOf",
+    # "HasA",
+]
+relax_types = false
+directed = true
+all_types = [
+    "Antonym",
+    "AtLocation",
+    "CapableOf",
+    "Causes",
+    "CausesDesire",
+    "CreatedBy",
+    "DefinedAs",
+    "DerivedFrom",
+    "Desires",
+    "DistinctFrom",
+    "Entails",
+    "EtymologicallyDerivedFrom",
+    "EtymologicallyRelatedTo",
+    "ExternalURL",
+    "FormOf",
+    "HasA",
+    "HasContext",
+    "HasFirstSubevent",
+    "HasLastSubevent",
+    "HasPrerequisite",
+    "HasProperty",
+    "HasSubevent",
+    "IsA",
+    "IsInstanceOf",
+    "LocatedNear",
+    "MadeOf",
+    "MannerOf",
+    "MotivatedByGoal",
+    "NotCapableOf",
+    "NotDesires",
+    "NotHasProperty",
+    "ObstructedBy",
+    "PartOf",
+    "ReceivesAction",
+    "RelatedTo",
+    "SimilarTo",
+    "SymbolOf",
+    "Synonym",
+    "UsedFor",
+]
+
+[conceptnet.paths]
+max_length = 25
+
 [neo4j]
 url = "neo4j://localhost:7687"
 username = "neo4j"
 password = "password"
-max_relations = 10
-directed_relations = false
-concept_root_form = true
-relation_types = [
-#    "Antonym",
-#    "AtLocation",
-    "DerivedFrom",
-#    "HasA",
-#    "HasProperty",
-    "IsA",
-    "PartOf",
-#    "SimilarTo",
-#    "SymbolOf",
-#    "Synonym",
-#    "UsedFor"
-]

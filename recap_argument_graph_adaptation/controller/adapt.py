@@ -123,6 +123,8 @@ def paths(
     return adapted_concepts, adapted_paths
 
 
+# TODO: Currently, only one node per concept is used in the paths. Could be improved.
+# In this case, we need to update the Path class to support multiple nodes and relationships.
 def _adapt_shortest_path(
     shortest_path: graph.Path,
     concept: Concept,
@@ -134,15 +136,17 @@ def _adapt_shortest_path(
 
     # We have to convert the target to a path object here.
     start_node = (
-        rule.target.node if method == adaptation.Method.WITHIN else concept.node
+        rule.target.best_node
+        if method == adaptation.Method.WITHIN
+        else concept.best_node
     )
     adapted_path = graph.Path.from_node(start_node)
 
     for rel in shortest_path.relationships:
-        path_candidates = db.expand_nodes(adapted_path.end_node, [rel.type])
+        path_candidates = db.expand_nodes([adapted_path.end_node], [rel.type])
 
-        if config["adaptation"]["relax_relation_types"] and not path_candidates:
-            path_candidates = db.expand_nodes(adapted_path.end_node)
+        if config["conceptnet"]["relations"]["relax_types"] and not path_candidates:
+            path_candidates = db.expand_nodes([adapted_path.end_node])
 
         if path_candidates:
             path_candidate = _filter_paths(

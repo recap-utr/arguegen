@@ -14,7 +14,10 @@ class Database:
     def __init__(self):
         driver = neo4j.GraphDatabase.driver(
             config["neo4j"]["url"],
-            auth=(config["neo4j"]["username"], config["neo4j"]["password"]),
+            auth=(
+                config["neo4j"]["username"],
+                config["neo4j"]["password"],
+            ),
             encrypted=False,
         )
 
@@ -36,7 +39,7 @@ class Database:
         query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
 
         # We follow all available 'FormOf' relations to simplify path construction
-        if config["neo4j"]["concept_root_form"]:
+        if config["conceptnet"]["nodes"]["root_form"]:
             query = (
                 "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
                 "-[:FormOf*0..]->"
@@ -64,8 +67,8 @@ class Database:
     def shortest_path(
         self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[graph.Path]:
-        relation_types = config["adaptation"]["relation_types"]
-        max_relations = config["neo4j"]["max_relations"]
+        relation_types = config["conceptnet"]["relations"]["generalization_types"]
+        max_relations = config["conceptnet"]["paths"]["max_length"]
 
         with self._driver.session() as session:
             return session.read_transaction(
@@ -111,8 +114,8 @@ class Database:
     def all_shortest_paths(
         self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[t.List[graph.Path]]:
-        relation_types = config["adaptation"]["relation_types"]
-        max_relations = config["neo4j"]["max_relations"]
+        relation_types = config["conceptnet"]["relations"]["generalization_types"]
+        max_relations = config["conceptnet"]["paths"]["max_length"]
 
         with self._driver.session() as session:
             return session.read_transaction(
@@ -137,7 +140,7 @@ class Database:
             "MATCH p = allShortestPaths((n:Concept)"
             f"-[{rel_query}*..{max_relations}]{_arrow()}"
             "(m:Concept)) "
-            "WHERE id(n) = $start_id AND id(m) = $end_id"
+            "WHERE id(n) = $start_id AND id(m) = $end_id "
             "RETURN p"
         )
 
@@ -156,13 +159,15 @@ class Database:
         self, nodes: t.Sequence[graph.Node], relation_types: t.Collection[str] = None
     ) -> t.Optional[t.List[graph.Path]]:
         if not relation_types:
-            relation_types = config["adaptation"]["relation_types"]
+            relation_types = config["conceptnet"]["relations"]["generalization_types"]
 
         with self._driver.session() as session:
             return session.read_transaction(
                 self._expand_nodes, nodes, relation_types, self.lang
             )
 
+    # TODO: Currently, only the first node that returns a result is queried.
+    # Could be updated if results are not satisfactory.
     @staticmethod
     def _expand_nodes(
         tx: neo4j.Session,
@@ -173,11 +178,11 @@ class Database:
         rel_query = _include_relations(relation_types)
 
         query = (
-            "MATCH p=(n:Concept)"
+            "MATCH p=((n:Concept)"
             f"-[r{rel_query}]{_arrow()}"
-            "(m:Concept {language: $lang}) "
-            f"WHERE id(n)=$node_id "
-            "RETURN p",
+            "(m:Concept {language: $lang})) "
+            "WHERE id(n)=$node_id "
+            "RETURN p"
         )
 
         for node in nodes:
@@ -201,6 +206,7 @@ class Database:
                 self._distance, nodes1, nodes2, relation_types, max_relations
             )
 
+    # TODO: The shortest path algorithm does not work when the start and end nodes are the same. This can happen if you perform a shortestPath search after a cartesian product that might have the same start and end nodes for some of the rows passed to shortestPath. If you would rather not experience this exception, and can accept the possibility of missing results for those rows, disable this in the Neo4j configuration by setting `cypher.forbid_shortestpath_common_nodes` to false. If you cannot accept missing results, and really want the shortestPath between two common nodes, then re-write the query using a standard Cypher variable length pattern expression followed by ordering by path length and limiting to one result.
     @staticmethod
     def _distance(
         tx: neo4j.Session,
@@ -233,7 +239,7 @@ class Database:
 
 
 def _arrow() -> str:
-    return "->" if config["neo4j"]["directed_relations"] else "-"
+    return "->" if config["conceptnet"]["relations"]["directed"] else "-"
 
 
 def _include_relations(allowed_types: t.Collection[str]) -> str:
@@ -246,15 +252,15 @@ def _include_relations(allowed_types: t.Collection[str]) -> str:
 def _exclude_relations(forbidden_types: t.Collection[str]) -> str:
     allowed_types = [
         rel_type
-        for rel_type in config["neo4j"]["all_relation_types"]
+        for rel_type in config["conceptnet"]["relations"]["all_types"]
         if rel_type not in forbidden_types
     ]
 
     return _include_relations(allowed_types)
 
 
-def _node_ids(nodes: t.Iterable[graph.Node]) -> str:
-    return json.dumps([node.id for node in nodes])
+def _node_ids(nodes: t.Iterable[graph.Node]) -> t.List[int]:
+    return [node.id for node in nodes]
 
 
 def _iterate_nodes(

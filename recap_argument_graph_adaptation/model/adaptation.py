@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 import recap_argument_graph as ag
-from spacy.tokens import Doc
+from spacy.tokens import Doc  # type: ignore
 
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
