@@ -1,4 +1,5 @@
 import json
+from gibberish import Gibberish
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import neo4j
 from .config import config
@@ -202,6 +203,42 @@ class Database:
                 return [graph.Path.from_neo4j(record) for record in records]
 
         return None
+
+    # ADAPT PATH
+
+    def adapt_path(
+        self, reference_path: graph.Path, start_nodes: t.Sequence[graph.Node]
+    ) -> t.Optional[t.List[graph.Path]]:
+        with self._driver.session() as session:
+            return session.read_transaction(
+                self._adapt_path, reference_path, start_nodes, self.lang
+            )
+
+    @staticmethod
+    def _adapt_path(
+        tx: neo4j.Session,
+        reference_path: graph.Path,
+        start_nodes: t.Sequence[graph.Node],
+        lang: str,
+    ) -> t.Optional[t.List[graph.Path]]:
+        adapted_paths = []
+
+        # TODO: Currently, all relation types MUST match during adaptation.
+        # If no result is found, we should fall back to all generalization types.
+        query = "MATCH p=((n:Concept)"
+
+        for rel in reference_path.relationships:
+            query += f"-[:{rel.type}]{_arrow()}" "(:Concept {language: $lang})"
+
+        query += ") WHERE id(n)=$start_id RETURN p"
+
+        for node in start_nodes:
+            records = tx.run(query, start_id=node.id, lang=lang).value()
+
+            if records:
+                adapted_paths += [graph.Path.from_neo4j(record) for record in records]
+
+        return adapted_paths or None
 
     # DISTANCE
 

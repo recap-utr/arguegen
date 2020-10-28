@@ -18,6 +18,7 @@ packaging = "^20.4"
 sentence-transformers = "^0.3"
 lmproof = "^0.3"
 pendulum = "^2.1"
+gibberish = "^0.4"
 
 [tool.poetry.dev-dependencies]
 
