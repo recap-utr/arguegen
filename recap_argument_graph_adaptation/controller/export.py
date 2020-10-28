@@ -20,7 +20,7 @@ def statistic(
             "nodes": list_str(concept.nodes),
             "reference_paths": list_str(reference_paths.get(concept)),
             "adapted_paths": list_str(adapted_paths.get(concept)),
-            "adapted_name": adapted_concepts.get(concept),
+            "adapted_name": str(adapted_concepts.get(concept)),
         }
 
     return out

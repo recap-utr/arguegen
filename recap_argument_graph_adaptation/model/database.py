@@ -49,7 +49,15 @@ class Database:
 
         # First, run the query with the given POS.
         # If no concept is found, retry the query without specifying a POS.
-        for pos_tag in set([pos, graph.POS.OTHER]):
+        # TODO: For some concepts, the node with a pos comes after the one without.
+        # Example: health effects/noun is not in conceptnet, so effect is used.
+        # Here, effect comes before effect/noun
+        pos_tags = [pos]
+
+        if pos != graph.POS.OTHER:
+            pos_tags.append(graph.POS.OTHER)
+
+        for pos_tag in pos_tags:
             record = tx.run(
                 query,
                 name=conceptnet.concept_name(name, lang),
@@ -147,10 +155,12 @@ class Database:
         nodes_iter = _iterate_nodes(start_nodes, end_nodes)
 
         for nodes_pair in nodes_iter:
-            records = tx.run(query, start_id=nodes_pair[0].id, end_id=nodes_pair[1].id)
+            records = tx.run(
+                query, start_id=nodes_pair[0].id, end_id=nodes_pair[1].id
+            ).value()
 
             if records:
-                return [graph.Path.from_neo4j(record.value()) for record in records]
+                return [graph.Path.from_neo4j(record) for record in records]
         return None
 
     # EXPAND NODE
@@ -186,10 +196,10 @@ class Database:
         )
 
         for node in nodes:
-            records = tx.run(query, node_id=node.id, lang=lang)
+            records = tx.run(query, node_id=node.id, lang=lang).value()
 
             if records:
-                return [graph.Path.from_neo4j(record.value()) for record in records]
+                return [graph.Path.from_neo4j(record) for record in records]
 
         return None
 
@@ -241,15 +251,14 @@ class Database:
                 query,
                 ids1=_node_ids(nodes1),
                 ids2=_node_ids(nodes2),
-            )
+            ).value()
 
             if record:
-                shortest_length = min(record.value())
+                shortest_length = min(record)
 
             return shortest_length
 
-        else:
-            return 0
+        return 0
 
 
 def _arrow() -> str:

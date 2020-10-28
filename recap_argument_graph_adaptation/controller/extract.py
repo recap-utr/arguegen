@@ -71,7 +71,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                             Concept(term, pos_tag, root_node, relevance, distance)
                         )
 
-    # TODO: Make this configurable
+    # TODO: The order of the nodes is wrong. OTHER occurs before NOUN even if the pos was given in the rule.
     concepts = {
         concept
         for concept in concepts
@@ -99,7 +99,7 @@ def paths(
             if rule.source != concept:
                 paths = db.all_shortest_paths(rule.source.nodes, concept.nodes)
                 log.info(
-                    f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({concept})."
+                    f"Found {len(paths) if paths else 0} reference path(s) for ({rule.source})->({concept})."
                 )
 
                 if paths:
@@ -109,7 +109,7 @@ def paths(
     elif method == adaptation.Method.BETWEEN:
         paths = db.all_shortest_paths(rule.source.nodes, rule.target.nodes)
         log.info(
-            f"Found {len(paths) if paths else 0} reference paths for ({rule.source})->({rule.target})."
+            f"Found {len(paths) if paths else 0} reference path(s) for ({rule.source})->({rule.target})."
         )
 
         if paths:
