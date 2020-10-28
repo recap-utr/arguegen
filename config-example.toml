@@ -1,4 +1,4 @@
-version = "2.8"
+version = "2.9"
 debug = true
 
 [nlp]
@@ -23,6 +23,8 @@ selector = "similarity"
 [conceptnet]
 [conceptnet.nodes]
 root_form = true
+max_conceptual_distance = 4
+min_semantic_similarity = 0.25
 
 [conceptnet.relations]
 generalization_types = [

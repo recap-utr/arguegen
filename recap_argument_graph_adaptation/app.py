@@ -14,9 +14,6 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
-# TODO: distance > 5, relevance < 0.1
-
-
 def _timestamp() -> str:
     return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
 

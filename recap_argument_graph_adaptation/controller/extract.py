@@ -21,7 +21,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
     extractor = ke.yake
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
-    concepts = set()
+    concepts: t.Set[Concept] = set()
     db = Database()
     nlp = load.spacy_nlp()
 
@@ -70,6 +70,16 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                         concepts.add(
                             Concept(term, pos_tag, root_node, relevance, distance)
                         )
+
+    # TODO: Make this configurable
+    concepts = {
+        concept
+        for concept in concepts
+        if concept.conceptual_distance
+        < config["conceptnet"]["nodes"]["max_conceptual_distance"]
+        and concept.semantic_similarity
+        > config["conceptnet"]["nodes"]["min_semantic_similarity"]
+    }
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

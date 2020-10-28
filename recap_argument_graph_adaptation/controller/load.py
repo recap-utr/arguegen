@@ -1,21 +1,19 @@
 import csv
 import logging
-from recap_argument_graph_adaptation.model.adaptation import Concept
-from recap_argument_graph_adaptation.model.database import Database
-import warnings
-
-import spacy
-from spacy.language import Language
 import typing as t
+import warnings
 from pathlib import Path
-from sentence_transformers import SentenceTransformer
-from scipy.spatial import distance
+
 import lmproof
-
 import recap_argument_graph as ag
+import spacy
 from recap_argument_graph_adaptation.model import adaptation, graph
+from recap_argument_graph_adaptation.model.adaptation import Concept
 from recap_argument_graph_adaptation.model.config import config
-
+from recap_argument_graph_adaptation.model.database import Database
+from scipy.spatial import distance
+from sentence_transformers import SentenceTransformer
+from spacy.language import Language
 
 spacy_cache = {"en": None, "de": None}
 proof_reader_cache = {"en": None, "de": None}

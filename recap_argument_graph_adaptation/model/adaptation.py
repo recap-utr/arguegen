@@ -1,13 +1,14 @@
+from __future__ import annotations
+
 import logging
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
 
 import recap_argument_graph as ag
-from spacy.tokens import Doc  # type: ignore
-
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
+from spacy.tokens import Doc  # type: ignore
 
 log = logging.getLogger(__name__)
 
@@ -39,6 +40,12 @@ class Concept:
             return f"{self.name}/{self.pos.value}"
 
         return self.name
+
+    def __eq__(self, other: Concept) -> bool:
+        return self.name.text == other.name.text and self.pos == other.pos
+
+    def __hash__(self) -> int:
+        return hash((self.name.text, self.pos))
 
 
 @dataclass
