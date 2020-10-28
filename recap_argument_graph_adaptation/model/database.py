@@ -206,7 +206,15 @@ class Database:
                 self._distance, nodes1, nodes2, relation_types, max_relations
             )
 
-    # TODO: The shortest path algorithm does not work when the start and end nodes are the same. This can happen if you perform a shortestPath search after a cartesian product that might have the same start and end nodes for some of the rows passed to shortestPath. If you would rather not experience this exception, and can accept the possibility of missing results for those rows, disable this in the Neo4j configuration by setting `cypher.forbid_shortestpath_common_nodes` to false. If you cannot accept missing results, and really want the shortestPath between two common nodes, then re-write the query using a standard Cypher variable length pattern expression followed by ordering by path length and limiting to one result.
+    # TODO: The shortest path algorithm does not work when the start and end nodes are the same.
+    # This can happen if you perform a shortestPath search after a cartesian product that might
+    # have the same start and end nodes for some of the rows passed to shortestPath.
+    # If you would rather not experience this exception, and can accept the possibility of
+    # missing results for those rows, disable this in the Neo4j configuration by setting
+    # `cypher.forbid_shortestpath_common_nodes` to false. If you cannot accept missing results,
+    # and really want the shortestPath between two common nodes, then re-write the query using
+    # a standard Cypher variable length pattern expression followed by ordering by path length
+    # and limiting to one result.
     @staticmethod
     def _distance(
         tx: neo4j.Session,
@@ -215,27 +223,33 @@ class Database:
         relation_types: t.Collection[str],
         max_relations: int,
     ) -> int:
-        rel_query = _exclude_relations(relation_types)
-        shortest_length = max_relations
+        # If there is any node equal in both sequences, we return a distance of 0.
+        # In this case, the shortest path algorithm does not work.
+        if set(nodes1).isdisjoint(nodes2):
+            rel_query = _exclude_relations(relation_types)
+            shortest_length = max_relations
 
-        query = (
-            "MATCH p = shortestPath((n:Concept)"
-            f"-[r{rel_query}*..{max_relations}]-"
-            "(m:Concept)) "
-            f"WHERE id(n) IN $ids1 AND id(m) IN $ids2 "
-            "RETURN LENGTH(p)"
-        )
+            query = (
+                "MATCH p = shortestPath((n:Concept)"
+                f"-[r{rel_query}*..{max_relations}]-"
+                "(m:Concept)) "
+                f"WHERE id(n) IN $ids1 AND id(m) IN $ids2 "
+                "RETURN LENGTH(p)"
+            )
 
-        record = tx.run(
-            query,
-            ids1=_node_ids(nodes1),
-            ids2=_node_ids(nodes2),
-        )
+            record = tx.run(
+                query,
+                ids1=_node_ids(nodes1),
+                ids2=_node_ids(nodes2),
+            )
 
-        if record:
-            shortest_length = min(record.value())
+            if record:
+                shortest_length = min(record.value())
 
-        return shortest_length
+            return shortest_length
+
+        else:
+            return 0
 
 
 def _arrow() -> str:
