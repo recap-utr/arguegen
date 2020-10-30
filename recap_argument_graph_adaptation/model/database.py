@@ -212,28 +212,34 @@ class Database:
         self,
         reference_paths: t.Sequence[graph.Path],
         start_nodes: t.Sequence[graph.Node],
-    ) -> t.Optional[t.List[graph.Path]]:
+    ) -> t.List[graph.Path]:
         with self._driver.session() as session:
             return session.read_transaction(
-                self._adapt_path, reference_path, start_nodes, self.lang
+                self._adapt_paths, reference_paths, start_nodes, self.lang
             )
 
     @staticmethod
-    def _adapt_path(
+    def _adapt_paths(
         tx: neo4j.Session,
         reference_paths: t.Sequence[graph.Path],
         start_nodes: t.Sequence[graph.Node],
         lang: str,
-    ) -> t.Optional[t.List[graph.Path]]:
+        relax_relationship_types: bool = False,
+    ) -> t.List[graph.Path]:
         adapted_paths = []
 
         for reference_path in reference_paths:
-            # TODO: Currently, all relation types MUST match during adaptation.
-            # If no result is found, we should fall back to all generalization types.
             query = "MATCH p=((n:Concept)"
 
             for rel in reference_path.relationships:
-                query += f"-[:{rel.type}]{_arrow()}" "(:Concept {language: $lang})"
+                rel_type = rel.type
+
+                if relax_relationship_types:
+                    rel_type = _include_relations(
+                        config["conceptnet"]["relations"]["generalization_types"]
+                    )
+
+                query += f"-[:{rel_type}]{_arrow()}" "(:Concept {language: $lang})"
 
             query += ") WHERE id(n)=$start_id RETURN p"
 
@@ -245,7 +251,12 @@ class Database:
                         graph.Path.from_neo4j(record) for record in records
                     ]
 
-        return adapted_paths or None
+        if not adapted_paths and not relax_relationship_types:
+            adapted_paths = Database._adapt_paths(
+                tx, reference_paths, start_nodes, lang, relax_relationship_types
+            )
+
+        return adapted_paths
 
     # DISTANCE
 

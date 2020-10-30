@@ -4,6 +4,7 @@ import re
 import typing as t
 from collections import defaultdict
 import warnings
+import itertools
 
 import recap_argument_graph as ag
 import spacy
@@ -69,36 +70,32 @@ def paths(
         ]
 
         if config["debug"]:
-            shortest_paths_adaptations = [
-                _adapt_shortest_path(*param) for param in params
-            ]
+            adaptation_results = [_adapt_shortest_path(*param) for param in params]
         else:
             with multiprocessing.Pool() as pool:
-                shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
+                adaptation_results = pool.starmap(_adapt_shortest_path, params)
 
-        # TODO: HIER WEITERMACHEN!!!
+        adaptation_results = list(itertools.chain(*adaptation_results))
+        adapted_paths[root_concept] = adaptation_results
         adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
-        reference_length = len(all_shortest_paths[0].relationships)
-        adapted_paths[root_concept] = shortest_paths_adaptations
 
         log.debug(
-            f"Found the following candidates: {', '.join((str(path) for path in shortest_paths_adaptations))}"
+            f"Found the following candidates: {', '.join((str(path) for path in adaptation_results))}"
         )
 
-        for result in shortest_paths_adaptations:
-            if result and len(result.relationships) == reference_length:
-                name = nlp(result.end_node.processed_name)
-                end_nodes = tuple([result.end_node])
+        for result in adaptation_results:
+            name = nlp(result.end_node.processed_name)
+            end_nodes = tuple([result.end_node])
 
-                candidate = Concept(
-                    name,
-                    result.end_node.pos,
-                    end_nodes,
-                    name.similarity(rule.target.name),
-                    db.distance(end_nodes, rule.target.nodes),
-                )
+            candidate = Concept(
+                name,
+                result.end_node.pos,
+                end_nodes,
+                name.similarity(rule.target.name),
+                db.distance(end_nodes, rule.target.nodes),
+            )
 
-                adaptation_candidates[candidate] += 1
+            adaptation_candidates[candidate] += 1
 
         if adaptation_candidates:
             max_score = max(adaptation_candidates.values())
@@ -124,8 +121,6 @@ def paths(
     return adapted_concepts, adapted_paths
 
 
-# TODO: Currently, only one node per concept is used in the paths. Could be improved.
-# In this case, we need to update the Path class to support multiple nodes and relationships.
 def _adapt_shortest_path(
     shortest_path: graph.Path,
     concept: Concept,
@@ -153,7 +148,9 @@ def _adapt_shortest_path(
                 path_candidates = db.expand_nodes([current_path.end_node])
 
             if path_candidates:
-                # path_candidate = _filter_paths(path_candidates, shortest_path, adapted_path, selector)
+                path_candidates = _filter_paths(
+                    path_candidates, shortest_path, start_node, selector
+                )
 
                 for path_candidate in path_candidates:
                     next_paths.append(graph.Path.merge(current_path, path_candidate))
@@ -184,14 +181,15 @@ def _filter_concepts(
 
 
 def _filter_paths(
-    candidate_paths: t.Iterable[graph.Path],
+    candidate_paths: t.Sequence[graph.Path],
     reference_path: graph.Path,
-    adapted_path: graph.Path,
+    start_node: graph.Node,
     selector: adaptation.Selector,
-) -> t.Optional[graph.Path]:
+) -> t.List[graph.Path]:
     nlp = load.spacy_nlp()
+    candidate_values = {}
 
-    end_index = len(adapted_path.nodes)
+    end_index = len(candidate_paths[0].nodes)
     start_index = end_index - 1
 
     val_reference = _aggregate_features(
@@ -200,24 +198,24 @@ def _filter_paths(
         selector,
     )
 
-    solution_pair = (None, 1.0)
-    existing_nodes = set(adapted_path.nodes)
-
     for candidate_path in candidate_paths:
         candidate = candidate_path.end_node
 
-        # if candidate not in existing_nodes:
         val_adapted = _aggregate_features(
-            nlp(adapted_path.nodes[start_index].processed_name).vector,
+            nlp(start_node.processed_name).vector,
             nlp(candidate.processed_name).vector,
             selector,
         )
-        val_solution = _compare_features(val_reference, val_adapted, selector)
+        candidate_values[candidate_path] = _compare_features(
+            val_reference, val_adapted, selector
+        )
 
-        if val_solution < solution_pair[1]:
-            solution_pair = (candidate_path, val_solution)
+    sorted_candidate_tuples = sorted(
+        candidate_values.items(), key=lambda x: x[1], reverse=True
+    )
+    sorted_candidates = [x[0] for x in sorted_candidate_tuples]
 
-    return solution_pair[0]
+    return sorted_candidates[: config["adaptation"]["bfs_node_limit"]]
 
 
 def _aggregate_features(
