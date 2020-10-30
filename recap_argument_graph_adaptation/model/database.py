@@ -167,7 +167,9 @@ class Database:
     # EXPAND NODE
 
     def expand_nodes(
-        self, nodes: t.Sequence[graph.Node], relation_types: t.Collection[str] = None
+        self,
+        nodes: t.Sequence[graph.Node],
+        relation_types: t.Optional[t.Collection[str]] = None,
     ) -> t.Optional[t.List[graph.Path]]:
         if not relation_types:
             relation_types = config["conceptnet"]["relations"]["generalization_types"]
@@ -206,8 +208,10 @@ class Database:
 
     # ADAPT PATH
 
-    def adapt_path(
-        self, reference_path: graph.Path, start_nodes: t.Sequence[graph.Node]
+    def adapt_paths(
+        self,
+        reference_paths: t.Sequence[graph.Path],
+        start_nodes: t.Sequence[graph.Node],
     ) -> t.Optional[t.List[graph.Path]]:
         with self._driver.session() as session:
             return session.read_transaction(
@@ -217,26 +221,29 @@ class Database:
     @staticmethod
     def _adapt_path(
         tx: neo4j.Session,
-        reference_path: graph.Path,
+        reference_paths: t.Sequence[graph.Path],
         start_nodes: t.Sequence[graph.Node],
         lang: str,
     ) -> t.Optional[t.List[graph.Path]]:
         adapted_paths = []
 
-        # TODO: Currently, all relation types MUST match during adaptation.
-        # If no result is found, we should fall back to all generalization types.
-        query = "MATCH p=((n:Concept)"
+        for reference_path in reference_paths:
+            # TODO: Currently, all relation types MUST match during adaptation.
+            # If no result is found, we should fall back to all generalization types.
+            query = "MATCH p=((n:Concept)"
 
-        for rel in reference_path.relationships:
-            query += f"-[:{rel.type}]{_arrow()}" "(:Concept {language: $lang})"
+            for rel in reference_path.relationships:
+                query += f"-[:{rel.type}]{_arrow()}" "(:Concept {language: $lang})"
 
-        query += ") WHERE id(n)=$start_id RETURN p"
+            query += ") WHERE id(n)=$start_id RETURN p"
 
-        for node in start_nodes:
-            records = tx.run(query, start_id=node.id, lang=lang).value()
+            for node in start_nodes:
+                records = tx.run(query, start_id=node.id, lang=lang).value()
 
-            if records:
-                adapted_paths += [graph.Path.from_neo4j(record) for record in records]
+                if records:
+                    adapted_paths += [
+                        graph.Path.from_neo4j(record) for record in records
+                    ]
 
         return adapted_paths or None
 

@@ -76,6 +76,7 @@ def paths(
             with multiprocessing.Pool() as pool:
                 shortest_paths_adaptations = pool.starmap(_adapt_shortest_path, params)
 
+        # TODO: HIER WEITERMACHEN!!!
         adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
         reference_length = len(all_shortest_paths[0].relationships)
         adapted_paths[root_concept] = shortest_paths_adaptations
@@ -131,7 +132,7 @@ def _adapt_shortest_path(
     rule: adaptation.Rule,
     selector: adaptation.Selector,
     method: adaptation.Method,
-) -> t.Optional[graph.Path]:
+) -> t.List[graph.Path]:
     db = Database()
 
     # We have to convert the target to a path object here.
@@ -140,25 +141,26 @@ def _adapt_shortest_path(
         if method == adaptation.Method.WITHIN
         else concept.best_node
     )
-    adapted_path = graph.Path.from_node(start_node)
+    current_paths = [graph.Path.from_node(start_node)]  # Start with only one node.
 
     for rel in shortest_path.relationships:
-        path_candidates = db.expand_nodes([adapted_path.end_node], [rel.type])
+        next_paths = []
 
-        if config["conceptnet"]["relations"]["relax_types"] and not path_candidates:
-            path_candidates = db.expand_nodes([adapted_path.end_node])
+        for current_path in current_paths:
+            path_candidates = db.expand_nodes([current_path.end_node], [rel.type])
 
-        if path_candidates:
-            path_candidate = _filter_paths(
-                path_candidates, shortest_path, adapted_path, selector
-            )
+            if config["conceptnet"]["relations"]["relax_types"] and not path_candidates:
+                path_candidates = db.expand_nodes([current_path.end_node])
 
-            if path_candidate:
-                adapted_path = graph.Path.merge(adapted_path, path_candidate)
-            else:
-                return None
+            if path_candidates:
+                # path_candidate = _filter_paths(path_candidates, shortest_path, adapted_path, selector)
 
-    return adapted_path
+                for path_candidate in path_candidates:
+                    next_paths.append(graph.Path.merge(current_path, path_candidate))
+
+        current_paths = next_paths
+
+    return current_paths
 
 
 def _filter_concepts(
