@@ -15,9 +15,14 @@ from scipy.spatial import distance
 from sentence_transformers import SentenceTransformer
 from spacy.language import Language
 
-spacy_cache = {"en": None, "de": None}
-proof_reader_cache = {"en": None, "de": None}
-spacy_models = {"en": "en_core_web_sm", "de": "de_core_news_sm"}
+spacy_cache = {}
+proof_reader_cache = {}
+spacy_models = {
+    "en-transformer": "en_core_web_sm",
+    "en-integrated": "en_core_web_lg",
+    "de-transformer": "de_core_news_sm",
+    "de-integrated": "de_core_news_lg",
+}
 transformer_models = {
     "en": "roberta-large-nli-stsb-mean-tokens",
     "de": "distiluse-base-multilingual-cased",
@@ -26,20 +31,24 @@ transformer_models = {
 
 def spacy_nlp() -> Language:
     lang = config["nlp"]["lang"]
+    embeddings = config["nlp"]["embeddings"]
+    model_name = f"{lang}-{embeddings}"
 
-    if not spacy_cache[lang]:
-        model = spacy.load(spacy_models[lang])
-        model.add_pipe(TransformerModel(lang), first=True)
+    if not spacy_cache.get(model_name):
+        model = spacy.load(spacy_models[model_name])
 
-        spacy_cache[lang] = model
+        if embeddings == "transformer":
+            model.add_pipe(TransformerModel(lang), first=True)
 
-    return spacy_cache[lang]  # type: ignore
+        spacy_cache[model_name] = model
+
+    return spacy_cache[model_name]  # type: ignore
 
 
 def proof_reader() -> lmproof.Proofreader:
     lang = config["nlp"]["lang"]
 
-    if not proof_reader_cache[lang]:
+    if not proof_reader_cache.get(lang):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
