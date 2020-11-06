@@ -98,14 +98,7 @@ def paths(
             adaptation_candidates[candidate] += 1
 
         if adaptation_candidates:
-            max_score = max(adaptation_candidates.values())
-            most_frequent_concepts = [
-                concept
-                for concept, score in adaptation_candidates.items()
-                if score == max_score
-            ]
-
-            adapted_concept = _filter_concepts(most_frequent_concepts, root_concept)
+            adapted_concept = _filter_concepts(adaptation_candidates)
 
             # In this step, the concept is correctly capitalized.
             # Not necessary due to later grammatical correction.
@@ -160,24 +153,25 @@ def _adapt_shortest_path(
     return current_paths
 
 
-def _filter_concepts(
-    adapted_concepts: t.Iterable[Concept], root_concept: Concept
-) -> Concept:
-    nlp = load.spacy_nlp()
+def _filter_concepts(adapted_concepts: t.Mapping[Concept, int]) -> Concept:
+    filtered_tuples = {
+        item
+        for item in adapted_concepts.items()
+        if item[0].conceptual_distance
+        < config["conceptnet"]["nodes"]["max_conceptual_distance"]
+        and item[0].semantic_similarity
+        > config["conceptnet"]["nodes"]["min_semantic_similarity"]
+    }
 
-    adapted_concepts_iter = iter(adapted_concepts)
+    sorted_tuples = sorted(
+        filtered_tuples,
+        key=lambda item: item[1] * item[0].semantic_similarity,
+        reverse=True,
+    )
 
-    best_match = (next(adapted_concepts_iter), 0.0)
+    sorted_concepts = [concept[0] for concept in sorted_tuples]
 
-    for concept in adapted_concepts_iter:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            sim = root_concept.name.similarity(concept.name)
-
-        if sim > best_match[1]:
-            best_match = (concept, sim)
-
-    return best_match[0]
+    return sorted_concepts[0]
 
 
 def _filter_paths(

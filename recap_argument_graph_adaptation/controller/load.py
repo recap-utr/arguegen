@@ -18,14 +18,14 @@ from spacy.language import Language
 spacy_cache = {}
 proof_reader_cache = {}
 spacy_models = {
-    "en-transformer": "en_core_web_sm",
-    "en-integrated": "en_core_web_lg",
-    "de-transformer": "de_core_news_sm",
     "de-integrated": "de_core_news_lg",
+    "de-transformer": "de_core_news_sm",
+    "en-integrated": "en_core_web_lg",
+    "en-transformer": "en_core_web_sm",
 }
 transformer_models = {
-    "en": "roberta-large-nli-stsb-mean-tokens",
     "de": "distiluse-base-multilingual-cased",
+    "en": "roberta-large-nli-stsb-mean-tokens",
 }
 
 

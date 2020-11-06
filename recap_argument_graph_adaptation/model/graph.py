@@ -84,7 +84,6 @@ class Relationship:
 
     @classmethod
     def from_neo4j(cls, obj: neo4j.Relationship) -> Relationship:
-        # TODO: The node objects in a relationship are not identical to the ones in a path object.
         return cls(
             id=obj.id,
             type=obj.type,
