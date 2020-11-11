@@ -97,15 +97,14 @@ def paths(
 
             adaptation_candidates[candidate] += 1
 
-        if adaptation_candidates:
-            adapted_concept = _filter_concepts(adaptation_candidates)
+        adapted_concept = _filter_concepts(adaptation_candidates)
 
+        if adapted_concept:
             # In this step, the concept is correctly capitalized.
             # Not necessary due to later grammatical correction.
             # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
 
             adapted_concepts[root_concept] = adapted_concept
-
             log.info(f"Adapt ({root_concept})->({adapted_concept}).")
 
         else:
@@ -153,25 +152,26 @@ def _adapt_shortest_path(
     return current_paths
 
 
-def _filter_concepts(adapted_concepts: t.Mapping[Concept, int]) -> Concept:
-    filtered_tuples = {
-        item
-        for item in adapted_concepts.items()
-        if item[0].conceptual_distance
-        < config["conceptnet"]["nodes"]["max_conceptual_distance"]
-        and item[0].semantic_similarity
-        > config["conceptnet"]["nodes"]["min_semantic_similarity"]
-    }
-
-    sorted_tuples = sorted(
-        filtered_tuples,
-        key=lambda item: item[1] * item[0].semantic_similarity,
-        reverse=True,
+def _filter_concepts(
+    concept_occurrences: t.Mapping[Concept, int]
+) -> t.Optional[Concept]:
+    filtered_concepts = Concept.only_relevant(
+        [concept for concept, _ in concept_occurrences.items()]
     )
 
-    sorted_concepts = [concept[0] for concept in sorted_tuples]
+    if filtered_concepts:
+        # Sort key: occurrences * similarity * 1/distance
+        sorted_concepts = sorted(
+            filtered_concepts,
+            key=lambda concept: concept_occurrences[concept]
+            * concept.semantic_similarity
+            / concept.conceptual_distance,
+            reverse=True,
+        )
 
-    return sorted_concepts[0]
+        return sorted_concepts[0]
+
+    return None
 
 
 def _filter_paths(
@@ -183,7 +183,7 @@ def _filter_paths(
     nlp = load.spacy_nlp()
     candidate_values = {}
 
-    end_index = len(candidate_paths[0].nodes)
+    end_index = len(candidate_paths[0].nodes) - 1
     start_index = end_index - 1
 
     val_reference = _aggregate_features(

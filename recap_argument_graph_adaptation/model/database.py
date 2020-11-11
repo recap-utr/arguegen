@@ -34,7 +34,10 @@ class Database:
 
     @staticmethod
     def _nodes(
-        tx: neo4j.Session, name: str, pos: graph.POS, lang: str
+        tx: neo4j.Session,
+        name: str,
+        pos: graph.POS,
+        lang: str,
     ) -> t.Tuple[graph.Node, ...]:
         nodes = []
         query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
@@ -45,7 +48,7 @@ class Database:
                 "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
                 "-[:FormOf*0..]->"
                 "(m:Concept {language: $lang})) "
-                "RETURN m ORDER BY length(p) DESC LIMIT 1"
+                "RETURN p ORDER BY length(p) DESC LIMIT 1"
             )
 
         # First, run the query with the given POS.
@@ -67,9 +70,45 @@ class Database:
             ).single()
 
             if record:
-                nodes.append(graph.Node.from_neo4j(record.value()))
+                found_path = graph.Path.from_neo4j(record.value())
+                found_nodes = reversed(found_path.nodes)
+
+                # It can be the case that the concept name/pos exists, but ConceptNet returns name/other (due to missing relations).
+                # Example: school uniform/other is returned for school uniforms/noun, but we want school uniform/noun
+                # In the following, we will handle this scenario.
+                end_node = found_path.end_node
+
+                if end_node.pos != pos and (
+                    best_node := Database._node(tx, end_node.name, pos, lang)
+                ):
+                    nodes.append(best_node)
+
+                for found_node in found_nodes:
+                    if found_node not in nodes:
+                        nodes.append(found_node)
 
         return tuple(nodes)
+
+    @staticmethod
+    def _node(
+        tx: neo4j.Session,
+        name: str,
+        pos: graph.POS,
+        lang: str,
+    ) -> t.Optional[graph.Node]:
+        query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
+
+        record = tx.run(
+            query,
+            name=conceptnet.concept_name(name, lang),
+            pos=pos.value,
+            lang=lang,
+        ).single()
+
+        if record:
+            return graph.Node.from_neo4j(record.value())
+
+        return None
 
     # SHORTEST PATH
 

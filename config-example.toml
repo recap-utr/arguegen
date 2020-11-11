@@ -1,4 +1,4 @@
-version = "2.10"
+version = "2.11"
 debug = true
 
 [nlp]
@@ -10,7 +10,7 @@ input = "data/input"
 output = "data/output"
 
 [adaptation]
-bfs_node_limit = 10
+bfs_node_limit = 10 
 gridsearch = false # If true, the following  parameters will be ignored.
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
@@ -25,8 +25,14 @@ selector = "similarity"
 [conceptnet]
 [conceptnet.nodes]
 root_form = true
-max_conceptual_distance = 4
-min_semantic_similarity = 0.25
+
+# both conditions need to be fulfilled
+max_conceptual_distance_and = 4
+min_semantic_similarity_and = 0.25
+
+# only one condition needs to be fulfilled
+max_conceptual_distance_or = 3
+min_semantic_similarity_or = 0.5
 
 [conceptnet.relations]
 generalization_types = [

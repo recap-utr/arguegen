@@ -62,24 +62,21 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                     )
 
                 else:  # test if the root word is in conceptnet
-                    root = next(term.noun_chunks).root
-                    root_node = db.nodes(root.text, pos_tag)
+                    term_chunks = next(term.noun_chunks, None)
 
-                    if root_node:
-                        distance = db.distance(root_node, rule.source.nodes)
-                        concepts.add(
-                            Concept(term, pos_tag, root_node, relevance, distance)
-                        )
+                    if term_chunks:
+                        root = term_chunks.root
+                        root_node = db.nodes(root.text, pos_tag)
+
+                        if root_node:
+                            distance = db.distance(root_node, rule.source.nodes)
+                            concepts.add(
+                                Concept(term, pos_tag, root_node, relevance, distance)
+                            )
 
     # TODO: The order of the nodes is wrong. OTHER occurs before NOUN even if the pos was given in the rule.
-    concepts = {
-        concept
-        for concept in concepts
-        if concept.conceptual_distance
-        < config["conceptnet"]["nodes"]["max_conceptual_distance"]
-        and concept.semantic_similarity
-        > config["conceptnet"]["nodes"]["min_semantic_similarity"]
-    }
+    # TODO: Hier weiter: Was passiert mit Konzepten, die ein anderes beinhalten (also bspw. school uniforms und uniforms)
+    concepts = Concept.only_relevant(concepts)
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

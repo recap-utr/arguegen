@@ -47,6 +47,23 @@ class Concept:
     def __hash__(self) -> int:
         return hash((self.name.text, self.pos))
 
+    @staticmethod
+    def only_relevant(concepts: t.Iterable[Concept]) -> t.Set[Concept]:
+        return {
+            concept
+            for concept in concepts
+            if (
+                concept.conceptual_distance
+                < config["conceptnet"]["nodes"]["max_conceptual_distance_and"]
+                and concept.semantic_similarity
+                > config["conceptnet"]["nodes"]["min_semantic_similarity_and"]
+            )
+            or concept.conceptual_distance
+            < config["conceptnet"]["nodes"]["max_conceptual_distance_or"]
+            or concept.semantic_similarity
+            > config["conceptnet"]["nodes"]["min_semantic_similarity_or"]
+        }
+
 
 @dataclass
 class Rule:
