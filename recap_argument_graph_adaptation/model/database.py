@@ -384,3 +384,10 @@ def _iterate_nodes(
 
     for entry in iterator:
         yield (nodes1[entry[0]], nodes2[entry[1]])
+
+
+# TODO: Hier weiter
+# Neue Methode zur Generalisierung, bei der keine Referenzpfade betrachtet werden.
+# Es wird einfach so weit wie möglich generalisiert.
+# Alternativ könnte man mit dem Filter für relevante Konzepte auch innerhalb eines Generalisierungspfades gute Generalisierungen finden.
+# Das ist möglich, da der Filter für relevante Konzepte deutlich besser geworden ist.

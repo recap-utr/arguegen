@@ -28,6 +28,7 @@ def argument_graph(
     rule: adaptation.Rule,
     adapted_concepts: t.Mapping[Concept, Concept],
 ) -> None:
+    # TODO: Was passiert mit Konzepten, die ein anderes beinhalten (also bspw. school uniforms und uniforms)
     pr = load.proof_reader()
     substitutions = {
         concept.name.text: adapted_concept.name.text

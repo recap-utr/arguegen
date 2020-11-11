@@ -75,7 +75,6 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                             )
 
     # TODO: The order of the nodes is wrong. OTHER occurs before NOUN even if the pos was given in the rule.
-    # TODO: Hier weiter: Was passiert mit Konzepten, die ein anderes beinhalten (also bspw. school uniforms und uniforms)
     concepts = Concept.only_relevant(concepts)
 
     log.info(
