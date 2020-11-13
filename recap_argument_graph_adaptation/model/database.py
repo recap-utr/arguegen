@@ -28,34 +28,25 @@ class Database:
 
     # NODE
 
-    def nodes(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
-        with self._driver.session() as session:
-            return session.read_transaction(self._nodes, name, pos, self.lang)
-
     @staticmethod
-    def _nodes(
+    def _nodes_along_path(
         tx: neo4j.Session,
         name: str,
         pos: graph.POS,
         lang: str,
+        relation_types: t.Iterable[str],
+        max_relations: int = 100,
     ) -> t.Tuple[graph.Node, ...]:
         nodes = []
-        query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
+        rel_query = _include_relations(relation_types)
 
-        # We follow all available 'FormOf' relations to simplify path construction
-        if config["conceptnet"]["nodes"]["root_form"]:
-            query = (
-                "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
-                "-[:FormOf*0..]->"
-                "(m:Concept {language: $lang})) "
-                "RETURN p ORDER BY length(p) DESC LIMIT 1"
-            )
+        query = (
+            "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
+            f"-[{rel_query}*0..{max_relations}]->"
+            "(m:Concept {language: $lang})) "
+            "RETURN p ORDER BY length(p) DESC LIMIT 1"
+        )
 
-        # First, run the query with the given POS.
-        # If no concept is found, retry the query without specifying a POS.
-        # TODO: For some concepts, the node with a pos comes after the one without.
-        # Example: health effects/noun is not in conceptnet, so effect is used.
-        # Here, effect comes before effect/noun
         pos_tags = [pos]
 
         if pos != graph.POS.OTHER:
@@ -89,6 +80,28 @@ class Database:
 
         return tuple(nodes)
 
+    def nodes(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
+        with self._driver.session() as session:
+            return session.read_transaction(self._nodes, name, pos, self.lang)
+
+    @staticmethod
+    def _nodes(
+        tx: neo4j.Session,
+        name: str,
+        pos: graph.POS,
+        lang: str,
+    ) -> t.Tuple[graph.Node, ...]:
+        nodes = []
+
+        # We follow all available 'FormOf' relations to simplify path construction
+        if config["conceptnet"]["nodes"]["root_form"]:
+            nodes = Database._nodes_along_path(tx, name, pos, lang, ["FormOf"])
+
+        elif node := Database._node(tx, name, pos, lang):
+            nodes.append(node)
+
+        return tuple(nodes)
+
     @staticmethod
     def _node(
         tx: neo4j.Session,
@@ -109,6 +122,53 @@ class Database:
             return graph.Node.from_neo4j(record.value())
 
         return None
+
+    # GENERALIZATION
+
+    def generalizations(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
+        with self._driver.session() as session:
+            return session.read_transaction(self._generalizations, name, pos, self.lang)
+
+    @staticmethod
+    def _generalizations(
+        tx: neo4j.Session,
+        name: str,
+        pos: graph.POS,
+        lang: str,
+    ) -> t.Tuple[graph.Node, ...]:
+        relation_types = config["conceptnet"]["relations"]["generalization_types"] + [
+            "FormOf"
+        ]
+
+        return Database._nodes_along_path(
+            tx, name, pos, lang, relation_types, max_relations=3
+        )
+
+    def nodes_generalizations(
+        self, nodes: t.Sequence[graph.Node]
+    ) -> t.Tuple[graph.Node, ...]:
+        with self._driver.session() as session:
+            return session.read_transaction(
+                self._nodes_generalizations, nodes, self.lang
+            )
+
+    @staticmethod
+    def _nodes_generalizations(
+        tx: neo4j.Session,
+        nodes: t.Sequence[graph.Node],
+        lang: str,
+    ) -> t.Tuple[graph.Node, ...]:
+        generalized_nodes = []
+        generalization_types = config["conceptnet"]["relations"]["generalization_types"]
+
+        for node in nodes:
+            generalized_nodes.append(
+                Database._nodes_along_path(
+                    tx, node.name, node.pos, lang, generalization_types, max_relations=2
+                )
+            )
+
+        return tuple(generalized_nodes)
 
     # SHORTEST PATH
 
@@ -350,14 +410,14 @@ def _arrow() -> str:
     return "->" if config["conceptnet"]["relations"]["directed"] else "-"
 
 
-def _include_relations(allowed_types: t.Collection[str]) -> str:
+def _include_relations(allowed_types: t.Iterable[str]) -> str:
     if allowed_types:
         return ":" + "|".join(allowed_types)
 
     return ""
 
 
-def _exclude_relations(forbidden_types: t.Collection[str]) -> str:
+def _exclude_relations(forbidden_types: t.Iterable[str]) -> str:
     allowed_types = [
         rel_type
         for rel_type in config["conceptnet"]["relations"]["all_types"]

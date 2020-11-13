@@ -74,8 +74,11 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                                 Concept(term, pos_tag, root_node, relevance, distance)
                             )
 
-    # TODO: The order of the nodes is wrong. OTHER occurs before NOUN even if the pos was given in the rule.
     concepts = Concept.only_relevant(concepts)
+
+    # concept = next(iter(concepts))
+    # print(concept.nodes)
+    # general = db.nodes_generalizations(concept.nodes)
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
