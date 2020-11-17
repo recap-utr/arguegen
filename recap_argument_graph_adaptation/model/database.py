@@ -29,13 +29,14 @@ class Database:
     # NODE
 
     @staticmethod
-    def _nodes_along_path(
+    def _nodes_along_paths(
         tx: neo4j.Session,
         name: str,
         pos: graph.POS,
         lang: str,
         relation_types: t.Iterable[str],
         max_relations: int = 100,
+        only_end_nodes: bool = True,
     ) -> t.Tuple[graph.Node, ...]:
         nodes = []
         rel_query = _include_relations(relation_types)
@@ -62,21 +63,26 @@ class Database:
 
             if record:
                 found_path = graph.Path.from_neo4j(record.value())
-                found_nodes = reversed(found_path.nodes)
 
-                # It can be the case that the concept name/pos exists, but ConceptNet returns name/other (due to missing relations).
-                # Example: school uniform/other is returned for school uniforms/noun, but we want school uniform/noun
-                # In the following, we will handle this scenario.
-                end_node = found_path.end_node
+                if len(found_path.relationships) > 0:
+                    found_nodes = reversed(found_path.nodes)
+                    nodes_iter = iter(found_nodes)
 
-                if end_node.pos != pos and (
-                    best_node := Database._node(tx, end_node.name, pos, lang)
-                ):
-                    nodes.append(best_node)
+                    # It can be the case that the concept name/pos exists, but ConceptNet returns name/other (due to missing relations).
+                    # Example: school uniform/other is returned for school uniforms/noun, but we want school uniform/noun
+                    # In the following, we will handle this scenario.
+                    end_node = next(nodes_iter)
+                    nodes.append(end_node)
 
-                for found_node in found_nodes:
-                    if found_node not in nodes:
-                        nodes.append(found_node)
+                    if end_node.pos != pos and (
+                        best_node := Database._node(tx, end_node.name, pos, lang)
+                    ):
+                        nodes.append(best_node)
+
+                    if not only_end_nodes:
+                        for found_node in found_nodes:
+                            if found_node not in nodes:
+                                nodes.append(found_node)
 
         return tuple(nodes)
 
@@ -94,8 +100,8 @@ class Database:
         nodes = []
 
         # We follow all available 'FormOf' relations to simplify path construction
-        if config["conceptnet"]["nodes"]["root_form"]:
-            nodes = Database._nodes_along_path(tx, name, pos, lang, ["FormOf"])
+        if config["conceptnet"]["node"]["root_form"]:
+            nodes = Database._nodes_along_paths(tx, name, pos, lang, ["FormOf"])
 
         elif node := Database._node(tx, name, pos, lang):
             nodes.append(node)
@@ -136,12 +142,18 @@ class Database:
         pos: graph.POS,
         lang: str,
     ) -> t.Tuple[graph.Node, ...]:
-        relation_types = config["conceptnet"]["relations"]["generalization_types"] + [
+        relation_types = config["conceptnet"]["relation"]["generalization_types"] + [
             "FormOf"
         ]
 
-        return Database._nodes_along_path(
-            tx, name, pos, lang, relation_types, max_relations=3
+        return Database._nodes_along_paths(
+            tx,
+            name,
+            pos,
+            lang,
+            relation_types,
+            max_relations=config["conceptnet"]["path"]["max_length"]["generalization"],
+            only_end_nodes=False,
         )
 
     def nodes_generalizations(
@@ -159,12 +171,20 @@ class Database:
         lang: str,
     ) -> t.Tuple[graph.Node, ...]:
         generalized_nodes = []
-        generalization_types = config["conceptnet"]["relations"]["generalization_types"]
+        generalization_types = config["conceptnet"]["relation"]["generalization_types"]
 
         for node in nodes:
-            generalized_nodes.append(
-                Database._nodes_along_path(
-                    tx, node.name, node.pos, lang, generalization_types, max_relations=2
+            generalized_nodes.extend(
+                Database._nodes_along_paths(
+                    tx,
+                    node.name,
+                    node.pos,
+                    lang,
+                    generalization_types,
+                    max_relations=config["conceptnet"]["path"]["max_length"][
+                        "generalization"
+                    ],
+                    only_end_nodes=False,
                 )
             )
 
@@ -175,8 +195,8 @@ class Database:
     def shortest_path(
         self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[graph.Path]:
-        relation_types = config["conceptnet"]["relations"]["generalization_types"]
-        max_relations = config["conceptnet"]["paths"]["max_length"]
+        relation_types = config["conceptnet"]["relation"]["generalization_types"]
+        max_relations = config["conceptnet"]["path"]["max_length"]["shortest_path"]
 
         with self._driver.session() as session:
             return session.read_transaction(
@@ -222,8 +242,8 @@ class Database:
     def all_shortest_paths(
         self, start_nodes: t.Sequence[graph.Node], end_nodes: t.Sequence[graph.Node]
     ) -> t.Optional[t.List[graph.Path]]:
-        relation_types = config["conceptnet"]["relations"]["generalization_types"]
-        max_relations = config["conceptnet"]["paths"]["max_length"]
+        relation_types = config["conceptnet"]["relation"]["generalization_types"]
+        max_relations = config["conceptnet"]["path"]["max_length"]["shortest_path"]
 
         with self._driver.session() as session:
             return session.read_transaction(
@@ -271,7 +291,7 @@ class Database:
         relation_types: t.Optional[t.Collection[str]] = None,
     ) -> t.Optional[t.List[graph.Path]]:
         if not relation_types:
-            relation_types = config["conceptnet"]["relations"]["generalization_types"]
+            relation_types = config["conceptnet"]["relation"]["generalization_types"]
 
         with self._driver.session() as session:
             return session.read_transaction(
@@ -335,7 +355,7 @@ class Database:
 
                 if relax_relationship_types:
                     rel_type = _include_relations(
-                        config["conceptnet"]["relations"]["generalization_types"]
+                        config["conceptnet"]["relation"]["generalization_types"]
                     )
 
                 query += f"-[:{rel_type}]{_arrow()}" "(:Concept {language: $lang})"
@@ -407,7 +427,7 @@ class Database:
 
 
 def _arrow() -> str:
-    return "->" if config["conceptnet"]["relations"]["directed"] else "-"
+    return "->" if config["conceptnet"]["relation"]["directed"] else "-"
 
 
 def _include_relations(allowed_types: t.Iterable[str]) -> str:
@@ -420,7 +440,7 @@ def _include_relations(allowed_types: t.Iterable[str]) -> str:
 def _exclude_relations(forbidden_types: t.Iterable[str]) -> str:
     allowed_types = [
         rel_type
-        for rel_type in config["conceptnet"]["relations"]["all_types"]
+        for rel_type in config["conceptnet"]["relation"]["all_types"]
         if rel_type not in forbidden_types
     ]
 

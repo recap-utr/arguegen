@@ -1,4 +1,4 @@
-version = "2.11"
+version = "2.12"
 debug = true
 
 [nlp]
@@ -23,7 +23,7 @@ selector = "similarity"
 
 
 [conceptnet]
-[conceptnet.nodes]
+[conceptnet.node]
 root_form = true
 
 # both conditions need to be fulfilled
@@ -34,15 +34,15 @@ min_semantic_similarity_and = 0.25
 max_conceptual_distance_or = 3
 min_semantic_similarity_or = 0.5
 
-[conceptnet.relations]
+[conceptnet.relation]
+relax_types = false
+directed = true
 generalization_types = [
     "DerivedFrom",
     "IsA",
     "PartOf",
     # "HasA",
 ]
-relax_types = false
-directed = true
 all_types = [
     "Antonym",
     "AtLocation",
@@ -85,8 +85,10 @@ all_types = [
     "UsedFor",
 ]
 
-[conceptnet.paths]
-max_length = 25
+[conceptnet.path]
+[conceptnet.path.max_length]
+shortest_path = 10
+generalization = 3
 
 [neo4j]
 url = "neo4j://localhost:7687"

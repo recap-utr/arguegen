@@ -137,7 +137,7 @@ def _adapt_shortest_path(
         for current_path in current_paths:
             path_candidates = db.expand_nodes([current_path.end_node], [rel.type])
 
-            if config["conceptnet"]["relations"]["relax_types"] and not path_candidates:
+            if config["conceptnet"]["relation"]["relax_types"] and not path_candidates:
                 path_candidates = db.expand_nodes([current_path.end_node])
 
             if path_candidates:

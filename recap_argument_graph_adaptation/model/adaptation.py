@@ -54,14 +54,14 @@ class Concept:
             for concept in concepts
             if (
                 concept.conceptual_distance
-                < config["conceptnet"]["nodes"]["max_conceptual_distance_and"]
+                < config["conceptnet"]["node"]["max_conceptual_distance_and"]
                 and concept.semantic_similarity
-                > config["conceptnet"]["nodes"]["min_semantic_similarity_and"]
+                > config["conceptnet"]["node"]["min_semantic_similarity_and"]
             )
             or concept.conceptual_distance
-            < config["conceptnet"]["nodes"]["max_conceptual_distance_or"]
+            < config["conceptnet"]["node"]["max_conceptual_distance_or"]
             or concept.semantic_similarity
-            > config["conceptnet"]["nodes"]["min_semantic_similarity_or"]
+            > config["conceptnet"]["node"]["min_semantic_similarity_or"]
         }
 
 
