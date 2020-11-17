@@ -64,14 +64,15 @@ class Database:
             if record:
                 found_path = graph.Path.from_neo4j(record.value())
 
-                if len(found_path.relationships) > 0:
-                    found_nodes = reversed(found_path.nodes)
-                    nodes_iter = iter(found_nodes)
+                found_nodes = reversed(found_path.nodes)
+                nodes_iter = iter(found_nodes)
 
-                    # It can be the case that the concept name/pos exists, but ConceptNet returns name/other (due to missing relations).
-                    # Example: school uniform/other is returned for school uniforms/noun, but we want school uniform/noun
-                    # In the following, we will handle this scenario.
-                    end_node = next(nodes_iter)
+                # It can be the case that the concept name/pos exists, but ConceptNet returns name/other (due to missing relations).
+                # Example: school uniform/other is returned for school uniforms/noun, but we want school uniform/noun
+                # In the following, we will handle this scenario.
+                end_node = next(nodes_iter, None)
+
+                if end_node:
                     nodes.append(end_node)
 
                     if end_node.pos != pos and (
@@ -164,6 +165,8 @@ class Database:
                 self._nodes_generalizations, nodes, self.lang
             )
 
+    # TODO: Currently, this function might return the same node that was given as input.
+    # To resolve this, we would need to fork the function _nodes_along_paths.
     @staticmethod
     def _nodes_generalizations(
         tx: neo4j.Session,

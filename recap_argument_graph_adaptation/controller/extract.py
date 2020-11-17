@@ -79,6 +79,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
     concept = next(iter(concepts))
     print(concept.nodes)
     general = db.nodes_generalizations(concept.nodes)
+    # TODO: The same generalization occurs multiple times.
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
