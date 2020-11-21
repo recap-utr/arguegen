@@ -771,7 +771,7 @@ mecab = ["mecab-python3"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b47c1a799c367d0300c8dbef517c442fad51548e91e07c4092167c67147a7841"
+content-hash = "a7dc963f79de0943935caf7fedce2328d81e8d48c4ff9f3146eaba6dc509097a"
 
 [metadata.files]
 blis = [

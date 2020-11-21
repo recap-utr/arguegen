@@ -3,6 +3,8 @@ from __future__ import annotations
 import typing as t
 from dataclasses import dataclass
 from enum import Enum
+from nltk.corpus.reader.wordnet import Synset
+from nltk.corpus import wordnet as wn
 
 import neo4j.data as neo4j
 
@@ -27,6 +29,35 @@ spacy_pos_mapping = {
     "ADJ": POS.ADJECTIVE,
     "ADV": POS.ADVERB,
 }
+
+
+def log_synsets(synsets: t.Iterable[Synset]) -> None:
+    for synset in synsets:
+        print(f"Name:       {synset.name()}")
+        print(f"Definition: {synset.definition()}")
+        print(f"Examples:   {synset.examples()}")
+        print()
+
+
+def synset(text: str) -> Synset:
+    return wn.synset(text)
+
+
+def synsets(text: str) -> t.Tuple[Synset, ...]:
+    return tuple(wn.synsets(text))
+
+
+def wn_pos(pos: POS) -> t.Optional[str]:
+    if pos == POS.NOUN:
+        return "n"
+    elif pos == POS.VERB:
+        return "v"
+    elif pos == POS.ADJECTIVE:
+        return "a"
+    elif pos == POS.ADVERB:
+        return "r"
+
+    return None
 
 
 class Source(Enum):

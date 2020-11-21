@@ -87,11 +87,13 @@ def paths(
         for result in adaptation_results:
             name = nlp(result.end_node.processed_name)
             end_nodes = tuple([result.end_node])
+            synsets = graph.synsets(name.text)
 
             candidate = Concept(
                 name,
                 result.end_node.pos,
                 end_nodes,
+                synsets,
                 name.similarity(rule.target.name),
                 db.distance(end_nodes, rule.target.nodes),
             )

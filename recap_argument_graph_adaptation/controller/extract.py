@@ -4,13 +4,14 @@ import typing as t
 import recap_argument_graph as ag
 import spacy
 from textacy import ke
+import nltk.wsd
 
 from . import adapt, load
 from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
 from ..model import adaptation
-from ..model.graph import POS, Path, spacy_pos_mapping
+from ..model.graph import POS, Path, spacy_pos_mapping, wn_pos
 
 log = logging.getLogger(__name__)
 
@@ -27,9 +28,11 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
     for spacy_pos_tag in spacy_pos_tags:
         pos_tag = spacy_pos_mapping[spacy_pos_tag]
+        wn_pos_tag = wn_pos(pos_tag)
 
         for node in graph.inodes:
             doc = nlp(node.plain_text)
+            tokens: t.List[str] = [t.text for t in doc]
 
             # TODO: The weight could be used in conjunction with the semantic similarity.
             terms = [
@@ -47,18 +50,25 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                 term_nodes = db.nodes(term.text, pos_tag)
                 lemma_nodes = db.nodes(lemma.text, pos_tag)
 
+                synsets = tuple()
+
+                if synset := nltk.wsd.lesk(tokens, term.text, wn_pos_tag):
+                    synsets = (synset,)
+
                 relevance = term.similarity(rule.source.name)
 
                 if term_nodes:  # original term is in conceptnet
                     distance = db.distance(term_nodes, rule.source.nodes)
                     concepts.add(
-                        Concept(term, pos_tag, term_nodes, relevance, distance)
+                        Concept(term, pos_tag, term_nodes, synsets, relevance, distance)
                     )
 
                 elif lemma_nodes:  # lemma is in conceptnet
                     distance = db.distance(lemma_nodes, rule.source.nodes)
                     concepts.add(
-                        Concept(term, pos_tag, lemma_nodes, relevance, distance)
+                        Concept(
+                            term, pos_tag, lemma_nodes, synsets, relevance, distance
+                        )
                     )
 
                 else:  # test if the root word is in conceptnet
@@ -71,7 +81,14 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                         if root_node:
                             distance = db.distance(root_node, rule.source.nodes)
                             concepts.add(
-                                Concept(term, pos_tag, root_node, relevance, distance)
+                                Concept(
+                                    term,
+                                    pos_tag,
+                                    root_node,
+                                    synsets,
+                                    relevance,
+                                    distance,
+                                )
                             )
 
     concepts = Concept.only_relevant(concepts)
@@ -79,7 +96,6 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
     concept = next(iter(concepts))
     print(concept.nodes)
     general = db.nodes_generalizations(concept.nodes)
-    # TODO: The same generalization occurs multiple times.
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

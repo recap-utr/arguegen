@@ -19,6 +19,7 @@ sentence-transformers = "^0.3"
 lmproof = "^0.3"
 pendulum = "^2.1"
 gibberish = "^0.4"
+nltk = "^3.5"
 
 [tool.poetry.dev-dependencies]
 

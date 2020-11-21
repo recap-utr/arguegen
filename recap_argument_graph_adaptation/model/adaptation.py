@@ -4,6 +4,7 @@ import logging
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
+from nltk.corpus.reader.wordnet import Synset
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import graph
@@ -28,6 +29,7 @@ class Concept:
     name: Doc
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     nodes: t.Tuple[graph.Node, ...]
+    synsets: t.Tuple[Synset, ...]
     semantic_similarity: float
     conceptual_distance: int
 
@@ -37,9 +39,9 @@ class Concept:
 
     def __str__(self):
         if self.pos != graph.POS.OTHER:
-            return f"{self.name}/{self.pos.value}"
+            return f"{self.name.text}/{self.pos.value}"
 
-        return self.name
+        return self.name.text
 
     def __eq__(self, other: Concept) -> bool:
         return self.name.text == other.name.text and self.pos == other.pos

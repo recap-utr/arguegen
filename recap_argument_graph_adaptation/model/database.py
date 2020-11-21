@@ -177,19 +177,21 @@ class Database:
         generalization_types = config["conceptnet"]["relation"]["generalization_types"]
 
         for node in nodes:
-            generalized_nodes.extend(
-                Database._nodes_along_paths(
-                    tx,
-                    node.name,
-                    node.pos,
-                    lang,
-                    generalization_types,
-                    max_relations=config["conceptnet"]["path"]["max_length"][
-                        "generalization"
-                    ],
-                    only_end_nodes=False,
-                )
+            new_nodes = Database._nodes_along_paths(
+                tx,
+                node.name,
+                node.pos,
+                lang,
+                generalization_types,
+                max_relations=config["conceptnet"]["path"]["max_length"][
+                    "generalization"
+                ],
+                only_end_nodes=False,
             )
+
+            for new_node in new_nodes:
+                if new_node not in generalized_nodes:
+                    generalized_nodes.append(new_node)
 
         return tuple(generalized_nodes)
 
