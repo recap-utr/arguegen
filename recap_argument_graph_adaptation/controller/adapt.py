@@ -50,6 +50,14 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
     return regex.sub(lambda match: substitutions[match.group(0)], input_text)
 
 
+def synsets(
+    concepts: t.Iterable[Concept], rule: adaptation.Rule
+) -> t.Dict[Concept, Concept]:
+    adapted_concepts = {}
+
+    return adapted_concepts
+
+
 def paths(
     reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
     rule: adaptation.Rule,
@@ -87,11 +95,12 @@ def paths(
         for result in adaptation_results:
             name = nlp(result.end_node.processed_name)
             end_nodes = tuple([result.end_node])
-            synsets = graph.synsets(name.text)
+            pos = result.end_node.pos
+            synsets = graph.synsets(name.text, pos)
 
             candidate = Concept(
                 name,
-                result.end_node.pos,
+                pos,
                 end_nodes,
                 synsets,
                 name.similarity(rule.target.name),

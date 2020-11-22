@@ -11,7 +11,7 @@ from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
 from ..model import adaptation
-from ..model.graph import POS, Path, spacy_pos_mapping, wn_pos
+from ..model.graph import POS, Path, contextual_synsets, spacy_pos_mapping, wn_pos
 
 log = logging.getLogger(__name__)
 
@@ -28,11 +28,9 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
     for spacy_pos_tag in spacy_pos_tags:
         pos_tag = spacy_pos_mapping[spacy_pos_tag]
-        wn_pos_tag = wn_pos(pos_tag)
 
         for node in graph.inodes:
             doc = nlp(node.plain_text)
-            tokens: t.List[str] = [t.text for t in doc]
 
             # TODO: The weight could be used in conjunction with the semantic similarity.
             terms = [
@@ -49,11 +47,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
             for term, lemma in zip(terms, terms_lemmatized):
                 term_nodes = db.nodes(term.text, pos_tag)
                 lemma_nodes = db.nodes(lemma.text, pos_tag)
-
-                synsets = tuple()
-
-                if synset := nltk.wsd.lesk(tokens, term.text, wn_pos_tag):
-                    synsets = (synset,)
+                synsets = contextual_synsets(doc, term.text, pos_tag)
 
                 relevance = term.similarity(rule.source.name)
 
@@ -93,9 +87,9 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
     concepts = Concept.only_relevant(concepts)
 
-    concept = next(iter(concepts))
-    print(concept.nodes)
-    general = db.nodes_generalizations(concept.nodes)
+    # concept = next(iter(concepts))
+    # print(concept.nodes)
+    # general = db.nodes_generalizations(concept.nodes)
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

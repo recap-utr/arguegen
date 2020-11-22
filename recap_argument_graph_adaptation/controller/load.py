@@ -148,7 +148,7 @@ def _parse_rule_concept(rule: str) -> Concept:
 
     db = Database()
     nodes = db.nodes(name.text, pos)
-    synsets = graph.synsets(name.text)
+    synsets = graph.synsets(name.text, pos)
 
     if not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
