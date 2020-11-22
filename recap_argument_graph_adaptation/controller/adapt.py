@@ -1,6 +1,7 @@
 import logging
 import multiprocessing
 import re
+from recap_argument_graph_adaptation.model.graph import wordnet_metrics
 import typing as t
 from collections import defaultdict
 import warnings
@@ -105,6 +106,7 @@ def paths(
                 synsets,
                 name.similarity(rule.target.name),
                 db.distance(end_nodes, rule.target.nodes),
+                *wordnet_metrics(synsets, rule.target.synsets),
             )
 
             adaptation_candidates[candidate] += 1
@@ -177,7 +179,7 @@ def _filter_concepts(
             filtered_concepts,
             key=lambda concept: concept_occurrences[concept]
             * concept.semantic_similarity
-            / concept.conceptual_distance,
+            / concept.conceptnet_distance,
             reverse=True,
         )
 

@@ -31,7 +31,10 @@ class Concept:
     nodes: t.Tuple[graph.Node, ...]
     synsets: t.Tuple[Synset, ...]
     semantic_similarity: float
-    conceptual_distance: int
+    conceptnet_distance: int
+    wordnet_path_similarity: float
+    wordnet_wup_similarity: float
+    wordnet_path_distance: int
 
     @property
     def best_node(self) -> graph.Node:
@@ -55,12 +58,12 @@ class Concept:
             concept
             for concept in concepts
             if (
-                concept.conceptual_distance
+                concept.conceptnet_distance
                 < config["conceptnet"]["node"]["max_conceptual_distance_and"]
                 and concept.semantic_similarity
                 > config["conceptnet"]["node"]["min_semantic_similarity_and"]
             )
-            or concept.conceptual_distance
+            or concept.conceptnet_distance
             < config["conceptnet"]["node"]["max_conceptual_distance_or"]
             or concept.semantic_similarity
             > config["conceptnet"]["node"]["min_semantic_similarity_or"]

@@ -11,7 +11,14 @@ from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
 from ..model import adaptation
-from ..model.graph import POS, Path, contextual_synsets, spacy_pos_mapping, wn_pos
+from ..model.graph import (
+    POS,
+    Path,
+    contextual_synsets,
+    spacy_pos_mapping,
+    wn_pos,
+    wordnet_metrics,
+)
 
 log = logging.getLogger(__name__)
 
@@ -49,19 +56,34 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                 lemma_nodes = db.nodes(lemma.text, pos_tag)
                 synsets = contextual_synsets(doc, term.text, pos_tag)
 
-                relevance = term.similarity(rule.source.name)
+                semantic_sim = term.similarity(rule.source.name)
+                wn_metrics = wordnet_metrics(synsets, rule.source.synsets)
 
                 if term_nodes:  # original term is in conceptnet
                     distance = db.distance(term_nodes, rule.source.nodes)
                     concepts.add(
-                        Concept(term, pos_tag, term_nodes, synsets, relevance, distance)
+                        Concept(
+                            term,
+                            pos_tag,
+                            term_nodes,
+                            synsets,
+                            semantic_sim,
+                            distance,
+                            *wn_metrics,
+                        )
                     )
 
                 elif lemma_nodes:  # lemma is in conceptnet
                     distance = db.distance(lemma_nodes, rule.source.nodes)
                     concepts.add(
                         Concept(
-                            term, pos_tag, lemma_nodes, synsets, relevance, distance
+                            term,
+                            pos_tag,
+                            lemma_nodes,
+                            synsets,
+                            semantic_sim,
+                            distance,
+                            *wn_metrics,
                         )
                     )
 
@@ -80,8 +102,9 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                                     pos_tag,
                                     root_node,
                                     synsets,
-                                    relevance,
+                                    semantic_sim,
                                     distance,
+                                    *wn_metrics,
                                 )
                             )
 
