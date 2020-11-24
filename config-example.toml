@@ -1,4 +1,4 @@
-version = "2.12"
+version = "2.13"
 debug = true
 
 [nlp]
@@ -10,7 +10,8 @@ input = "data/input"
 output = "data/output"
 
 [adaptation]
-bfs_node_limit = 10 
+knowledge_graph = "wordnet" 
+bfs_node_limit = 4 
 gridsearch = false # If true, the following  parameters will be ignored.
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).

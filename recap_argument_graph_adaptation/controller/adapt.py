@@ -1,7 +1,7 @@
 import logging
 import multiprocessing
 import re
-from recap_argument_graph_adaptation.model.graph import wordnet_metrics
+from recap_argument_graph_adaptation.controller import wordnet
 import typing as t
 from collections import defaultdict
 import warnings
@@ -55,6 +55,29 @@ def synsets(
     concepts: t.Iterable[Concept], rule: adaptation.Rule
 ) -> t.Dict[Concept, Concept]:
     adapted_concepts = {}
+    nlp = load.spacy_nlp()
+
+    for concept in concepts:
+        synset_candidates = []
+
+        for synset in concept.synsets:
+            synset_candidates.extend(synset.hypernyms())
+
+        adapted_synsets = (synset_candidates[0],)
+        _adapted_name, adapted_pos = wordnet.resolve_synset(adapted_synsets[0])
+        adapted_name = nlp(_adapted_name)
+
+        adapted_concept = Concept(
+            adapted_name,
+            adapted_pos,
+            tuple(),
+            adapted_synsets,
+            adapted_name.similarity(rule.target.name),
+            100,
+            *wordnet.metrics(adapted_synsets, rule.target.synsets),
+        )
+
+        adapted_concepts[concept] = adapted_concept
 
     return adapted_concepts
 
@@ -97,7 +120,7 @@ def paths(
             name = nlp(result.end_node.processed_name)
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
-            synsets = graph.synsets(name.text, pos)
+            synsets = wordnet.synsets(name.text, pos)
 
             candidate = Concept(
                 name,
@@ -106,7 +129,7 @@ def paths(
                 synsets,
                 name.similarity(rule.target.name),
                 db.distance(end_nodes, rule.target.nodes),
-                *wordnet_metrics(synsets, rule.target.synsets),
+                *wordnet.metrics(synsets, rule.target.synsets),
             )
 
             adaptation_candidates[candidate] += 1

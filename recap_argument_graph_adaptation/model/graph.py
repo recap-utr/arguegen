@@ -1,5 +1,4 @@
 from __future__ import annotations
-from recap_argument_graph_adaptation.controller import load
 
 import typing as t
 from dataclasses import dataclass
@@ -33,6 +32,8 @@ spacy_pos_mapping = {
     "ADV": POS.ADVERB,
 }
 
+wn_pos_mapping = {"n": POS.NOUN, "v": POS.VERB, "a": POS.ADJECTIVE, "r": POS.ADVERB}
+
 
 def wn_pos(pos: POS) -> t.Optional[str]:
     if pos == POS.NOUN:
@@ -45,81 +46,6 @@ def wn_pos(pos: POS) -> t.Optional[str]:
         return "r"
 
     return None
-
-
-def log_synsets(synsets: t.Iterable[Synset]) -> None:
-    for synset in synsets:
-        print(f"Name:       {synset.name()}")
-        print(f"Definition: {synset.definition()}")
-        print(f"Examples:   {synset.examples()}")
-        print()
-
-
-def synset(code: str) -> Synset:
-    return wn.synset(code)
-
-
-def synsets(term: str, pos: t.Optional[POS]) -> t.Tuple[Synset, ...]:
-    results = wn.synsets(term)
-
-    if pos:
-        results = (ss for ss in results if str(ss.pos()) == wn_pos(pos))
-
-    return tuple(results)
-
-
-def contextual_synset(doc: Doc, term: str, pos: t.Optional[POS]) -> t.Optional[Synset]:
-    # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    nlp = load.spacy_nlp()
-    results = synsets(term, pos)
-
-    if not results:
-        return None
-
-    synset_tuples = []
-
-    for result in results:
-        similarity = 0
-
-        if definition := result.definition():
-            result_doc = nlp(definition)
-            similarity = doc.similarity(result_doc)
-
-        synset_tuples.append((similarity, result))
-
-    _, sense = max(synset_tuples)
-
-    return sense
-
-
-def contextual_synsets(
-    doc: Doc, term: str, pos: t.Optional[POS]
-) -> t.Tuple[Synset, ...]:
-    result = contextual_synset(doc, term, pos)
-
-    if result:
-        return (result,)
-
-    return tuple()
-
-
-def wordnet_metrics(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
-) -> t.Tuple[float, float, int]:
-    path_similarities = []
-    wup_similarities = []
-    path_distances = []
-
-    for s1 in synsets1:
-        for s2 in synsets2:
-            path_similarities.append(s1.path_similarity(s2))
-            wup_similarities.append(s1.wup_similarity(s2))
-            path_distances.append(s1.shortest_path_distance(s2))
-
-    return (max(path_similarities), max(wup_similarities), min(path_distances))
-
-
-wordnet_rule_metrics = (1, 1, 0)
 
 
 class Source(Enum):

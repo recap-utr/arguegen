@@ -1,5 +1,6 @@
 import csv
 import logging
+from recap_argument_graph_adaptation.controller import wordnet
 import typing as t
 import warnings
 from pathlib import Path
@@ -148,9 +149,9 @@ def _parse_rule_concept(rule: str) -> Concept:
 
     db = Database()
     nodes = db.nodes(name.text, pos)
-    synsets = graph.synsets(name.text, pos)
+    synsets = wordnet.synsets(name.text, pos)
 
     if not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
 
-    return Concept(name, pos, nodes, synsets, 1.0, 0, *graph.wordnet_rule_metrics)
+    return Concept(name, pos, nodes, synsets, 1.0, 0, *wordnet.wordnet_rule_metrics)
