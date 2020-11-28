@@ -57,27 +57,39 @@ def synsets(
     adapted_concepts = {}
     nlp = load.spacy_nlp()
 
-    for concept in concepts:
+    for original_concept in concepts:
         synset_candidates = []
 
-        for synset in concept.synsets:
+        for synset in original_concept.synsets:
             synset_candidates.extend(synset.hypernyms())
 
-        adapted_synsets = (synset_candidates[0],)
-        _adapted_name, adapted_pos = wordnet.resolve_synset(adapted_synsets[0])
-        adapted_name = nlp(_adapted_name)
+        if synset_candidates:
+            adapted_synsets = (synset_candidates[0],)
+            _adapted_name, adapted_pos = wordnet.resolve_synset(adapted_synsets[0])
+            adapted_name = nlp(_adapted_name)
 
-        adapted_concept = Concept(
-            adapted_name,
-            adapted_pos,
-            tuple(),
-            adapted_synsets,
-            adapted_name.similarity(rule.target.name),
-            100,
-            *wordnet.metrics(adapted_synsets, rule.target.synsets),
-        )
+            adapted_concept = Concept(
+                adapted_name,
+                adapted_pos,
+                tuple(),
+                adapted_synsets,
+                adapted_name.similarity(rule.target.name),
+                100,
+                *wordnet.metrics(adapted_synsets, rule.target.synsets),
+            )
 
-        adapted_concepts[concept] = adapted_concept
+            if adapted_concept:
+                # In this step, the concept is correctly capitalized.
+                # Not necessary due to later grammatical correction.
+                # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
+
+                adapted_concepts[original_concept] = adapted_concept
+                log.info(f"Adapt ({original_concept})->({adapted_concept}).")
+
+            else:
+                log.info(f"No adaptation for ({original_concept}).")
+
+            adapted_concepts[original_concept] = adapted_concept
 
     return adapted_concepts
 

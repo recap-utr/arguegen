@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+
 from recap_argument_graph_adaptation.controller import load
 
 import typing as t
@@ -8,10 +10,13 @@ from nltk.corpus.reader.wordnet import Synset, wup_similarity
 from nltk.corpus import wordnet as wn
 
 from ..model import graph
+from ..model.config import Config
 
 from spacy.tokens import Doc  # type: ignore
 
 import neo4j.data as neo4j
+
+config = Config.instance()
 
 
 def log_synsets(synsets: t.Iterable[Synset]) -> None:
@@ -35,7 +40,7 @@ def synset(code: str) -> Synset:
 
 
 def synsets(term: str, pos: t.Optional[graph.POS]) -> t.Tuple[Synset, ...]:
-    results = wn.synsets(term)
+    results = wn.synsets(term.replace(" ", "_"))
 
     if pos:
         results = (ss for ss in results if str(ss.pos()) == graph.wn_pos(pos))
@@ -91,9 +96,37 @@ def metrics(
         for s2 in synsets2:
             path_similarities.append(s1.path_similarity(s2))
             wup_similarities.append(s1.wup_similarity(s2))
-            path_distances.append(s1.shortest_path_distance(s2))
+            path_distances.append(
+                s1.shortest_path_distance(s2) or config["nlp"]["max_distance"]
+            )
 
     return (max(path_similarities), max(wup_similarities), min(path_distances))
 
 
-wordnet_rule_metrics = (1, 1, 0)
+best_metrics = (1, 1, 0)
+
+
+def hypernyms(synset: Synset) -> t.List[t.List[Synset]]:
+    hypernym_trees = [[synset]]
+    has_hypernyms = [True]
+    final_hypernym_trees = []
+
+    while any(has_hypernyms):
+        has_hypernyms = []
+        new_hypernym_trees = []
+
+        for hypernym_tree in hypernym_trees:
+            new_hypernyms = hypernym_tree[-1].hypernyms()
+
+            if new_hypernyms:
+                has_hypernyms.append(True)
+
+                for new_hypernym in new_hypernyms:
+                    new_hypernym_trees.append([*hypernym_tree, new_hypernym])
+            else:
+                has_hypernyms.append(False)
+                final_hypernym_trees.append(hypernym_tree)
+
+        hypernym_trees = new_hypernym_trees
+
+    return final_hypernym_trees

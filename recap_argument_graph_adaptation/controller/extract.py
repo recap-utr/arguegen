@@ -51,61 +51,35 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
             ]
 
             for term, lemma in zip(terms, terms_lemmatized):
-                term_nodes = db.nodes(term.text, pos_tag)
-                lemma_nodes = db.nodes(lemma.text, pos_tag)
-                synsets = wordnet.contextual_synsets(doc, term.text, pos_tag)
+                nodes = db.nodes(term.text, pos_tag) or db.nodes(lemma.text, pos_tag)
+                synsets = wordnet.contextual_synsets(
+                    doc, term.text, pos_tag
+                ) or wordnet.contextual_synsets(doc, lemma.text, pos_tag)
 
-                semantic_sim = term.similarity(rule.source.name)
-                wn_metrics = wordnet.metrics(synsets, rule.source.synsets)
-
-                if term_nodes:  # original term is in conceptnet
-                    distance = db.distance(term_nodes, rule.source.nodes)
-                    concepts.add(
-                        Concept(
-                            term,
-                            pos_tag,
-                            term_nodes,
-                            synsets,
-                            semantic_sim,
-                            distance,
-                            *wn_metrics,
-                        )
-                    )
-
-                elif lemma_nodes:  # lemma is in conceptnet
-                    distance = db.distance(lemma_nodes, rule.source.nodes)
-                    concepts.add(
-                        Concept(
-                            term,
-                            pos_tag,
-                            lemma_nodes,
-                            synsets,
-                            semantic_sim,
-                            distance,
-                            *wn_metrics,
-                        )
-                    )
-
-                else:  # test if the root word is in conceptnet
+                if not nodes and synsets:  # test if the root word is in conceptnet
                     term_chunks = next(term.noun_chunks, None)
 
                     if term_chunks:
                         root = term_chunks.root
-                        root_node = db.nodes(root.text, pos_tag)
+                        nodes = db.nodes(root.text, pos_tag)
+                        synsets = wordnet.contextual_synsets(doc, root.text, pos_tag)
 
-                        if root_node:
-                            distance = db.distance(root_node, rule.source.nodes)
-                            concepts.add(
-                                Concept(
-                                    term,
-                                    pos_tag,
-                                    root_node,
-                                    synsets,
-                                    semantic_sim,
-                                    distance,
-                                    *wn_metrics,
-                                )
-                            )
+                if nodes and synsets:
+                    semantic_sim = term.similarity(rule.source.name)
+                    wn_metrics = wordnet.metrics(synsets, rule.source.synsets)
+                    conceptnet_distance = db.distance(nodes, rule.source.nodes)
+
+                    concepts.add(
+                        Concept(
+                            term,
+                            pos_tag,
+                            nodes,
+                            synsets,
+                            semantic_sim,
+                            conceptnet_distance,
+                            *wn_metrics,
+                        )
+                    )
 
     concepts = Concept.only_relevant(concepts)
 

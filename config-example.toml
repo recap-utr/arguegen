@@ -1,9 +1,10 @@
-version = "2.13"
+version = "2.14"
 debug = true
 
 [nlp]
 lang = "en"
 embeddings = "integrated"
+max_distance = 200
 
 [path]
 input = "data/input"

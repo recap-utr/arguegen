@@ -387,7 +387,7 @@ class Database:
     def distance(
         self, nodes1: t.Sequence[graph.Node], nodes2: t.Sequence[graph.Node]
     ) -> int:
-        max_relations = 200
+        max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]
 
         with self._driver.session() as session:
