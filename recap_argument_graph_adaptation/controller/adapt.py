@@ -1,6 +1,8 @@
 import logging
 import multiprocessing
 import re
+
+from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.controller import wordnet
 import typing as t
 from collections import defaultdict
@@ -53,45 +55,53 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
 
 def synsets(
     concepts: t.Iterable[Concept], rule: adaptation.Rule
-) -> t.Dict[Concept, Concept]:
+) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Synset]]]:
+    adapted_synsets = {}
     adapted_concepts = {}
     nlp = load.spacy_nlp()
 
     for original_concept in concepts:
-        synset_candidates = set()
+        adaptation_results = set()
 
         for synset in original_concept.synsets:
-            synset_candidates.update(wordnet.hypernyms(synset))
+            adaptation_results.update(wordnet.hypernyms(synset))
 
-        if synset_candidates:
-            adapted_synsets = (next(iter(synset_candidates)),)
-            _adapted_name, adapted_pos = wordnet.resolve_synset(adapted_synsets[0])
-            adapted_name = nlp(_adapted_name)
+        adapted_synsets[original_concept] = adaptation_results
+        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
 
-            adapted_concept = Concept(
-                adapted_name,
-                adapted_pos,
-                tuple(),
-                adapted_synsets,
-                adapted_name.similarity(rule.target.name),
-                100,
-                *wordnet.metrics(adapted_synsets, rule.target.synsets),
+        for result in adaptation_results:
+            name, pos = wordnet.resolve_synset(result)
+            nodes = tuple()
+            synsets = (result,)
+
+            candidate = Concept(
+                name,
+                pos,
+                nodes,
+                synsets,
+                name.similarity(rule.target.name),
+                config["nlp"]["max_distance"],
+                *wordnet.metrics(synsets, rule.target.synsets),
             )
 
-            if adapted_concept:
-                # In this step, the concept is correctly capitalized.
-                # Not necessary due to later grammatical correction.
-                # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
+            adaptation_candidates[candidate] += 1
 
-                adapted_concepts[original_concept] = adapted_concept
-                log.info(f"Adapt ({original_concept})->({adapted_concept}).")
+        adapted_concept = _filter_concepts(adaptation_candidates)
 
-            else:
-                log.info(f"No adaptation for ({original_concept}).")
+        if adapted_concept:
+            # In this step, the concept is correctly capitalized.
+            # Not necessary due to later grammatical correction.
+            # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
 
             adapted_concepts[original_concept] = adapted_concept
+            log.info(f"Adapt ({original_concept})->({adapted_concept}).")
 
-    return adapted_concepts
+        else:
+            log.info(f"No adaptation for ({original_concept}).")
+
+        adapted_concepts[original_concept] = adapted_concept
+
+    return adapted_concepts, adapted_synsets
 
 
 def paths(

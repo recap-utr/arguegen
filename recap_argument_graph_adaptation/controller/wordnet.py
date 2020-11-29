@@ -29,12 +29,14 @@ def log_synsets(synsets: t.Iterable[Synset]) -> None:
         print()
 
 
-def resolve_synset(synset: Synset) -> t.Tuple[str, graph.POS]:
+def resolve_synset(synset: Synset) -> t.Tuple[Doc, graph.POS]:
+    nlp = load.spacy_nlp()
+
     parts = (synset.name() or "").split(".")
     name = parts[0]
     pos = graph.wn_pos_mapping[parts[1]]
 
-    return (name, pos)
+    return (nlp(name), pos)
 
 
 def synset(code: str) -> Synset:
@@ -137,6 +139,8 @@ def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
 def hypernyms(synset: Synset) -> t.Set[Synset]:
     result = set()
     trees = hypernym_trees(synset)
+
+    # TODO: Remove first synset from the tree!
 
     for tree in trees:
         # The synsets at the end of the list are too general and should be ignored
