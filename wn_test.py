@@ -1,3 +1,4 @@
+from recap_argument_graph_adaptation.model import graph
 from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.wordnet import Synset
 import nltk
@@ -9,7 +10,7 @@ from recap_argument_graph_adaptation.controller import wordnet
 # How to find the correct synset: Word sense disambiguation
 # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
 
-# log_synsets(synsets("prescription"))
+wordnet.log_synsets(wordnet.synsets("husky", graph.POS.NOUN))
 
-s1 = wordnet.synset("prescription_drug.n.01")
-print(wordnet.hypernyms(s1))
+s1 = wordnet.synset("husky.n.01")
+print(wordnet.hypernym_trees(s1))

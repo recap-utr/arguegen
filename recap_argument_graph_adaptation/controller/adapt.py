@@ -58,13 +58,13 @@ def synsets(
     nlp = load.spacy_nlp()
 
     for original_concept in concepts:
-        synset_candidates = []
+        synset_candidates = set()
 
         for synset in original_concept.synsets:
-            synset_candidates.extend(synset.hypernyms())
+            synset_candidates.update(wordnet.hypernyms(synset))
 
         if synset_candidates:
-            adapted_synsets = (synset_candidates[0],)
+            adapted_synsets = (next(iter(synset_candidates)),)
             _adapted_name, adapted_pos = wordnet.resolve_synset(adapted_synsets[0])
             adapted_name = nlp(_adapted_name)
 

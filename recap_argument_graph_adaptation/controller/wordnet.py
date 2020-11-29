@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from spacy.util import filter_spans
+
 
 from recap_argument_graph_adaptation.controller import load
 
@@ -106,7 +108,7 @@ def metrics(
 best_metrics = (1, 1, 0)
 
 
-def hypernyms(synset: Synset) -> t.List[t.List[Synset]]:
+def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
     hypernym_trees = [[synset]]
     has_hypernyms = [True]
     final_hypernym_trees = []
@@ -130,3 +132,15 @@ def hypernyms(synset: Synset) -> t.List[t.List[Synset]]:
         hypernym_trees = new_hypernym_trees
 
     return final_hypernym_trees
+
+
+def hypernyms(synset: Synset) -> t.Set[Synset]:
+    result = set()
+    trees = hypernym_trees(synset)
+
+    for tree in trees:
+        # The synsets at the end of the list are too general and should be ignored
+        filtered_tree = tree[: len(tree) // 2]
+        result.update(filtered_tree)
+
+    return result
