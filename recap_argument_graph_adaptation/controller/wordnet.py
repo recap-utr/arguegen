@@ -29,14 +29,14 @@ def log_synsets(synsets: t.Iterable[Synset]) -> None:
         print()
 
 
-def resolve_synset(synset: Synset) -> t.Tuple[Doc, graph.POS]:
+def resolve_synset(synset: Synset) -> t.Tuple[str, graph.POS]:
     nlp = load.spacy_nlp()
 
     parts = (synset.name() or "").split(".")
-    name = parts[0]
+    name = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
 
-    return (nlp(name), pos)
+    return (name, pos)
 
 
 def synset(code: str) -> Synset:
@@ -98,13 +98,20 @@ def metrics(
 
     for s1 in synsets1:
         for s2 in synsets2:
-            path_similarities.append(s1.path_similarity(s2))
-            wup_similarities.append(s1.wup_similarity(s2))
-            path_distances.append(
-                s1.shortest_path_distance(s2) or config["nlp"]["max_distance"]
-            )
+            if path_sim := s1.path_similarity(s2):
+                path_similarities.append(path_sim)
 
-    return (max(path_similarities), max(wup_similarities), min(path_distances))
+            if wup_sim := s1.wup_similarity(s2):
+                wup_similarities.append(wup_sim)
+
+            if path_dist := s1.shortest_path_distance(s2):
+                path_distances.append(path_dist)
+
+    return (
+        max(path_similarities, default=0),
+        max(wup_similarities, default=0),
+        min(path_distances, default=config["nlp"]["max_distance"]),
+    )
 
 
 best_metrics = (1, 1, 0)
@@ -140,11 +147,11 @@ def hypernyms(synset: Synset) -> t.Set[Synset]:
     result = set()
     trees = hypernym_trees(synset)
 
-    # TODO: Remove first synset from the tree!
-
     for tree in trees:
-        # The synsets at the end of the list are too general and should be ignored
-        filtered_tree = tree[: len(tree) // 2]
-        result.update(filtered_tree)
+        # The first synset is the original one, the last always entity
+        tree = tree[1:-1]
+        # The synsets towards the end of the list are too general and should be ignored
+        tree = tree[: len(tree) // 2]
+        result.update(tree)
 
     return result

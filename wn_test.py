@@ -10,7 +10,7 @@ from recap_argument_graph_adaptation.controller import wordnet
 # How to find the correct synset: Word sense disambiguation
 # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
 
-wordnet.log_synsets(wordnet.synsets("husky", graph.POS.NOUN))
+# wordnet.log_synsets(wordnet.synsets("husky", graph.POS.NOUN))
 
-s1 = wordnet.synset("husky.n.01")
+s1 = wordnet.synset("intake.n.01")
 print(wordnet.hypernym_trees(s1))

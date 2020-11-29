@@ -24,21 +24,22 @@ def run():
     out_path = Path(config["path"]["output"], _timestamp())
 
     for case in cases:
-        _perform_wordnet_adaptation(case, out_path)
+        if config["adaptation"]["knowledge_graph"] == "wordnet":
+            _perform_wordnet_adaptation(case, out_path)
 
-    # for case in cases:
-    #     adaptation_methods = [adaptation.Method(config["adaptation"]["method"])]
-    #     adaptation_selectors = [adaptation.Selector(config["adaptation"]["selector"])]
+        elif config["adaptation"]["knowledge_graph"] == "conceptnet":
+            adaptation_methods = [adaptation.Method(config["adaptation"]["method"])]
+            adaptation_selectors = [adaptation.Selector(config["adaptation"]["selector"])]
 
-    #     if config["adaptation"]["gridsearch"]:
-    #         adaptation_methods = [method for method in adaptation.Method]
-    #         adaptation_selectors = [selector for selector in adaptation.Selector]
+            if config["adaptation"]["gridsearch"]:
+                adaptation_methods = [method for method in adaptation.Method]
+                adaptation_selectors = [selector for selector in adaptation.Selector]
 
-    #     for adaptation_method in adaptation_methods:
-    #         for adaptation_selector in adaptation_selectors:
-    #             _perform_conceptnet_adaptation(
-    #                 case, adaptation_method, adaptation_selector, out_path
-    #             )
+            for adaptation_method in adaptation_methods:
+                for adaptation_selector in adaptation_selectors:
+                    _perform_conceptnet_adaptation(
+                        case, adaptation_method, adaptation_selector, out_path
+                    )
 
 
 def _perform_wordnet_adaptation(
@@ -56,15 +57,14 @@ def _perform_wordnet_adaptation(
         log.info(f"Processing rule {str(rule)}.")
 
         concepts = extract.keywords(case.graph, rule)
-        adapted_concepts = adapt.synsets(concepts, rule)
+        adapted_concepts, adapted_synsets = adapt.synsets(concepts, rule)
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
-        # adaptation_results[str(rule)] = export.statistic(
-        #     concepts, reference_paths, adapted_concepts, adapted_paths
-        # )
+        adaptation_results[str(rule)] = export.statistic(
+            concepts, {}, {}, adapted_synsets, adapted_concepts
+        )
 
     stats = {"results": adaptation_results, "config": dict(config)}
-
     _write_output(case, stats, nested_out_path)
 
 
@@ -102,11 +102,10 @@ def _perform_conceptnet_adaptation(
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
         adaptation_results[str(rule)] = export.statistic(
-            concepts, reference_paths, adapted_concepts, adapted_paths
+            concepts, reference_paths, adapted_paths, {}, adapted_concepts
         )
 
     stats = {"results": adaptation_results, "config": dict(config)}
-
     _write_output(case, stats, nested_out_path)
 
 

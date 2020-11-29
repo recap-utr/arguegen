@@ -70,7 +70,8 @@ def synsets(
         adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
 
         for result in adaptation_results:
-            name, pos = wordnet.resolve_synset(result)
+            _name, pos = wordnet.resolve_synset(result)
+            name = nlp(_name)
             nodes = tuple()
             synsets = (result,)
 
@@ -98,8 +99,6 @@ def synsets(
 
         else:
             log.info(f"No adaptation for ({original_concept}).")
-
-        adapted_concepts[original_concept] = adapted_concept
 
     return adapted_concepts, adapted_synsets
 

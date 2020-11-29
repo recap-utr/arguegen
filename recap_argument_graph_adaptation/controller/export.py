@@ -1,5 +1,7 @@
 import typing as t
 
+from nltk.corpus.reader.wordnet import Synset
+
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.adaptation import Concept
 
@@ -7,8 +9,9 @@ from recap_argument_graph_adaptation.model.adaptation import Concept
 def statistic(
     concepts: t.Iterable[Concept],
     reference_paths: t.Mapping[Concept, t.Iterable[graph.Path]],
-    adapted_concepts: t.Mapping[Concept, Concept],
     adapted_paths: t.Mapping[Concept, t.Iterable[graph.Path]],
+    adapted_synsets: t.Mapping[Concept, t.Iterable[Synset]],
+    adapted_concepts: t.Mapping[Concept, Concept],
 ) -> t.Dict[str, t.Any]:
     out = {}
 
@@ -20,6 +23,7 @@ def statistic(
             "nodes": list_str(concept.nodes),
             "reference_paths": list_str(reference_paths.get(concept)),
             "adapted_paths": list_str(adapted_paths.get(concept)),
+            "adapted_synsets": list_str(adapted_synsets.get(concept)),
             "adapted_name": str(adapted_concepts.get(concept)),
         }
 
