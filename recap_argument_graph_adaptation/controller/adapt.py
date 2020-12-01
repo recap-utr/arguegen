@@ -87,7 +87,9 @@ def synsets(
 
             adaptation_candidates[candidate] += 1
 
-        adapted_concept = _filter_concepts(adaptation_candidates)
+        adapted_concept = _filter_concepts(adaptation_candidates, rule)
+        # TODO: Sollte ausgewählt werden:
+        # adaptation_candidates[Concept(name=whole, pos=<POS.NOUN: 'noun'>, nodes=(), synsets=(Synset('whole.n.02'),), semantic_similarity=0.38018360366436266, conceptnet_distance=200, wordnet_path_similarity=0.125, wordnet_wup_similarity=0.2222222222222222, wordnet_path_distance=7)]
 
         if adapted_concept:
             # In this step, the concept is correctly capitalized.
@@ -155,7 +157,7 @@ def paths(
 
             adaptation_candidates[candidate] += 1
 
-        adapted_concept = _filter_concepts(adaptation_candidates)
+        adapted_concept = _filter_concepts(adaptation_candidates, rule)
 
         if adapted_concept:
             # In this step, the concept is correctly capitalized.
@@ -211,19 +213,20 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(
-    concept_occurrences: t.Mapping[Concept, int]
+    concept_occurrences: t.Mapping[Concept, int], rule: adaptation.Rule
 ) -> t.Optional[Concept]:
+    # Filter concepts using metrics and exclude the source of the original adaptation rule
     filtered_concepts = Concept.only_relevant(
         [concept for concept, _ in concept_occurrences.items()]
-    )
+    ).difference([rule.source])
 
     if filtered_concepts:
         # Sort key: occurrences * similarity * 1/distance
+        # TODO: Add more metrics for conceptnet/wordnet
         sorted_concepts = sorted(
             filtered_concepts,
             key=lambda concept: concept_occurrences[concept]
-            * concept.semantic_similarity
-            / concept.conceptnet_distance,
+            * concept.semantic_similarity,
             reverse=True,
         )
 

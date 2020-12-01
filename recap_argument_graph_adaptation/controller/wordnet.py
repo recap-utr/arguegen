@@ -151,7 +151,7 @@ def hypernyms(synset: Synset) -> t.Set[Synset]:
         # The first synset is the original one, the last always entity
         tree = tree[1:-1]
         # The synsets towards the end of the list are too general and should be ignored
-        tree = tree[: len(tree) // 2]
+        tree = tree[: 2 * len(tree) // 3]
         result.update(tree)
 
     return result

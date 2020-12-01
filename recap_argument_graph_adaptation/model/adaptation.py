@@ -54,20 +54,47 @@ class Concept:
 
     @staticmethod
     def only_relevant(concepts: t.Iterable[Concept]) -> t.Set[Concept]:
-        return {
-            concept
-            for concept in concepts
-            if (
-                concept.conceptnet_distance
-                < config["conceptnet"]["node"]["max_conceptual_distance_and"]
-                and concept.semantic_similarity
-                > config["conceptnet"]["node"]["min_semantic_similarity_and"]
-            )
-            or concept.conceptnet_distance
-            < config["conceptnet"]["node"]["max_conceptual_distance_or"]
-            or concept.semantic_similarity
-            > config["conceptnet"]["node"]["min_semantic_similarity_or"]
-        }
+        kg = config["adaptation"]["knowledge_graph"]
+        filter_and = config["nlp"]["filter"]["and"]
+        filter_or = config["nlp"]["filter"]["or"]
+
+        if kg == "conceptnet":
+            return {
+                concept
+                for concept in concepts
+                if (
+                    concept.conceptnet_distance < filter_and["max_conceptnet_distance"]
+                    and concept.semantic_similarity
+                    > filter_and["min_semantic_similarity"]
+                )
+                or concept.conceptnet_distance < filter_or["max_conceptnet_distance"]
+                or concept.semantic_similarity > filter_or["min_semantic_similarity"]
+            }
+
+        elif kg == "wordnet":
+            return {
+                concept
+                for concept in concepts
+                if (
+                    concept.wordnet_path_distance
+                    < filter_and["max_wordnet_path_distance"]
+                    and concept.wordnet_path_similarity
+                    > filter_and["min_wordnet_path_similarity"]
+                    and concept.wordnet_wup_similarity
+                    > filter_and["min_wordnet_wup_similarity"]
+                    and concept.semantic_similarity
+                    > filter_and["min_semantic_similarity"]
+                )
+                or concept.wordnet_path_distance
+                < filter_or["max_wordnet_path_distance"]
+                or concept.wordnet_path_similarity
+                > filter_or["min_wordnet_path_similarity"]
+                or concept.wordnet_wup_similarity
+                > filter_or["min_wordnet_wup_similarity"]
+                or concept.semantic_similarity > filter_or["min_semantic_similarity"]
+            }
+
+        return set()
 
 
 @dataclass

@@ -1,14 +1,33 @@
-version = "2.14"
+version = "2.15"
 debug = true
+
+
+[path]
+input = "data/input"
+output = "data/output"
+
 
 [nlp]
 lang = "en"
 embeddings = "integrated"
 max_distance = 200
 
-[path]
-input = "data/input"
-output = "data/output"
+[nlp.filter.and]
+# all conditions need to be fulfilled
+max_conceptnet_distance = 4
+min_semantic_similarity = 0.25
+max_wordnet_path_distance = 10
+min_wordnet_path_similarity = 0.1
+min_wordnet_wup_similarity = 0.25
+
+[nlp.filter.or]
+# only one condition needs to be fulfilled
+max_conceptnet_distance = 3
+min_semantic_similarity = 0.5
+max_wordnet_path_distance = 5
+min_wordnet_path_similarity = 0.5
+min_wordnet_wup_similarity = 0.5
+
 
 [adaptation]
 knowledge_graph = "wordnet" 
@@ -27,14 +46,6 @@ selector = "similarity"
 [conceptnet]
 [conceptnet.node]
 root_form = true
-
-# both conditions need to be fulfilled
-max_conceptual_distance_and = 4
-min_semantic_similarity_and = 0.25
-
-# only one condition needs to be fulfilled
-max_conceptual_distance_or = 3
-min_semantic_similarity_or = 0.5
 
 [conceptnet.relation]
 relax_types = false
