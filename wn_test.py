@@ -12,5 +12,5 @@ from recap_argument_graph_adaptation.controller import wordnet
 
 # wordnet.log_synsets(wordnet.synsets("husky", graph.POS.NOUN))
 
-s1 = wordnet.synset("intake.n.01")
+s1 = wordnet.synset("house.n.01")
 print(wordnet.hypernym_trees(s1))

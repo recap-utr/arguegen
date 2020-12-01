@@ -63,12 +63,12 @@ class Concept:
                 concept
                 for concept in concepts
                 if (
-                    concept.conceptnet_distance < filter_and["max_conceptnet_distance"]
+                    concept.conceptnet_distance <= filter_and["max_conceptnet_distance"]
                     and concept.semantic_similarity
-                    > filter_and["min_semantic_similarity"]
+                    >= filter_and["min_semantic_similarity"]
                 )
-                or concept.conceptnet_distance < filter_or["max_conceptnet_distance"]
-                or concept.semantic_similarity > filter_or["min_semantic_similarity"]
+                or concept.conceptnet_distance <= filter_or["max_conceptnet_distance"]
+                or concept.semantic_similarity >= filter_or["min_semantic_similarity"]
             }
 
         elif kg == "wordnet":
@@ -77,24 +77,36 @@ class Concept:
                 for concept in concepts
                 if (
                     concept.wordnet_path_distance
-                    < filter_and["max_wordnet_path_distance"]
+                    <= filter_and["max_wordnet_path_distance"]
                     and concept.wordnet_path_similarity
-                    > filter_and["min_wordnet_path_similarity"]
+                    >= filter_and["min_wordnet_path_similarity"]
                     and concept.wordnet_wup_similarity
-                    > filter_and["min_wordnet_wup_similarity"]
+                    >= filter_and["min_wordnet_wup_similarity"]
                     and concept.semantic_similarity
-                    > filter_and["min_semantic_similarity"]
+                    >= filter_and["min_semantic_similarity"]
                 )
                 or concept.wordnet_path_distance
-                < filter_or["max_wordnet_path_distance"]
+                <= filter_or["max_wordnet_path_distance"]
                 or concept.wordnet_path_similarity
-                > filter_or["min_wordnet_path_similarity"]
+                >= filter_or["min_wordnet_path_similarity"]
                 or concept.wordnet_wup_similarity
-                > filter_or["min_wordnet_wup_similarity"]
-                or concept.semantic_similarity > filter_or["min_semantic_similarity"]
+                >= filter_or["min_wordnet_wup_similarity"]
+                or concept.semantic_similarity >= filter_or["min_semantic_similarity"]
             }
 
         return set()
+
+    @property
+    def wordnet_score(self) -> float:
+        return (
+            self.semantic_similarity
+            + self.wordnet_path_similarity
+            + self.wordnet_wup_similarity
+        ) / self.wordnet_path_distance
+
+    @property
+    def conceptnet_score(self) -> float:
+        return self.semantic_similarity / self.conceptnet_distance
 
 
 @dataclass
