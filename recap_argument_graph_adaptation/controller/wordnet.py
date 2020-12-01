@@ -30,8 +30,6 @@ def log_synsets(synsets: t.Iterable[Synset]) -> None:
 
 
 def resolve_synset(synset: Synset) -> t.Tuple[str, graph.POS]:
-    nlp = load.spacy_nlp()
-
     parts = (synset.name() or "").split(".")
     name = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
@@ -143,6 +141,13 @@ def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
     return final_hypernym_trees
 
 
+def remove_index(synset: Synset) -> str:
+    name = synset.name() or ""
+    parts = name.split(".")[:-1]
+
+    return ".".join(parts)
+
+
 def hypernyms(synset: Synset) -> t.Set[Synset]:
     result = set()
     trees = hypernym_trees(synset)
@@ -150,9 +155,9 @@ def hypernyms(synset: Synset) -> t.Set[Synset]:
     for tree in trees:
         # The first synset is the original one, the last always entity
         tree = tree[1:-1]
-        # Some synsets are not
+        # Some synsets are not relevant for generalization
         tree = filter(
-            lambda s: s.name not in config["wordnet"]["hypernym_filter"],
+            lambda s: remove_index(s) not in config["wordnet"]["hypernym_filter"],
             tree,
         )
 
