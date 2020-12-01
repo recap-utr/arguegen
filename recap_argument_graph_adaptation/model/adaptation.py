@@ -54,7 +54,7 @@ class Concept:
 
     @staticmethod
     def only_relevant(concepts: t.Iterable[Concept]) -> t.Set[Concept]:
-        kg = config["adaptation"]["knowledge_graph"]
+        kg = config["nlp"]["knowledge_graph"]
         filter_and = config["nlp"]["filter"]["and"]
         filter_or = config["nlp"]["filter"]["or"]
 
@@ -99,14 +99,14 @@ class Concept:
     @property
     def wordnet_score(self) -> float:
         return (
-            self.semantic_similarity
+            3 * self.semantic_similarity
             + self.wordnet_path_similarity
             + self.wordnet_wup_similarity
         ) / self.wordnet_path_distance
 
     @property
     def conceptnet_score(self) -> float:
-        return self.semantic_similarity / self.conceptnet_distance
+        return 3 * self.semantic_similarity / self.conceptnet_distance
 
 
 @dataclass

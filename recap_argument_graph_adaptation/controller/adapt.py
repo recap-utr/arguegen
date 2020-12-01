@@ -219,7 +219,7 @@ def _filter_concepts(
     # Sort key: occurrences * similarity * 1/distance
     score = lambda concept: (
         concept.wordnet_score
-        if config["adaptation"]["knowledge_graph"] == "wordnet"
+        if config["nlp"]["knowledge_graph"] == "wordnet"
         else concept.conceptnet_score
     )
 
@@ -276,7 +276,7 @@ def _filter_paths(
     )
     sorted_candidates = [x[0] for x in sorted_candidate_tuples]
 
-    return sorted_candidates[: config["adaptation"]["bfs_node_limit"]]
+    return sorted_candidates[: config["conceptnet"]["bfs_node_limit"]]
 
 
 def _aggregate_features(

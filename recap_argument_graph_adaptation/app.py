@@ -24,14 +24,16 @@ def run():
     out_path = Path(config["path"]["output"], _timestamp())
 
     for case in cases:
-        if config["adaptation"]["knowledge_graph"] == "wordnet":
+        if config["nlp"]["knowledge_graph"] == "wordnet":
             _perform_wordnet_adaptation(case, out_path)
 
-        elif config["adaptation"]["knowledge_graph"] == "conceptnet":
-            adaptation_methods = [adaptation.Method(config["adaptation"]["method"])]
-            adaptation_selectors = [adaptation.Selector(config["adaptation"]["selector"])]
+        elif config["nlp"]["knowledge_graph"] == "conceptnet":
+            adaptation_methods = [adaptation.Method(config["conceptnet"]["method"])]
+            adaptation_selectors = [
+                adaptation.Selector(config["conceptnet"]["selector"])
+            ]
 
-            if config["adaptation"]["gridsearch"]:
+            if config["conceptnet"]["gridsearch"]:
                 adaptation_methods = [method for method in adaptation.Method]
                 adaptation_selectors = [selector for selector in adaptation.Selector]
 
@@ -82,7 +84,7 @@ def _perform_conceptnet_adaptation(
 
     nested_out_path: Path = out_path / case.name
 
-    if config["adaptation"]["gridsearch"]:
+    if config["conceptnet"]["gridsearch"]:
         nested_out_path = (
             nested_out_path / adaptation_method.value / adaptation_selector.value
         )

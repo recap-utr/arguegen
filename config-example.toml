@@ -1,4 +1,4 @@
-version = "2.15"
+version = "2.16"
 debug = true
 
 
@@ -11,6 +11,7 @@ output = "data/output"
 lang = "en"
 embeddings = "integrated"
 max_distance = 200
+knowledge_graph = "wordnet"
 
 [nlp.filter.and]
 # all conditions need to be fulfilled
@@ -29,8 +30,20 @@ min_wordnet_path_similarity = 0.5
 min_wordnet_wup_similarity = 0.5
 
 
-[adaptation]
-knowledge_graph = "wordnet" 
+[wordnet]
+hypernym_filter = [
+    "abstraction",
+    "artifact",
+    "causal_agent",
+    "living_thing",
+    "object",
+    "physical_entity",
+    "psychological_feature",
+    "whole",
+]
+
+
+[conceptnet]
 bfs_node_limit = 4 
 gridsearch = false # If true, the following  parameters will be ignored.
 
@@ -42,8 +55,6 @@ method = "between"
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 selector = "similarity"
 
-
-[conceptnet]
 [conceptnet.node]
 root_form = true
 

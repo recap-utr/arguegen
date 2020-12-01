@@ -150,8 +150,12 @@ def hypernyms(synset: Synset) -> t.Set[Synset]:
     for tree in trees:
         # The first synset is the original one, the last always entity
         tree = tree[1:-1]
-        # The synsets towards the end of the list are too general and should be ignored
-        tree = tree[: 2 * len(tree) // 3]
+        # Some synsets are not
+        tree = filter(
+            lambda s: s.name not in config["wordnet"]["hypernym_filter"],
+            tree,
+        )
+
         result.update(tree)
 
     return result
