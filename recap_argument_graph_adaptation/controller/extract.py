@@ -40,17 +40,19 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
             # TODO: The weight could be used in conjunction with the semantic similarity.
             terms = [
-                nlp(key_term)
+                (nlp(key_term), weight)
                 for (key_term, weight) in extractor(
                     doc, normalize=None, include_pos=spacy_pos_tag
                 )
             ]
             terms_lemmatized = [
-                nlp(key_term)
+                (nlp(key_term), weight)
                 for (key_term, weight) in extractor(doc, include_pos=spacy_pos_tag)
             ]
 
-            for term, lemma in zip(terms, terms_lemmatized):
+            for (term, term_weight), (lemma, lemma_weight) in zip(
+                terms, terms_lemmatized
+            ):
                 nodes = db.nodes(term.text, pos_tag) or db.nodes(lemma.text, pos_tag)
                 synsets = wordnet.contextual_synsets(
                     doc, term.text, pos_tag
@@ -78,6 +80,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                             semantic_sim,
                             conceptnet_distance,
                             *wn_metrics,
+                            keyword_weight=term_weight,
                         )
                     )
 

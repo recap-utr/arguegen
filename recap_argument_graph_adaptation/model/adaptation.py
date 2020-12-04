@@ -35,6 +35,7 @@ class Concept:
     wordnet_path_similarity: float
     wordnet_wup_similarity: float
     wordnet_path_distance: int
+    keyword_weight: float = 1.0
 
     @property
     def best_node(self) -> graph.Node:
@@ -99,14 +100,20 @@ class Concept:
     @property
     def wordnet_score(self) -> float:
         return (
-            3 * self.semantic_similarity
+            3 * self.keyword_weight
+            + 3 * self.semantic_similarity
             + self.wordnet_path_similarity
             + self.wordnet_wup_similarity
-        ) / self.wordnet_path_distance
+            + 1 / (1 + self.wordnet_path_distance)
+        )
 
     @property
     def conceptnet_score(self) -> float:
-        return 3 * self.semantic_similarity / self.conceptnet_distance
+        return (
+            3 * self.keyword_weight
+            + 3 * self.semantic_similarity
+            + 1 / (1 + self.conceptnet_distance)
+        )
 
 
 @dataclass
