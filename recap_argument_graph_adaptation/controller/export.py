@@ -19,8 +19,7 @@ def statistic(
         key = f"({concept})->({adapted_concepts.get(concept)})"
 
         out[key] = {
-            "concept": str(concept),
-            "nodes": list_str(concept.nodes),
+            **concept.to_dict(),
             "reference_paths": list_str(reference_paths.get(concept)),
             "adapted_paths": list_str(adapted_paths.get(concept)),
             "adapted_synsets": list_str(adapted_synsets.get(concept)),

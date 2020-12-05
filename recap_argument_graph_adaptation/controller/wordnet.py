@@ -50,15 +50,12 @@ def synsets(term: str, pos: t.Optional[graph.POS]) -> t.Tuple[Synset, ...]:
     return tuple(results)
 
 
-def contextual_synset(
+def contextual_synsets(
     doc: Doc, term: str, pos: t.Optional[graph.POS]
-) -> t.Optional[Synset]:
+) -> t.Tuple[Synset, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     nlp = load.spacy_nlp()
     results = synsets(term, pos)
-
-    if not results:
-        return None
 
     synset_tuples = []
 
@@ -69,22 +66,25 @@ def contextual_synset(
             result_doc = nlp(definition)
             similarity = doc.similarity(result_doc)
 
-        synset_tuples.append((similarity, result))
+        synset_tuples.append((result, similarity))
 
-    _, sense = max(synset_tuples)
+    synset_tuples.sort(key=lambda item: item[1])
+    # TODO: Die reine Ähnlichkeit bringt manchmal nichts (AIDS).
+    # Man könnte mehrere gute Ergebnisse auswählen.
+    # Alternativ: Auf die korrekte Schreibweise des Worts achten.
 
-    return sense
+    return tuple([synset for synset, _ in synset_tuples])
 
 
-def contextual_synsets(
+def contextual_synset(
     doc: Doc, term: str, pos: t.Optional[graph.POS]
-) -> t.Tuple[Synset, ...]:
-    result = contextual_synset(doc, term, pos)
+) -> t.Optional[Synset]:
+    synsets = contextual_synsets(doc, term, pos)
 
-    if result:
-        return (result,)
+    if synsets:
+        return synsets[0]
 
-    return tuple()
+    return None
 
 
 def metrics(

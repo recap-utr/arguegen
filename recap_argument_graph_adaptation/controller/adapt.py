@@ -41,7 +41,7 @@ def argument_graph(
 
     for node in graph.inodes:
         node.text = _replace(node.text, substitutions)
-        node.text = pr.proofread(node.text)
+        # node.text = pr.proofread(node.text)
 
 
 def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:

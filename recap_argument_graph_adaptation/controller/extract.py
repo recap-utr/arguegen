@@ -87,10 +87,6 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
     concepts = Concept.only_relevant(concepts)
     # TODO: Aids wird nicht korrekt erkannt.
 
-    # concept = next(iter(concepts))
-    # print(concept.nodes)
-    # general = db.nodes_generalizations(concept.nodes)
-
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
     )

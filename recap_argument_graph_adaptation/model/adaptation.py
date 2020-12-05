@@ -115,6 +115,15 @@ class Concept:
             + 1 / (1 + self.conceptnet_distance)
         )
 
+    def to_dict(self) -> t.Dict[str, t.Any]:
+        return {
+            "concept": str(self),
+            "nodes": [str(node) for node in self.nodes],
+            "synsets": [synset.name() for synset in self.synsets],
+            "conceptnet_score": self.conceptnet_score,
+            "wordnet_score": self.wordnet_score,
+        }
+
 
 @dataclass
 class Rule:
