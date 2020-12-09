@@ -30,12 +30,12 @@ class Concept:
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     nodes: t.Tuple[graph.Node, ...]
     synsets: t.Tuple[Synset, ...]
-    semantic_similarity: float
-    conceptnet_distance: int
-    wordnet_path_similarity: float
-    wordnet_wup_similarity: float
-    wordnet_path_distance: int
-    keyword_weight: float = 1.0
+    semantic_similarity: t.Optional[float] = None
+    conceptnet_path_distance: t.Optional[int] = None
+    wordnet_path_similarity: t.Optional[float] = None
+    wordnet_wup_similarity: t.Optional[float] = None
+    wordnet_path_distance: t.Optional[int] = None
+    keyword_weight: t.Optional[float] = None
 
     @property
     def best_node(self) -> graph.Node:
@@ -54,75 +54,40 @@ class Concept:
         return hash((self.name.text, self.pos))
 
     @staticmethod
-    def only_relevant(concepts: t.Iterable[Concept]) -> t.Set[Concept]:
-        kg = config["nlp"]["knowledge_graph"]
-        filter_and = config["nlp"]["filter"]["and"]
-        filter_or = config["nlp"]["filter"]["or"]
-
-        if kg == "conceptnet":
-            return {
-                concept
-                for concept in concepts
-                if (
-                    concept.conceptnet_distance <= filter_and["max_conceptnet_distance"]
-                    and concept.semantic_similarity
-                    >= filter_and["min_semantic_similarity"]
-                )
-                or concept.conceptnet_distance <= filter_or["max_conceptnet_distance"]
-                or concept.semantic_similarity >= filter_or["min_semantic_similarity"]
-            }
-
-        elif kg == "wordnet":
-            return {
-                concept
-                for concept in concepts
-                if (
-                    concept.wordnet_path_distance
-                    <= filter_and["max_wordnet_path_distance"]
-                    and concept.wordnet_path_similarity
-                    >= filter_and["min_wordnet_path_similarity"]
-                    and concept.wordnet_wup_similarity
-                    >= filter_and["min_wordnet_wup_similarity"]
-                    and concept.semantic_similarity
-                    >= filter_and["min_semantic_similarity"]
-                )
-                or concept.wordnet_path_distance
-                <= filter_or["max_wordnet_path_distance"]
-                or concept.wordnet_path_similarity
-                >= filter_or["min_wordnet_path_similarity"]
-                or concept.wordnet_wup_similarity
-                >= filter_or["min_wordnet_wup_similarity"]
-                or concept.semantic_similarity >= filter_or["min_semantic_similarity"]
-            }
-
-        return set()
+    def only_relevant(
+        concepts: t.Iterable[Concept],
+        min_score: float,
+    ) -> t.Set[Concept]:
+        return {concept for concept in concepts if concept.score > min_score}
 
     @property
-    def wordnet_score(self) -> float:
-        return (
-            3 * self.keyword_weight
-            + 3 * self.semantic_similarity
-            + self.wordnet_path_similarity
-            + self.wordnet_wup_similarity
-            + 1 / (1 + self.wordnet_path_distance)
-        )
+    def score(self) -> float:
+        result = 0
+        total_metrics = 0
 
-    @property
-    def conceptnet_score(self) -> float:
-        return (
-            3 * self.keyword_weight
-            + 3 * self.semantic_similarity
-            + 1 / (1 + self.conceptnet_distance)
-        )
+        for sim in (self.keyword_weight, self.semantic_similarity):
+            if sim is not None:
+                result += sim
+                total_metrics += 1
+
+        for dist in (self.wordnet_path_distance, self.conceptnet_path_distance):
+            if dist is not None:
+                result += _sim(dist)
+                total_metrics += 1
+
+        return result / total_metrics
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {
             "concept": str(self),
             "nodes": [str(node) for node in self.nodes],
             "synsets": [synset.name() for synset in self.synsets],
-            "conceptnet_score": self.conceptnet_score,
-            "wordnet_score": self.wordnet_score,
+            "score": self.score,
         }
+
+
+def _sim(distance: int) -> float:
+    return 1 / (1 + distance)
 
 
 @dataclass

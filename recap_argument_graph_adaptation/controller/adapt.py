@@ -55,19 +55,17 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
 
 def synsets(
     concepts: t.Iterable[Concept], rule: adaptation.Rule
-) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Synset]]]:
+) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Concept]]]:
     adapted_synsets = {}
     adapted_concepts = {}
     nlp = load.spacy_nlp()
 
     for original_concept in concepts:
         adaptation_results = set()
+        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
 
         for synset in original_concept.synsets:
             adaptation_results.update(wordnet.hypernyms(synset))
-
-        adapted_synsets[original_concept] = adaptation_results
-        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
 
         for result in adaptation_results:
             _name, pos = wordnet.resolve_synset(result)
@@ -81,19 +79,16 @@ def synsets(
                 nodes,
                 synsets,
                 name.similarity(rule.target.name),
-                config["nlp"]["max_distance"],
+                None,
                 *wordnet.metrics(synsets, rule.target.synsets),
             )
 
             adaptation_candidates[candidate] += 1
 
+        adapted_synsets[original_concept] = adaptation_candidates.keys()
         adapted_concept = _filter_concepts(adaptation_candidates, rule)
 
         if adapted_concept:
-            # In this step, the concept is correctly capitalized.
-            # Not necessary due to later grammatical correction.
-            # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
-
             adapted_concepts[original_concept] = adapted_concept
             log.info(f"Adapt ({original_concept})->({adapted_concept}).")
 
@@ -213,30 +208,20 @@ def _adapt_shortest_path(
 def _filter_concepts(
     concept_occurrences: t.Mapping[Concept, int], rule: adaptation.Rule
 ) -> t.Optional[Concept]:
-    # Remove the original adaptation source from the candidated
+    # Remove the original adaptation source from the candidates
     filtered_concepts = set(concept_occurrences).difference([rule.source])
-
-    # Sort key: occurrences * similarity * 1/distance
-    score = lambda concept: (
-        concept.wordnet_score
-        if config["nlp"]["knowledge_graph"] == "wordnet"
-        else concept.conceptnet_score
+    filtered_concepts = Concept.only_relevant(
+        filtered_concepts, config["nlp"]["min_score_adaptation"]
     )
-
-    # TODO: Anderes Verfahren finden, um ein Konzept auszuwählen.
-    # Momentan wird oft whole genommen, obwohl bei "house" bspw. "building" oder "structure" besser wären.
 
     if filtered_concepts:
         sorted_concepts = sorted(
             filtered_concepts,
-            key=lambda concept: concept_occurrences[concept] * score(concept),
+            key=lambda concept: concept_occurrences[concept] * concept.score,
             reverse=True,
         )
 
-        candidate = sorted_concepts[0]
-
-        if score(candidate) >= 0.1:
-            return candidate
+        return sorted_concepts[0]
 
     return None
 

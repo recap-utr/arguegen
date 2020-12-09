@@ -38,7 +38,6 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
         for node in graph.inodes:
             doc = nlp(node.plain_text)
 
-            # TODO: The weight could be used in conjunction with the semantic similarity.
             terms = [
                 (nlp(key_term), weight)
                 for (key_term, weight) in extractor(
@@ -84,8 +83,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                         )
                     )
 
-    concepts = Concept.only_relevant(concepts)
-    # TODO: Aids wird nicht korrekt erkannt.
+    concepts = Concept.only_relevant(concepts, config["nlp"]["min_score_extraction"])
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

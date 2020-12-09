@@ -25,6 +25,8 @@ def run():
 
     for case in cases:
         if config["nlp"]["knowledge_graph"] == "wordnet":
+            # for min_concept_score in range(20, 60, 10):
+            #     config["nlp"]["min_concept_score"] = min_concept_score / 100
             _perform_wordnet_adaptation(case, out_path)
 
         elif config["nlp"]["knowledge_graph"] == "conceptnet":

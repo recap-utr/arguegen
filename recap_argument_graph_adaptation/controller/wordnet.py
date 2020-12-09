@@ -69,9 +69,16 @@ def contextual_synsets(
         synset_tuples.append((result, similarity))
 
     synset_tuples.sort(key=lambda item: item[1])
-    # TODO: Die reine Ähnlichkeit bringt manchmal nichts (AIDS).
-    # Man könnte mehrere gute Ergebnisse auswählen.
-    # Alternativ: Auf die korrekte Schreibweise des Worts achten.
+
+    # Check if the best result has a higher similarity than demanded.
+    # If true, only include the synsets with higher similarity.
+    # Otherwise, include all available synsets.
+    if best_synset_tuple := next(iter(synset_tuples), None):
+        if best_synset_tuple[1] > config["wordnet"]["min_similarity_hypernym"]:
+            synset_tuples = filter(
+                lambda x: x[1] > config["wordnet"]["min_similarity_hypernym"],
+                synset_tuples,
+            )
 
     return tuple([synset for synset, _ in synset_tuples])
 
