@@ -390,10 +390,13 @@ class Database:
         max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]
 
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._distance, nodes1, nodes2, relation_types, max_relations
-            )
+        if nodes1 and nodes2:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._distance, nodes1, nodes2, relation_types, max_relations
+                )
+
+        return config["nlp"]["max_distance"]
 
     @staticmethod
     def _distance(

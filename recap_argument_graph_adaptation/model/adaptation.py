@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
+import statistics
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
-from nltk.corpus.reader.wordnet import Synset
 
 import recap_argument_graph as ag
+from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
 from spacy.tokens import Doc  # type: ignore
@@ -30,12 +31,12 @@ class Concept:
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     nodes: t.Tuple[graph.Node, ...]
     synsets: t.Tuple[Synset, ...]
+    keyword_weight: t.Optional[float]
     semantic_similarity: t.Optional[float] = None
     conceptnet_path_distance: t.Optional[float] = None
     wordnet_path_similarity: t.Optional[float] = None
     wordnet_wup_similarity: t.Optional[float] = None
     wordnet_path_distance: t.Optional[float] = None
-    keyword_weight: t.Optional[float] = None
 
     @property
     def best_node(self) -> graph.Node:

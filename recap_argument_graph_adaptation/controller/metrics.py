@@ -1,0 +1,53 @@
+from __future__ import annotations
+
+import logging
+from recap_argument_graph_adaptation.model.adaptation import Concept
+import statistics
+import typing as t
+from dataclasses import dataclass, field
+from enum import Enum
+
+import recap_argument_graph as ag
+from nltk.corpus.reader.wordnet import Synset
+from recap_argument_graph_adaptation.controller import wordnet
+from recap_argument_graph_adaptation.model import graph
+from recap_argument_graph_adaptation.model.config import config
+from recap_argument_graph_adaptation.model.database import Database
+from spacy.tokens import Doc  # type: ignore
+
+log = logging.getLogger(__name__)
+
+
+best_concept_metrics = (1, 0, 1, 1, 0)
+
+
+def init_concept_metrics(
+    name: Doc,
+    nodes: t.Sequence[graph.Node],
+    synsets: t.Iterable[Synset],
+    related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
+) -> t.Tuple[float, float, float, float, float]:
+    db = Database()
+
+    if isinstance(related_concepts, Concept):
+        related_concepts = {related_concepts: 1.0}
+
+    if sum(related_concepts.values()) != 1:
+        raise ValueError("The weights do not sum up to 1.")
+
+    metrics = [[] for _ in best_concept_metrics]
+
+    for related_concept, weight in related_concepts.items():
+        metrics[0].append(name.similarity(related_concept.name) * weight)
+        metrics[1].append(db.distance(nodes, related_concept.nodes) * weight)
+        metrics[2].append(
+            wordnet.path_similarity(synsets, related_concept.synsets) * weight
+        )
+        metrics[3].append(
+            wordnet.wup_similarity(synsets, related_concept.synsets) * weight
+        )
+        metrics[4].append(
+            wordnet.path_distance(synsets, related_concept.synsets) * weight
+        )
+
+    return tuple((sum(metric) for metric in metrics))

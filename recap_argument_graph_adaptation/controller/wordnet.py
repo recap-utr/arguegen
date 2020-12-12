@@ -95,41 +95,39 @@ def contextual_synset(
     return None
 
 
-def metrics(
-    fixed_synsets: t.Iterable[Synset],
-    *comparison_synsets: t.Iterable[Synset],
-) -> t.Tuple[float, float, float]:
-    global_path_sim = []
-    global_wup_sim = []
-    global_path_dist = []
+def path_similarity(
+    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+) -> float:
+    values = []
 
-    for current_synsets in comparison_synsets:
-        local_path_sim = []
-        local_wup_sim = []
-        local_path_dist = []
+    for s1 in synsets1:
+        for s2 in synsets2:
+            if value := s1.path_similarity(s2):
+                values.append(value)
 
-        for s1 in fixed_synsets:
-            for s2 in current_synsets:
-                if path_sim := s1.path_similarity(s2):
-                    local_path_sim.append(path_sim)
+    return max(values, default=0)
 
-                if wup_sim := s1.wup_similarity(s2):
-                    local_wup_sim.append(wup_sim)
 
-                if path_dist := s1.shortest_path_distance(s2):
-                    local_path_dist.append(path_dist)
+def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
+    values = []
 
-        global_path_sim.append(max(local_path_sim, default=0))
-        global_wup_sim.append(max(local_wup_sim, default=0))
-        global_path_dist.append(
-            max(local_path_dist, default=int(config["nlp"]["max_distance"]))
-        )
+    for s1 in synsets1:
+        for s2 in synsets2:
+            if value := s1.wup_similarity(s2):
+                values.append(value)
 
-    return (
-        statistics.mean(global_path_sim),
-        statistics.mean(global_wup_sim),
-        statistics.mean(global_path_dist),
-    )
+    return max(values, default=0)
+
+
+def path_distance(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
+    values = []
+
+    for s1 in synsets1:
+        for s2 in synsets2:
+            if value := s1.shortest_path_distance(s2):
+                values.append(value)
+
+    return min(values, default=int(config["nlp"]["max_distance"]))
 
 
 best_metrics = (1, 1, 0)

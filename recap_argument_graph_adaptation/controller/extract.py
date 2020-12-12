@@ -1,4 +1,5 @@
 import logging
+from recap_argument_graph_adaptation.controller import metrics
 import typing as t
 
 import recap_argument_graph as ag
@@ -66,20 +67,16 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                         synsets = wordnet.contextual_synsets(doc, root.text, pos_tag)
 
                 if nodes and synsets:
-                    semantic_sim = term.similarity(rule.source.name)
-                    wn_metrics = wordnet.metrics(synsets, rule.source.synsets)
-                    conceptnet_distance = db.distance(nodes, rule.source.nodes)
-
                     concepts.add(
                         Concept(
                             term,
                             pos_tag,
                             nodes,
                             synsets,
-                            semantic_sim,
-                            conceptnet_distance,
-                            *wn_metrics,
-                            keyword_weight=term_weight,
+                            term_weight,
+                            *metrics.init_concept_metrics(
+                                term, nodes, synsets, rule.source
+                            ),
                         )
                     )
 

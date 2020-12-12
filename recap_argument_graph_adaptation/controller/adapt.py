@@ -4,7 +4,7 @@ import multiprocessing
 import re
 
 from nltk.corpus.reader.wordnet import Synset
-from recap_argument_graph_adaptation.controller import wordnet
+from recap_argument_graph_adaptation.controller import metrics, wordnet
 import typing as t
 from collections import defaultdict
 import warnings
@@ -25,10 +25,7 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
-# TODO: Hier weiter: Der Score muss robuster werden.
-# Es gibt insgesamt drei Konzepte, die pro Adaptionskandidat genutzt werden könnten.
-# Diese sollte man unterschiedlich gewichten können.
-# Klasse Concepts ist frozen, man könnte eine andere Methode schreiben, die die Metriken berechnet.
+# TODO: Adaption is langsam, wahrscheinlich weil die Knotendistanz von ConceptNet berechnet wird.
 
 
 def argument_graph(
@@ -76,16 +73,22 @@ def synsets(
                 name = nlp(_name)
                 nodes = tuple()
                 synsets = (hypernym,)
+                related_concepts = {
+                    rule.target: config["nlp"]["concept_weight"]["rule_target"],
+                    rule.source: config["nlp"]["concept_weight"]["rule_source"],
+                    original_concept: config["nlp"]["concept_weight"][
+                        "original_concept"
+                    ],
+                }
 
                 candidate = Concept(
                     name,
                     pos,
                     nodes,
                     synsets,
-                    name.similarity(rule.target.name),
                     None,
-                    *wordnet.metrics(
-                        synsets, rule.target.synsets, original_concept.synsets
+                    *metrics.init_concept_metrics(
+                        name, nodes, synsets, related_concepts
                     ),
                 )
 
@@ -142,25 +145,17 @@ def paths(
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
             synsets = wordnet.synsets(name.text, pos)
+            related_concepts = {rule.target: 0.4, rule.source: 0.2, root_concept: 0.4}
 
             candidate = Concept(
                 name,
                 pos,
                 end_nodes,
                 synsets,
-                statistics.mean(
-                    [
-                        name.similarity(rule.target.name),
-                        name.similarity(root_concept.name),
-                    ]
+                None,
+                *metrics.init_concept_metrics(
+                    name, end_nodes, synsets, related_concepts
                 ),
-                statistics.mean(
-                    [
-                        db.distance(end_nodes, rule.target.nodes),
-                        db.distance(end_nodes, root_concept.nodes),
-                    ]
-                ),
-                *wordnet.metrics(synsets, rule.target.synsets, root_concept.synsets),
             )
 
             adaptation_candidates.add(candidate)
