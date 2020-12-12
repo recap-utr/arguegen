@@ -27,6 +27,11 @@ log = logging.getLogger(__name__)
 # TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
 # TODO: Adaption is langsam, wahrscheinlich weil die Knotendistanz von ConceptNet berechnet wird.
 
+related_concept_weight = config["nlp"]["related_concept_weight"]
+
+if round(sum(related_concept_weight.values()), 2) != 1:
+    raise ValueError("The sum is not 1.")
+
 
 def argument_graph(
     graph: ag.Graph,
@@ -50,7 +55,7 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
     """Perform multiple replacements in a single run."""
 
     substrings = sorted(substitutions.keys(), key=len, reverse=True)
-    regex = re.compile("|".join(map(re.escape, substrings)))
+    regex = re.compile("|".join(map(re.escape, substrings)))  # type: ignore
 
     return regex.sub(lambda match: substitutions[match.group(0)], input_text)
 
@@ -73,12 +78,11 @@ def synsets(
                 name = nlp(_name)
                 nodes = tuple()
                 synsets = (hypernym,)
+
                 related_concepts = {
-                    rule.target: config["nlp"]["concept_weight"]["rule_target"],
-                    rule.source: config["nlp"]["concept_weight"]["rule_source"],
-                    original_concept: config["nlp"]["concept_weight"][
-                        "original_concept"
-                    ],
+                    rule.target: related_concept_weight["rule_target"],
+                    rule.source: related_concept_weight["rule_source"],
+                    original_concept: related_concept_weight["original_concept"],
                 }
 
                 candidate = Concept(
@@ -119,11 +123,11 @@ def paths(
     adapted_concepts = {}
     adapted_paths = {}
 
-    for root_concept, all_shortest_paths in reference_paths.items():
-        log.debug(f"Adapting '{root_concept}'.")
+    for original_concept, all_shortest_paths in reference_paths.items():
+        log.debug(f"Adapting '{original_concept}'.")
 
         params = [
-            (shortest_path, root_concept, rule, selector, method)
+            (shortest_path, original_concept, rule, selector, method)
             for shortest_path in all_shortest_paths
         ]
 
@@ -134,7 +138,7 @@ def paths(
                 adaptation_results = pool.starmap(_adapt_shortest_path, params)
 
         adaptation_results = list(itertools.chain(*adaptation_results))
-        adapted_paths[root_concept] = adaptation_results
+        adapted_paths[original_concept] = adaptation_results
         adaptation_candidates = set()
         log.debug(
             f"Found the following candidates: {', '.join((str(path) for path in adaptation_results))}"
@@ -145,7 +149,11 @@ def paths(
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
             synsets = wordnet.synsets(name.text, pos)
-            related_concepts = {rule.target: 0.4, rule.source: 0.2, root_concept: 0.4}
+            related_concepts = {
+                rule.target: related_concept_weight["rule_target"],
+                rule.source: related_concept_weight["rule_source"],
+                original_concept: related_concept_weight["original_concept"],
+            }
 
             candidate = Concept(
                 name,
@@ -167,11 +175,11 @@ def paths(
             # Not necessary due to later grammatical correction.
             # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
 
-            adapted_concepts[root_concept] = adapted_concept
-            log.info(f"Adapt ({root_concept})->({adapted_concept}).")
+            adapted_concepts[original_concept] = adapted_concept
+            log.info(f"Adapt ({original_concept})->({adapted_concept}).")
 
         else:
-            log.info(f"No adaptation for ({root_concept}).")
+            log.info(f"No adaptation for ({original_concept}).")
 
     return adapted_concepts, adapted_paths
 

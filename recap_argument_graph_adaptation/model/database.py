@@ -11,20 +11,26 @@ import typing as t
 class Database:
     _driver: neo4j.Neo4jDriver
     lang: str
+    active: bool
 
     def __init__(self):
-        driver = neo4j.GraphDatabase.driver(
-            config["neo4j"]["url"],
-            auth=(
-                config["neo4j"]["username"],
-                config["neo4j"]["password"],
-            ),
-            encrypted=False,
+        self.active = (
+            True if config["nlp"]["knowledge_graph"] == "conceptnet" else False
         )
 
-        if isinstance(driver, neo4j.Neo4jDriver):
-            self._driver = driver
-            self.lang = config["nlp"]["lang"]
+        if self.active:
+            driver = neo4j.GraphDatabase.driver(
+                config["neo4j"]["url"],
+                auth=(
+                    config["neo4j"]["username"],
+                    config["neo4j"]["password"],
+                ),
+                encrypted=False,
+            )
+
+            if isinstance(driver, neo4j.Neo4jDriver):
+                self._driver = driver
+                self.lang = config["nlp"]["lang"]
 
     # NODE
 
@@ -88,8 +94,11 @@ class Database:
         return tuple(nodes)
 
     def nodes(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
-        with self._driver.session() as session:
-            return session.read_transaction(self._nodes, name, pos, self.lang)
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(self._nodes, name, pos, self.lang)
+
+        return tuple()
 
     @staticmethod
     def _nodes(
@@ -133,8 +142,13 @@ class Database:
     # GENERALIZATION
 
     def generalizations(self, name: str, pos: graph.POS) -> t.Tuple[graph.Node, ...]:
-        with self._driver.session() as session:
-            return session.read_transaction(self._generalizations, name, pos, self.lang)
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._generalizations, name, pos, self.lang
+                )
+
+        return tuple()
 
     @staticmethod
     def _generalizations(
@@ -160,10 +174,13 @@ class Database:
     def nodes_generalizations(
         self, nodes: t.Sequence[graph.Node]
     ) -> t.Tuple[graph.Node, ...]:
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._nodes_generalizations, nodes, self.lang
-            )
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._nodes_generalizations, nodes, self.lang
+                )
+
+        return tuple()
 
     # TODO: Currently, this function might return the same node that was given as input.
     # To resolve this, we would need to fork the function _nodes_along_paths.
@@ -203,14 +220,17 @@ class Database:
         relation_types = config["conceptnet"]["relation"]["generalization_types"]
         max_relations = config["conceptnet"]["path"]["max_length"]["shortest_path"]
 
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._shortest_path,
-                start_nodes,
-                end_nodes,
-                relation_types,
-                max_relations,
-            )
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._shortest_path,
+                    start_nodes,
+                    end_nodes,
+                    relation_types,
+                    max_relations,
+                )
+
+        return None
 
     @staticmethod
     def _shortest_path(
@@ -250,14 +270,17 @@ class Database:
         relation_types = config["conceptnet"]["relation"]["generalization_types"]
         max_relations = config["conceptnet"]["path"]["max_length"]["shortest_path"]
 
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._all_shortest_paths,
-                start_nodes,
-                end_nodes,
-                relation_types,
-                max_relations,
-            )
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._all_shortest_paths,
+                    start_nodes,
+                    end_nodes,
+                    relation_types,
+                    max_relations,
+                )
+
+        return None
 
     @staticmethod
     def _all_shortest_paths(
@@ -298,10 +321,13 @@ class Database:
         if not relation_types:
             relation_types = config["conceptnet"]["relation"]["generalization_types"]
 
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._expand_nodes, nodes, relation_types, self.lang
-            )
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._expand_nodes, nodes, relation_types, self.lang
+                )
+
+        return None
 
     # Currently, only the first node that returns a result is queried.
     # Could be updated if results are not satisfactory.
@@ -337,10 +363,13 @@ class Database:
         reference_paths: t.Sequence[graph.Path],
         start_nodes: t.Sequence[graph.Node],
     ) -> t.List[graph.Path]:
-        with self._driver.session() as session:
-            return session.read_transaction(
-                self._adapt_paths, reference_paths, start_nodes, self.lang
-            )
+        if self.active:
+            with self._driver.session() as session:
+                return session.read_transaction(
+                    self._adapt_paths, reference_paths, start_nodes, self.lang
+                )
+
+        return []
 
     @staticmethod
     def _adapt_paths(
@@ -390,7 +419,7 @@ class Database:
         max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]
 
-        if nodes1 and nodes2:
+        if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(
                     self._distance, nodes1, nodes2, relation_types, max_relations
@@ -431,7 +460,7 @@ class Database:
 
             return shortest_length
 
-        return 0
+        return config["nlp"]["max_distance"]
 
 
 def _arrow() -> str:

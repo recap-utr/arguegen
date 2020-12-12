@@ -73,13 +73,15 @@ def contextual_synsets(
 
     # Check if the best result has a higher similarity than demanded.
     # If true, only include the synsets with higher similarity.
-    # Otherwise, include all available synsets.
+    # Otherwise, include only the best one.
     if best_synset_tuple := next(iter(synset_tuples), None):
         if best_synset_tuple[1] > config["wordnet"]["min_similarity_hypernym"]:
             synset_tuples = filter(
                 lambda x: x[1] > config["wordnet"]["min_similarity_hypernym"],
                 synset_tuples,
             )
+        else:
+            synset_tuples = (best_synset_tuple,)
 
     return tuple([synset for synset, _ in synset_tuples])
 

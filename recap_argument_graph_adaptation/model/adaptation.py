@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from multiprocessing import Value
 import statistics
 import typing as t
 from dataclasses import dataclass, field
@@ -67,20 +68,28 @@ class Concept:
 
     @property
     def score(self) -> float:
+        metrics = {
+            "keyword_weight": self.keyword_weight,
+            "semantic_similarity": self.semantic_similarity,
+            "conceptnet_path_distance": _dist2sim(self.conceptnet_path_distance),
+            "wordnet_path_similarity": self.wordnet_path_similarity,
+            "wordnet_wup_similarity": self.wordnet_wup_similarity,
+            "wordnet_path_distance": _dist2sim(self.wordnet_path_distance),
+        }
+
+        if round(sum(config["nlp"]["concept_score"].values()), 2) != 1:
+            raise ValueError("The sum is not 1.")
+
         result = 0
-        total_metrics = 0
+        total_weight = 0
 
-        for sim in (self.keyword_weight, self.semantic_similarity):
-            if sim is not None:
-                result += sim
-                total_metrics += 1
+        # TODO: Wenn eine Metrik nicht gesetzt ist, dann ist die Summe der Gewichte nicht 1
+        for metric_name, metric_weight in config["nlp"]["concept_score"].items():
+            if metric := metrics[metric_name] is not None:
+                result += metrics[metric_name] * metric_weight
+                total_weight += metric_weight
 
-        for dist in (self.wordnet_path_distance, self.conceptnet_path_distance):
-            if dist is not None:
-                result += _sim(dist)
-                total_metrics += 1
-
-        return result / total_metrics
+        return result
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {
@@ -91,8 +100,11 @@ class Concept:
         }
 
 
-def _sim(distance: int) -> float:
-    return 1 / (1 + distance)
+def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
+    if distance is not None:
+        return 1 / (1 + distance)
+
+    return None
 
 
 @dataclass
