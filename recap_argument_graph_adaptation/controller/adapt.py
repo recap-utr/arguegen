@@ -1,3 +1,4 @@
+import statistics
 import logging
 import multiprocessing
 import re
@@ -24,6 +25,10 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
+# TODO: Hier weiter: Der Score muss robuster werden.
+# Es gibt insgesamt drei Konzepte, die pro Adaptionskandidat genutzt werden könnten.
+# Diese sollte man unterschiedlich gewichten können.
+# Klasse Concepts ist frozen, man könnte eine andere Methode schreiben, die die Metriken berechnet.
 
 
 def argument_graph(
@@ -61,31 +66,32 @@ def synsets(
     nlp = load.spacy_nlp()
 
     for original_concept in concepts:
-        adaptation_results = set()
-        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
+        adaptation_candidates = set()
 
         for synset in original_concept.synsets:
-            adaptation_results.update(wordnet.hypernyms(synset))
+            hypernyms = wordnet.hypernyms(synset)
 
-        for result in adaptation_results:
-            _name, pos = wordnet.resolve_synset(result)
-            name = nlp(_name)
-            nodes = tuple()
-            synsets = (result,)
+            for hypernym in hypernyms:
+                _name, pos = wordnet.resolve_synset(hypernym)
+                name = nlp(_name)
+                nodes = tuple()
+                synsets = (hypernym,)
 
-            candidate = Concept(
-                name,
-                pos,
-                nodes,
-                synsets,
-                name.similarity(rule.target.name),
-                None,
-                *wordnet.metrics(synsets, rule.target.synsets),
-            )
+                candidate = Concept(
+                    name,
+                    pos,
+                    nodes,
+                    synsets,
+                    name.similarity(rule.target.name),
+                    None,
+                    *wordnet.metrics(
+                        synsets, rule.target.synsets, original_concept.synsets
+                    ),
+                )
 
-            adaptation_candidates[candidate] += 1
+                adaptation_candidates.add(candidate)
 
-        adapted_synsets[original_concept] = adaptation_candidates.keys()
+        adapted_synsets[original_concept] = adaptation_candidates
         adapted_concept = _filter_concepts(adaptation_candidates, rule)
 
         if adapted_concept:
@@ -126,8 +132,7 @@ def paths(
 
         adaptation_results = list(itertools.chain(*adaptation_results))
         adapted_paths[root_concept] = adaptation_results
-        adaptation_candidates: t.Dict[Concept, int] = defaultdict(int)
-
+        adaptation_candidates = set()
         log.debug(
             f"Found the following candidates: {', '.join((str(path) for path in adaptation_results))}"
         )
@@ -143,12 +148,22 @@ def paths(
                 pos,
                 end_nodes,
                 synsets,
-                name.similarity(rule.target.name),
-                db.distance(end_nodes, rule.target.nodes),
-                *wordnet.metrics(synsets, rule.target.synsets),
+                statistics.mean(
+                    [
+                        name.similarity(rule.target.name),
+                        name.similarity(root_concept.name),
+                    ]
+                ),
+                statistics.mean(
+                    [
+                        db.distance(end_nodes, rule.target.nodes),
+                        db.distance(end_nodes, root_concept.nodes),
+                    ]
+                ),
+                *wordnet.metrics(synsets, rule.target.synsets, root_concept.synsets),
             )
 
-            adaptation_candidates[candidate] += 1
+            adaptation_candidates.add(candidate)
 
         adapted_concept = _filter_concepts(adaptation_candidates, rule)
 
@@ -206,10 +221,10 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(
-    concept_occurrences: t.Mapping[Concept, int], rule: adaptation.Rule
+    concepts: t.Set[Concept], rule: adaptation.Rule
 ) -> t.Optional[Concept]:
     # Remove the original adaptation source from the candidates
-    filtered_concepts = set(concept_occurrences).difference([rule.source])
+    filtered_concepts = concepts.difference([rule.source])
     filtered_concepts = Concept.only_relevant(
         filtered_concepts, config["nlp"]["min_score_adaptation"]
     )
@@ -217,7 +232,7 @@ def _filter_concepts(
     if filtered_concepts:
         sorted_concepts = sorted(
             filtered_concepts,
-            key=lambda concept: concept_occurrences[concept] * concept.score,
+            key=lambda c: c.score,
             reverse=True,
         )
 

@@ -31,10 +31,10 @@ class Concept:
     nodes: t.Tuple[graph.Node, ...]
     synsets: t.Tuple[Synset, ...]
     semantic_similarity: t.Optional[float] = None
-    conceptnet_path_distance: t.Optional[int] = None
+    conceptnet_path_distance: t.Optional[float] = None
     wordnet_path_similarity: t.Optional[float] = None
     wordnet_wup_similarity: t.Optional[float] = None
-    wordnet_path_distance: t.Optional[int] = None
+    wordnet_path_distance: t.Optional[float] = None
     keyword_weight: t.Optional[float] = None
 
     @property
@@ -59,6 +59,10 @@ class Concept:
         min_score: float,
     ) -> t.Set[Concept]:
         return {concept for concept in concepts if concept.score > min_score}
+
+    @staticmethod
+    def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
+        return list(sorted(concepts, key=lambda concept: concept.score))
 
     @property
     def score(self) -> float:

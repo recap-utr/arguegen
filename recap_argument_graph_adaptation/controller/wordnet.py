@@ -1,4 +1,5 @@
 from __future__ import annotations
+import statistics
 
 from spacy.util import filter_spans
 
@@ -95,27 +96,39 @@ def contextual_synset(
 
 
 def metrics(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
-) -> t.Tuple[float, float, int]:
-    path_similarities = []
-    wup_similarities = []
-    path_distances = []
+    fixed_synsets: t.Iterable[Synset],
+    *comparison_synsets: t.Iterable[Synset],
+) -> t.Tuple[float, float, float]:
+    global_path_sim = []
+    global_wup_sim = []
+    global_path_dist = []
 
-    for s1 in synsets1:
-        for s2 in synsets2:
-            if path_sim := s1.path_similarity(s2):
-                path_similarities.append(path_sim)
+    for current_synsets in comparison_synsets:
+        local_path_sim = []
+        local_wup_sim = []
+        local_path_dist = []
 
-            if wup_sim := s1.wup_similarity(s2):
-                wup_similarities.append(wup_sim)
+        for s1 in fixed_synsets:
+            for s2 in current_synsets:
+                if path_sim := s1.path_similarity(s2):
+                    local_path_sim.append(path_sim)
 
-            if path_dist := s1.shortest_path_distance(s2):
-                path_distances.append(path_dist)
+                if wup_sim := s1.wup_similarity(s2):
+                    local_wup_sim.append(wup_sim)
+
+                if path_dist := s1.shortest_path_distance(s2):
+                    local_path_dist.append(path_dist)
+
+        global_path_sim.append(max(local_path_sim, default=0))
+        global_wup_sim.append(max(local_wup_sim, default=0))
+        global_path_dist.append(
+            max(local_path_dist, default=int(config["nlp"]["max_distance"]))
+        )
 
     return (
-        max(path_similarities, default=0),
-        max(wup_similarities, default=0),
-        min(path_distances, default=config["nlp"]["max_distance"]),
+        statistics.mean(global_path_sim),
+        statistics.mean(global_wup_sim),
+        statistics.mean(global_path_dist),
     )
 
 
