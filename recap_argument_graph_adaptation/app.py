@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from recap_argument_graph_adaptation.controller import evaluate
 import typing as t
 from pathlib import Path
 
@@ -24,10 +25,12 @@ def run():
     out_path = Path(config["path"]["output"], _timestamp())
 
     for case in cases:
+        adapted_concepts = {}
+
         if config["nlp"]["knowledge_graph"] == "wordnet":
             # for min_concept_score in range(20, 60, 10):
             #     config["nlp"]["min_concept_score"] = min_concept_score / 100
-            _perform_wordnet_adaptation(case, out_path)
+            adapted_concepts = _perform_wordnet_adaptation(case, out_path)
 
         elif config["nlp"]["knowledge_graph"] == "conceptnet":
             adaptation_methods = [adaptation.Method(config["conceptnet"]["method"])]
@@ -41,7 +44,7 @@ def run():
 
             for adaptation_method in adaptation_methods:
                 for adaptation_selector in adaptation_selectors:
-                    _perform_conceptnet_adaptation(
+                    adapted_concepts = _perform_conceptnet_adaptation(
                         case, adaptation_method, adaptation_selector, out_path
                     )
 
@@ -49,13 +52,14 @@ def run():
 def _perform_wordnet_adaptation(
     case: adaptation.Case,
     out_path: Path,
-) -> None:
+) -> t.Dict[adaptation.Concept, adaptation.Concept]:
     log.info(f"Processing '{case.name}'.")
 
     nested_out_path: Path = out_path / case.name
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adaptation_results = {}
+    global_adapted_concepts = {}
 
     for rule in case.rules:
         log.info(f"Processing rule {str(rule)}.")
@@ -67,9 +71,18 @@ def _perform_wordnet_adaptation(
         adaptation_results[str(rule)] = export.statistic(
             concepts, {}, {}, adapted_synsets, adapted_concepts
         )
+        global_adapted_concepts.update(adapted_concepts)
 
-    stats = {"results": adaptation_results, "config": dict(config)}
+    global_score = evaluate.case(case, global_adapted_concepts)
+
+    stats = {
+        "global_score": global_score,
+        "results": adaptation_results,
+        "config": dict(config),
+    }
     _write_output(case, stats, nested_out_path)
+
+    return global_adapted_concepts
 
 
 def _perform_conceptnet_adaptation(
@@ -77,7 +90,7 @@ def _perform_conceptnet_adaptation(
     adaptation_method: adaptation.Method,
     adaptation_selector: adaptation.Selector,
     out_path: Path,
-) -> None:
+) -> t.Dict[adaptation.Concept, adaptation.Concept]:
     log.info(
         f"Processing '{case.name}' "
         f"with method '{adaptation_method.value}' "
@@ -94,6 +107,7 @@ def _perform_conceptnet_adaptation(
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adaptation_results = {}
+    global_adapted_concepts = {}
 
     for rule in case.rules:
         log.info(f"Processing rule {str(rule)}.")
@@ -108,9 +122,12 @@ def _perform_conceptnet_adaptation(
         adaptation_results[str(rule)] = export.statistic(
             concepts, reference_paths, adapted_paths, {}, adapted_concepts
         )
+        global_adapted_concepts.update(adapted_concepts)
 
     stats = {"results": adaptation_results, "config": dict(config)}
     _write_output(case, stats, nested_out_path)
+
+    return global_adapted_concepts
 
 
 def _write_output(
