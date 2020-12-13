@@ -83,13 +83,14 @@ class Concept:
         result = 0
         total_weight = 0
 
-        # TODO: Wenn eine Metrik nicht gesetzt ist, dann ist die Summe der Gewichte nicht 1
         for metric_name, metric_weight in config["nlp"]["concept_score"].items():
             if metric := metrics[metric_name] is not None:
-                result += metrics[metric_name] * metric_weight
+                result += metric * metric_weight
                 total_weight += metric_weight
 
-        return result
+        # If one metric is not set, the weights would not sum to 1.
+        # Thus, the result is normalized.
+        return result * (1 / total_weight)
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {

@@ -25,7 +25,6 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
-# TODO: Adaption is langsam, wahrscheinlich weil die Knotendistanz von ConceptNet berechnet wird.
 
 related_concept_weight = config["nlp"]["related_concept_weight"]
 

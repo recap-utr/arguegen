@@ -14,6 +14,3 @@ from recap_argument_graph_adaptation.controller import wordnet
 
 s1 = wordnet.synset("social_group.n.01")
 print(wordnet.hypernym_trees(s1))
-
-# TODO: Man müsste bei der Adaption die vorherigen Entscheidungen berücksichtigen.
-# Es sollte nicht passieren, dass zwei zuvor unterschiedliche Wörter zum gleichen Wort adaptiert werden.

@@ -415,7 +415,7 @@ class Database:
 
     def distance(
         self, nodes1: t.Sequence[graph.Node], nodes2: t.Sequence[graph.Node]
-    ) -> int:
+    ) -> t.Optional[int]:
         max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]
 
@@ -425,7 +425,7 @@ class Database:
                     self._distance, nodes1, nodes2, relation_types, max_relations
                 )
 
-        return config["nlp"]["max_distance"]
+        return None
 
     @staticmethod
     def _distance(

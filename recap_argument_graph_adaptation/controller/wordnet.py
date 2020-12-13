@@ -42,18 +42,16 @@ def synset(code: str) -> Synset:
     return wn.synset(code)
 
 
-def synsets(term: str, pos: t.Optional[graph.POS]) -> t.Tuple[Synset, ...]:
+def synsets(term: str, pos: graph.POS) -> t.Tuple[Synset, ...]:
     results = wn.synsets(term.replace(" ", "_"))
 
-    if pos:
+    if pos != graph.POS.OTHER:
         results = (ss for ss in results if str(ss.pos()) == graph.wn_pos(pos))
 
     return tuple(results)
 
 
-def contextual_synsets(
-    doc: Doc, term: str, pos: t.Optional[graph.POS]
-) -> t.Tuple[Synset, ...]:
+def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[Synset, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     nlp = load.spacy_nlp()
     results = synsets(term, pos)
@@ -99,7 +97,7 @@ def contextual_synset(
 
 def path_similarity(
     synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
-) -> float:
+) -> t.Optional[float]:
     values = []
 
     for s1 in synsets1:
@@ -107,10 +105,15 @@ def path_similarity(
             if value := s1.path_similarity(s2):
                 values.append(value)
 
-    return max(values, default=0)
+    if values:
+        return max(values)
+
+    return None
 
 
-def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
+def wup_similarity(
+    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+) -> t.Optional[float]:
     values = []
 
     for s1 in synsets1:
@@ -118,10 +121,15 @@ def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -
             if value := s1.wup_similarity(s2):
                 values.append(value)
 
-    return max(values, default=0)
+    if values:
+        return max(values)
+
+    return None
 
 
-def path_distance(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
+def path_distance(
+    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+) -> t.Optional[float]:
     values = []
 
     for s1 in synsets1:
@@ -129,7 +137,10 @@ def path_distance(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) ->
             if value := s1.shortest_path_distance(s2):
                 values.append(value)
 
-    return min(values, default=int(config["nlp"]["max_distance"]))
+    if values:
+        return min(values)
+
+    return None
 
 
 best_metrics = (1, 1, 0)

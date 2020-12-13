@@ -143,9 +143,9 @@ def _parse_rule_concept(rule: str) -> Concept:
 
     if len(rule_parts) > 1:
         pos = graph.POS(rule_parts[1])
-    else:  # TODO: Maybe remove the following case as the results may be unreliable.
-        spacy_pos = name[-1].pos_  # POS tags are only available on token level.
-        pos = graph.spacy_pos_mapping[spacy_pos]
+    # else:
+    #     spacy_pos = name[-1].pos_  # POS tags are only available on token level.
+    #     pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
     nodes = db.nodes(name.text, pos)
@@ -154,6 +154,8 @@ def _parse_rule_concept(rule: str) -> Concept:
     if config["nlp"]["knowledge_graph"] == "conceptnet" and not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
     elif config["nlp"]["knowledge_graph"] == "wordnet" and not synsets:
-        raise ValueError(f"The rule concept '{name}' cannot be found in WordNet.")
+        raise ValueError(
+            f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
+        )
 
     return Concept(name, pos, nodes, synsets, None, *metrics.best_concept_metrics)

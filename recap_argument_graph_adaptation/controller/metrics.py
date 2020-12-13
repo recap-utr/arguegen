@@ -26,7 +26,13 @@ def init_concept_metrics(
     nodes: t.Sequence[graph.Node],
     synsets: t.Iterable[Synset],
     related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
-) -> t.Tuple[float, float, float, float, float]:
+) -> t.Tuple[
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+]:
     db = Database()
 
     if isinstance(related_concepts, Concept):
@@ -38,16 +44,21 @@ def init_concept_metrics(
     metrics = [[] for _ in best_concept_metrics]
 
     for related_concept, weight in related_concepts.items():
-        metrics[0].append(name.similarity(related_concept.name) * weight)
-        metrics[1].append(db.distance(nodes, related_concept.nodes) * weight)
-        metrics[2].append(
-            wordnet.path_similarity(synsets, related_concept.synsets) * weight
-        )
-        metrics[3].append(
-            wordnet.wup_similarity(synsets, related_concept.synsets) * weight
-        )
-        metrics[4].append(
-            wordnet.path_distance(synsets, related_concept.synsets) * weight
-        )
+        for i, metric in enumerate(
+            (
+                name.similarity(related_concept.name),
+                db.distance(nodes, related_concept.nodes),
+                wordnet.path_similarity(synsets, related_concept.synsets),
+                wordnet.wup_similarity(synsets, related_concept.synsets),
+                wordnet.path_distance(synsets, related_concept.synsets),
+            )
+        ):
+            if metric:
+                metrics[i].append(metric * weight)
 
-    return tuple((sum(metric) for metric in metrics))
+    # No weight normalization required as given related concepts are available.
+    aggregated_metrics = [
+        sum(metric_entries) if metric_entries else None for metric_entries in metrics
+    ]
+
+    return tuple(aggregated_metrics)
