@@ -4,9 +4,17 @@
 
 # TODO: Anstatt der semantischen Ähnlichkeit kann man den Score auch hier benutzen.
 
+# TODO: Eine Art Gridsearch für Wordnet erstellen, bei der nach dem Score optimiert wird.
+
+# TODO: Korrekte Adaptionen sollten ein höheres Gewicht haben als nicht veränderte Konzepte.
+
+import logging
 import statistics
 import typing as t
 from recap_argument_graph_adaptation.model.adaptation import Case, Concept
+
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
+log = logging.getLogger(__name__)
 
 
 def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> float:
@@ -33,4 +41,6 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> float:
                 computed_adaptation.name.similarity(benchmark_adaptation.name)
             )
 
-    return statistics.mean(similarities)
+    mean = statistics.mean(similarities)
+
+    log.info(f"Finished with global score of {round(mean, 3)}.")

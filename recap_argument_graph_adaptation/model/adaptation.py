@@ -84,7 +84,7 @@ class Concept:
         total_weight = 0
 
         for metric_name, metric_weight in config["nlp"]["concept_score"].items():
-            if metric := metrics[metric_name] is not None:
+            if (metric := metrics[metric_name]) is not None:
                 result += metric * metric_weight
                 total_weight += metric_weight
 
