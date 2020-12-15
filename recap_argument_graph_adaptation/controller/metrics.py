@@ -21,6 +21,20 @@ log = logging.getLogger(__name__)
 best_concept_metrics = (1, 0, 1, 1, 0)
 
 
+def update_concept_metrics(
+    concept: Concept, related_concepts: t.Union[Concept, t.Mapping[Concept, float]]
+) -> t.Tuple[
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+    t.Optional[float],
+]:
+    return init_concept_metrics(
+        concept.name, concept.nodes, concept.synsets, related_concepts
+    )
+
+
 def init_concept_metrics(
     name: Doc,
     nodes: t.Sequence[graph.Node],

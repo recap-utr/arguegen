@@ -100,6 +100,20 @@ class Concept:
             "score": self.score,
         }
 
+    @classmethod
+    def from_concept(
+        cls,
+        source: Concept,
+        metrics: t.Tuple[
+            t.Optional[float],
+            t.Optional[float],
+            t.Optional[float],
+            t.Optional[float],
+            t.Optional[float],
+        ],
+    ) -> Concept:
+        return Concept(source.name, source.pos, source.nodes, source.synsets, *metrics)
+
 
 def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
     if distance is not None:
