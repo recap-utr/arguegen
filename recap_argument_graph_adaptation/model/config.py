@@ -72,5 +72,18 @@ class Config(collections.MutableMapping):
     def __str__(self):
         return str(self._store)
 
+    def tuning(self, prefix: str, name: t.Optional[str] = None) -> t.Any:
+        prefix = f"{prefix}_"
+        store = self._store["_tuning"]
+
+        if name:
+            return store[prefix + name]
+
+        return {
+            key[len(prefix) :]: value
+            for key, value in store.items()
+            if key.startswith(prefix)
+        }
+
 
 config = Config.instance()

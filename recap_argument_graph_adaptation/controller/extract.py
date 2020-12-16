@@ -85,7 +85,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                         )
                     )
 
-    concepts = Concept.only_relevant(concepts, config["nlp"]["min_score_extraction"])
+    concepts = Concept.only_relevant(concepts, config.tuning("extraction", "min_score"))
 
     log.info(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"

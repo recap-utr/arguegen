@@ -73,9 +73,9 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[Synset, .
     # If true, only include the synsets with higher similarity.
     # Otherwise, include only the best one.
     if best_synset_tuple := next(iter(synset_tuples), None):
-        if best_synset_tuple[1] > config["wordnet"]["min_similarity_hypernym"]:
+        if best_synset_tuple[1] > config.tuning("hypernym", "min_similarity"):
             synset_tuples = filter(
-                lambda x: x[1] > config["wordnet"]["min_similarity_hypernym"],
+                lambda x: x[1] > config.tuning("hypernym", "min_similarity"),
                 synset_tuples,
             )
         else:

@@ -26,11 +26,6 @@ log = logging.getLogger(__name__)
 
 # TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
 
-related_concept_weight = config["nlp"]["related_concept_weight"]
-
-if round(sum(related_concept_weight.values()), 2) != 1:
-    raise ValueError("The sum is not 1.")
-
 
 def argument_graph(
     graph: ag.Graph,
@@ -65,6 +60,10 @@ def synsets(
     adapted_synsets = {}
     adapted_concepts = {}
     nlp = load.spacy_nlp()
+    related_concept_weight = config.tuning("weight")
+
+    if round(sum(related_concept_weight.values()), 2) != 1:
+        raise ValueError("The sum is not 1.")
 
     for original_concept in concepts:
         adaptation_candidates = set()
@@ -117,7 +116,10 @@ def paths(
     method: adaptation.Method,
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
     nlp = load.spacy_nlp()
-    db = Database()
+    related_concept_weight = config.tuning("weight")
+
+    if round(sum(related_concept_weight.values()), 2) != 1:
+        raise ValueError("The sum is not 1.")
 
     adapted_concepts = {}
     adapted_paths = {}
@@ -228,7 +230,7 @@ def _filter_concepts(
     # Remove the original adaptation source from the candidates
     filtered_concepts = concepts.difference([rule.source])
     filtered_concepts = Concept.only_relevant(
-        filtered_concepts, config["nlp"]["min_score_adaptation"]
+        filtered_concepts, config.tuning("adaptation", "min_score")
     )
 
     if filtered_concepts:

@@ -4,6 +4,7 @@ import os
 from recap_argument_graph_adaptation.controller import evaluate
 import typing as t
 from pathlib import Path
+from sklearn.model_selection import ParameterGrid
 
 import pendulum
 
@@ -24,29 +25,36 @@ def run():
     cases = load.cases()
     out_path = Path(config["path"]["output"], _timestamp())
 
+    param_grid = ParameterGrid(dict(config["tuning"]))
+
     for case in cases:
-        adapted_concepts = {}
+        for params in param_grid:
+            config["_tuning"] = params
 
-        if config["nlp"]["knowledge_graph"] == "wordnet":
-            # for min_concept_score in range(20, 60, 10):
-            #     config["nlp"]["min_concept_score"] = min_concept_score / 100
-            adapted_concepts = _perform_wordnet_adaptation(case, out_path)
+            adapted_concepts = {}
 
-        elif config["nlp"]["knowledge_graph"] == "conceptnet":
-            adaptation_methods = [adaptation.Method(config["conceptnet"]["method"])]
-            adaptation_selectors = [
-                adaptation.Selector(config["conceptnet"]["selector"])
-            ]
+            if config["nlp"]["knowledge_graph"] == "wordnet":
+                # for min_concept_score in range(20, 60, 10):
+                #     config["nlp"]["min_concept_score"] = min_concept_score / 100
+                adapted_concepts = _perform_wordnet_adaptation(case, out_path)
 
-            if config["conceptnet"]["gridsearch"]:
-                adaptation_methods = [method for method in adaptation.Method]
-                adaptation_selectors = [selector for selector in adaptation.Selector]
+            elif config["nlp"]["knowledge_graph"] == "conceptnet":
+                adaptation_methods = [adaptation.Method(config["conceptnet"]["method"])]
+                adaptation_selectors = [
+                    adaptation.Selector(config["conceptnet"]["selector"])
+                ]
 
-            for adaptation_method in adaptation_methods:
-                for adaptation_selector in adaptation_selectors:
-                    adapted_concepts = _perform_conceptnet_adaptation(
-                        case, adaptation_method, adaptation_selector, out_path
-                    )
+                if config["conceptnet"]["gridsearch"]:
+                    adaptation_methods = [method for method in adaptation.Method]
+                    adaptation_selectors = [
+                        selector for selector in adaptation.Selector
+                    ]
+
+                for adaptation_method in adaptation_methods:
+                    for adaptation_selector in adaptation_selectors:
+                        adapted_concepts = _perform_conceptnet_adaptation(
+                            case, adaptation_method, adaptation_selector, out_path
+                        )
 
 
 def _perform_wordnet_adaptation(
@@ -73,10 +81,10 @@ def _perform_wordnet_adaptation(
         )
         global_adapted_concepts.update(adapted_concepts)
 
-    global_score = evaluate.case(case, global_adapted_concepts)
+    eval_results = evaluate.case(case, global_adapted_concepts)
 
     stats = {
-        "global_score": global_score,
+        "evaluation": eval_results.to_dict(),
         "results": adaptation_results,
         "config": dict(config),
     }

@@ -1,4 +1,4 @@
-version = "2.19"
+version = "2.20"
 debug = true
 
 
@@ -12,22 +12,27 @@ lang = "en"
 embeddings = "integrated"
 max_distance = 200
 knowledge_graph = "wordnet"
-min_score_extraction = 0.4
-min_score_adaptation = 0.4
 
-[nlp.concept_weight]
-rule_source = 0.2
-rule_target = 0.4
-original_concept = 0.4
 
-[nlp.related_concept_weight]
-rule_source = 0
-rule_target = 0.7
-original_concept = 0.3
+[tuning]
+hypernym_min_similarity = [0.8]
+
+# Threshold for extracting/adapting concepts
+extraction_min_score = [0.7]
+adaptation_min_score = [0.2]
+
+# Of which metrics should the score consist
+score_keyword_weight = [0.6]
+score_semantic_similarity = [0.3]
+score_wordnet_path_distance = [0.1]
+
+# From what concepts should the metrics be derived
+weight_rule_source = [0]
+weight_rule_target = [0.7]
+weight_original_concept = [0.3]
 
 
 [wordnet]
-min_similarity_hypernym = 0.4
 hypernym_filter = [
     "abstraction",
     "artifact",

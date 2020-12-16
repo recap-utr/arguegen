@@ -77,13 +77,13 @@ class Concept:
             "wordnet_path_distance": _dist2sim(self.wordnet_path_distance),
         }
 
-        if round(sum(config["nlp"]["concept_score"].values()), 2) != 1:
+        if round(sum(config.tuning("score").values()), 2) != 1:
             raise ValueError("The sum is not 1.")
 
         result = 0
         total_weight = 0
 
-        for metric_name, metric_weight in config["nlp"]["concept_score"].items():
+        for metric_name, metric_weight in config.tuning("score").items():
             if (metric := metrics[metric_name]) is not None:
                 result += metric * metric_weight
                 total_weight += metric_weight
