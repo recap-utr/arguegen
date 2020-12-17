@@ -95,12 +95,13 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
 
 def paths(
-    concepts: t.Iterable[Concept], rule: adaptation.Rule, method: adaptation.Method
+    concepts: t.Iterable[Concept], rule: adaptation.Rule
 ) -> t.Dict[Concept, t.List[Path]]:
     db = Database()
     result = {}
+    method = config.tuning("conceptnet", "method")
 
-    if method == adaptation.Method.WITHIN:
+    if method == "within":
         for concept in concepts:
             if rule.source != concept:
                 paths = db.all_shortest_paths(rule.source.nodes, concept.nodes)
@@ -112,7 +113,7 @@ def paths(
                     result[concept] = paths
                     log.debug(", ".join((str(path) for path in paths)))
 
-    elif method == adaptation.Method.BETWEEN:
+    elif method == "between":
         paths = db.all_shortest_paths(rule.source.nodes, rule.target.nodes)
         log.info(
             f"Found {len(paths) if paths else 0} reference path(s) for ({rule.source})->({rule.target})."

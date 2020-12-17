@@ -112,10 +112,9 @@ def synsets(
 def paths(
     reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
     rule: adaptation.Rule,
-    selector: adaptation.Selector,
-    method: adaptation.Method,
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
     nlp = load.spacy_nlp()
+
     related_concept_weight = config.tuning("weight")
 
     if round(sum(related_concept_weight.values()), 2) != 1:
@@ -128,7 +127,7 @@ def paths(
         log.debug(f"Adapting '{original_concept}'.")
 
         params = [
-            (shortest_path, original_concept, rule, selector, method)
+            (shortest_path, original_concept, rule)
             for shortest_path in all_shortest_paths
         ]
 
@@ -189,17 +188,12 @@ def _adapt_shortest_path(
     shortest_path: graph.Path,
     concept: Concept,
     rule: adaptation.Rule,
-    selector: adaptation.Selector,
-    method: adaptation.Method,
 ) -> t.List[graph.Path]:
     db = Database()
+    method = config.tuning("conceptnet", "method")
 
     # We have to convert the target to a path object here.
-    start_node = (
-        rule.target.best_node
-        if method == adaptation.Method.WITHIN
-        else concept.best_node
-    )
+    start_node = rule.target.best_node if method == "within" else concept.best_node
     current_paths = [graph.Path.from_node(start_node)]  # Start with only one node.
 
     for rel in shortest_path.relationships:
@@ -213,7 +207,7 @@ def _adapt_shortest_path(
 
             if path_candidates:
                 path_candidates = _filter_paths(
-                    path_candidates, shortest_path, start_node, selector
+                    path_candidates, shortest_path, start_node
                 )
 
                 for path_candidate in path_candidates:
@@ -249,9 +243,9 @@ def _filter_paths(
     candidate_paths: t.Sequence[graph.Path],
     reference_path: graph.Path,
     start_node: graph.Node,
-    selector: adaptation.Selector,
 ) -> t.List[graph.Path]:
     nlp = load.spacy_nlp()
+    selector = config.tuning("conceptnet", "selector")
     candidate_values = {}
 
     end_index = len(candidate_paths[0].nodes) - 1
@@ -283,23 +277,19 @@ def _filter_paths(
     return sorted_candidates[: config["conceptnet"]["bfs_node_limit"]]
 
 
-def _aggregate_features(
-    feat1: t.Any, feat2: t.Any, selector: adaptation.Selector
-) -> t.Any:
-    if selector == adaptation.Selector.DIFFERENCE:
+def _aggregate_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
+    if selector == "difference":
         return abs(feat1 - feat2)
-    elif selector == adaptation.Selector.SIMILARITY:
+    elif selector == "similarity":
         return _cosine(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
 
 
-def _compare_features(
-    feat1: t.Any, feat2: t.Any, selector: adaptation.Selector
-) -> t.Any:
-    if selector == adaptation.Selector.DIFFERENCE:
+def _compare_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
+    if selector == "difference":
         return _cosine(feat1, feat2)
-    elif selector == adaptation.Selector.SIMILARITY:
+    elif selector == "similarity":
         return abs(feat1 - feat2)
 
     raise ValueError("Parameter 'selector' wrong.")

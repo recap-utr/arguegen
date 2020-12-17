@@ -16,16 +16,6 @@ from spacy.tokens import Doc  # type: ignore
 log = logging.getLogger(__name__)
 
 
-class Method(Enum):
-    BETWEEN = "between"
-    WITHIN = "within"
-
-
-class Selector(Enum):
-    DIFFERENCE = "difference"
-    SIMILARITY = "similarity"
-
-
 @dataclass(frozen=True)
 class Concept:
     name: Doc

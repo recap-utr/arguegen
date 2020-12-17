@@ -30,40 +30,20 @@ def run():
     for case in cases:
         for params in param_grid:
             config["_tuning"] = params
-
-            adapted_concepts = {}
-
-            if config["nlp"]["knowledge_graph"] == "wordnet":
-                # for min_concept_score in range(20, 60, 10):
-                #     config["nlp"]["min_concept_score"] = min_concept_score / 100
-                adapted_concepts = _perform_wordnet_adaptation(case, out_path)
-
-            elif config["nlp"]["knowledge_graph"] == "conceptnet":
-                adaptation_methods = [adaptation.Method(config["conceptnet"]["method"])]
-                adaptation_selectors = [
-                    adaptation.Selector(config["conceptnet"]["selector"])
-                ]
-
-                if config["conceptnet"]["gridsearch"]:
-                    adaptation_methods = [method for method in adaptation.Method]
-                    adaptation_selectors = [
-                        selector for selector in adaptation.Selector
-                    ]
-
-                for adaptation_method in adaptation_methods:
-                    for adaptation_selector in adaptation_selectors:
-                        adapted_concepts = _perform_conceptnet_adaptation(
-                            case, adaptation_method, adaptation_selector, out_path
-                        )
+            _perform_adaptation(case, out_path)
 
 
-def _perform_wordnet_adaptation(
+def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> t.Dict[adaptation.Concept, adaptation.Concept]:
     log.info(f"Processing '{case.name}'.")
 
     nested_out_path: Path = out_path / case.name
+    # TODO: Due to the parameter grid, a sensible folder structure has to be created
+    # nested_out_path = (
+    #         nested_out_path / adaptation_method.value / adaptation_selector.value
+    #     )
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adaptation_results = {}
@@ -72,12 +52,23 @@ def _perform_wordnet_adaptation(
     for rule in case.rules:
         log.info(f"Processing rule {str(rule)}.")
 
+        adapted_concepts = {}
+        reference_paths = {}
+        adapted_paths = {}
+        adapted_synsets = {}
+
         concepts = extract.keywords(case.graph, rule)
-        adapted_concepts, adapted_synsets = adapt.synsets(concepts, rule)
+
+        if config["nlp"]["knowledge_graph"] == "wordnet":
+            adapted_concepts, adapted_synsets = adapt.synsets(concepts, rule)
+        elif config["nlp"]["knowledge_graph"] == "conceptnet":
+            reference_paths = extract.paths(concepts, rule)
+            adapted_concepts, adapted_paths = adapt.paths(reference_paths, rule)
+
         adapt.argument_graph(case.graph, rule, adapted_concepts)
 
         adaptation_results[str(rule)] = export.statistic(
-            concepts, {}, {}, adapted_synsets, adapted_concepts
+            concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
         )
         global_adapted_concepts.update(adapted_concepts)
 
@@ -88,51 +79,6 @@ def _perform_wordnet_adaptation(
         "results": adaptation_results,
         "config": dict(config),
     }
-    _write_output(case, stats, nested_out_path)
-
-    return global_adapted_concepts
-
-
-def _perform_conceptnet_adaptation(
-    case: adaptation.Case,
-    adaptation_method: adaptation.Method,
-    adaptation_selector: adaptation.Selector,
-    out_path: Path,
-) -> t.Dict[adaptation.Concept, adaptation.Concept]:
-    log.info(
-        f"Processing '{case.name}' "
-        f"with method '{adaptation_method.value}' "
-        f"and selector '{adaptation_selector.value}'."
-    )
-
-    nested_out_path: Path = out_path / case.name
-
-    if config["conceptnet"]["gridsearch"]:
-        nested_out_path = (
-            nested_out_path / adaptation_method.value / adaptation_selector.value
-        )
-
-    nested_out_path.mkdir(parents=True, exist_ok=True)
-
-    adaptation_results = {}
-    global_adapted_concepts = {}
-
-    for rule in case.rules:
-        log.info(f"Processing rule {str(rule)}.")
-
-        concepts = extract.keywords(case.graph, rule)
-        reference_paths = extract.paths(concepts, rule, adaptation_method)
-        adapted_concepts, adapted_paths = adapt.paths(
-            reference_paths, rule, adaptation_selector, adaptation_method
-        )
-        adapt.argument_graph(case.graph, rule, adapted_concepts)
-
-        adaptation_results[str(rule)] = export.statistic(
-            concepts, reference_paths, adapted_paths, {}, adapted_concepts
-        )
-        global_adapted_concepts.update(adapted_concepts)
-
-    stats = {"results": adaptation_results, "config": dict(config)}
     _write_output(case, stats, nested_out_path)
 
     return global_adapted_concepts
