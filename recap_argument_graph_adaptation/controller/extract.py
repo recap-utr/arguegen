@@ -25,9 +25,11 @@ log = logging.getLogger(__name__)
 spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ", "ADV"]
 
 
-def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
+def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
     extractor = ke.yake
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
+
+    related_concepts = {rule.source: 1 / len(rules) for rule in rules}
 
     concepts: t.Set[Concept] = set()
     db = Database()
@@ -80,7 +82,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
                             synsets,
                             term_weight,
                             *metrics.init_concept_metrics(
-                                term, nodes, synsets, rule.source
+                                term, nodes, synsets, related_concepts
                             ),
                         )
                     )
@@ -95,7 +97,7 @@ def keywords(graph: ag.Graph, rule: Rule) -> t.Set[Concept]:
 
 
 def paths(
-    concepts: t.Iterable[Concept], rule: adaptation.Rule
+    concepts: t.Iterable[Concept], rules: t.Collection[adaptation.Rule]
 ) -> t.Dict[Concept, t.List[Path]]:
     db = Database()
     result = {}

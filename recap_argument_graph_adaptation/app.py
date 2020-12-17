@@ -37,7 +37,7 @@ def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> t.Dict[adaptation.Concept, adaptation.Concept]:
-    log.info(f"Processing '{case.name}'.")
+    log.info(f"Processing '{case.name}' with rules {case.rules}.")
 
     nested_out_path: Path = out_path / case.name
     # TODO: Due to the parameter grid, a sensible folder structure has to be created
@@ -46,42 +46,34 @@ def _perform_adaptation(
     #     )
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
-    adaptation_results = {}
-    global_adapted_concepts = {}
+    adapted_concepts = {}
+    reference_paths = {}
+    adapted_paths = {}
+    adapted_synsets = {}
 
-    for rule in case.rules:
-        log.info(f"Processing rule {str(rule)}.")
+    concepts = extract.keywords(case.graph, case.rules)
 
-        adapted_concepts = {}
-        reference_paths = {}
-        adapted_paths = {}
-        adapted_synsets = {}
+    if config["nlp"]["knowledge_graph"] == "wordnet":
+        adapted_concepts, adapted_synsets = adapt.synsets(concepts, case.rules)
+    elif config["nlp"]["knowledge_graph"] == "conceptnet":
+        reference_paths = extract.paths(concepts, case.rules)
+        adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
 
-        concepts = extract.keywords(case.graph, rule)
+    adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
-        if config["nlp"]["knowledge_graph"] == "wordnet":
-            adapted_concepts, adapted_synsets = adapt.synsets(concepts, rule)
-        elif config["nlp"]["knowledge_graph"] == "conceptnet":
-            reference_paths = extract.paths(concepts, rule)
-            adapted_concepts, adapted_paths = adapt.paths(reference_paths, rule)
+    adaptation_results = export.statistic(
+        concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
+    )
+    eval_results = evaluate.case(case, adapted_concepts)
 
-        adapt.argument_graph(case.graph, rule, adapted_concepts)
-
-        adaptation_results[str(rule)] = export.statistic(
-            concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
-        )
-        global_adapted_concepts.update(adapted_concepts)
-
-    eval_results = evaluate.case(case, global_adapted_concepts)
-
-    stats = {
+    stats_export = {
         "evaluation": eval_results.to_dict(),
         "results": adaptation_results,
         "config": dict(config),
     }
-    _write_output(case, stats, nested_out_path)
+    _write_output(case, stats_export, nested_out_path)
 
-    return global_adapted_concepts
+    return adapted_concepts
 
 
 def _write_output(

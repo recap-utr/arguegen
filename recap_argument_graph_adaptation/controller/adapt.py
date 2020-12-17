@@ -55,7 +55,7 @@ def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
 
 
 def synsets(
-    concepts: t.Iterable[Concept], rule: adaptation.Rule
+    concepts: t.Iterable[Concept], rules: t.Collection[adaptation.Rule]
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Concept]]]:
     adapted_synsets = {}
     adapted_concepts = {}
@@ -67,6 +67,17 @@ def synsets(
 
     for original_concept in concepts:
         adaptation_candidates = set()
+        related_concepts = {}
+
+        for rule in rules:
+            related_concepts.update(
+                {
+                    rule.target: related_concept_weight["rule_target"] / len(rules),
+                    rule.source: related_concept_weight["rule_source"] / len(rules),
+                    original_concept: related_concept_weight["original_concept"]
+                    / len(rules),
+                }
+            )
 
         for synset in original_concept.synsets:
             hypernyms = wordnet.hypernyms(synset)
@@ -76,12 +87,6 @@ def synsets(
                 name = nlp(_name)
                 nodes = tuple()
                 synsets = (hypernym,)
-
-                related_concepts = {
-                    rule.target: related_concept_weight["rule_target"],
-                    rule.source: related_concept_weight["rule_source"],
-                    original_concept: related_concept_weight["original_concept"],
-                }
 
                 candidate = Concept(
                     name,
@@ -97,7 +102,7 @@ def synsets(
                 adaptation_candidates.add(candidate)
 
         adapted_synsets[original_concept] = adaptation_candidates
-        adapted_concept = _filter_concepts(adaptation_candidates, rule)
+        adapted_concept = _filter_concepts(adaptation_candidates, rules)
 
         if adapted_concept:
             adapted_concepts[original_concept] = adapted_concept
@@ -219,10 +224,10 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(
-    concepts: t.Set[Concept], rule: adaptation.Rule
+    concepts: t.Set[Concept], rules: t.Collection[adaptation.Rule]
 ) -> t.Optional[Concept]:
     # Remove the original adaptation source from the candidates
-    filtered_concepts = concepts.difference([rule.source])
+    filtered_concepts = concepts.difference([rule.source for rule in rules])
     filtered_concepts = Concept.only_relevant(
         filtered_concepts, config.tuning("adaptation", "min_score")
     )
