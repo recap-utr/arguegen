@@ -30,6 +30,7 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
     # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
+    rule_sources = {rule.source for rule in rules}
 
     concepts: t.Set[Concept] = set()
     db = Database()
@@ -74,18 +75,19 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
                             )
 
                 if nodes or synsets:
-                    concepts.add(
-                        Concept(
-                            term,
-                            pos_tag,
-                            nodes,
-                            synsets,
-                            term_weight,
-                            *metrics.init_concept_metrics(
-                                term, nodes, synsets, related_concepts
-                            ),
-                        )
+                    candidate = Concept(
+                        term,
+                        pos_tag,
+                        nodes,
+                        synsets,
+                        term_weight,
+                        *metrics.init_concept_metrics(
+                            term, nodes, synsets, related_concepts
+                        ),
                     )
+
+                    if candidate not in rule_sources:
+                        concepts.add(candidate)
 
     concepts = Concept.only_relevant(concepts, config.tuning("extraction", "min_score"))
 
@@ -105,26 +107,32 @@ def paths(
 
     if method == "within":
         for concept in concepts:
-            if rule.source != concept:
-                paths = db.all_shortest_paths(rule.source.nodes, concept.nodes)
-                log.info(
-                    f"Found {len(paths) if paths else 0} reference path(s) for ({rule.source})->({concept})."
-                )
+            paths = []
 
-                if paths:
-                    result[concept] = paths
-                    log.debug(", ".join((str(path) for path in paths)))
+            for rule in rules:
+                if candidates := db.all_shortest_paths(
+                    rule.source.nodes, concept.nodes
+                ):
+                    paths.extend(candidates)
+
+            if paths:
+                result[concept] = paths
+                log.info(f"Found {len(paths)} reference path(s) for '{concept}'.")
 
     elif method == "between":
-        paths = db.all_shortest_paths(rule.source.nodes, rule.target.nodes)
-        log.info(
-            f"Found {len(paths) if paths else 0} reference path(s) for ({rule.source})->({rule.target})."
-        )
+        paths = []
+
+        for rule in rules:
+            if candidates := db.all_shortest_paths(
+                rule.source.nodes, rule.target.nodes
+            ):
+                paths.extend(candidates)
+
+            log.info(f"Found {len(paths)} reference path(s) for '{rule.target}'.")
 
         if paths:
             for concept in concepts:
-                if rule.source != concept:
-                    result[concept] = paths
+                result[concept] = paths
 
     else:
         raise ValueError("The parameter 'method' is not set correctly.")

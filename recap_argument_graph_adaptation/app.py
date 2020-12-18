@@ -37,7 +37,9 @@ def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> t.Dict[adaptation.Concept, adaptation.Concept]:
-    log.info(f"Processing '{case.name}' with rules {case.rules}.")
+    log.info(
+        f"Processing '{case.name}' with rules {[str(rule) for rule in case.rules]}."
+    )
 
     nested_out_path: Path = out_path / case.name
     # TODO: Due to the parameter grid, a sensible folder structure has to be created
