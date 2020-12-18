@@ -24,15 +24,11 @@ from ..model.database import Database
 log = logging.getLogger(__name__)
 
 
-# TODO: Multiprocessing does not work, maybe due to serialization of spacy objects.
-
-
 def argument_graph(
     graph: ag.Graph,
     rules: t.Collection[adaptation.Rule],
     adapted_concepts: t.Mapping[Concept, Concept],
 ) -> None:
-    # TODO: Was passiert mit Konzepten, die ein anderes beinhalten (also bspw. school uniforms und uniforms)
     pr = load.proof_reader()
     substitutions = {
         concept.name.text: adapted_concept.name.text
@@ -137,12 +133,7 @@ def paths(
             (shortest_path, original_concept, rules)
             for shortest_path in all_shortest_paths
         ]
-
-        if config["debug"]:
-            adaptation_results = [_adapt_shortest_path(*param) for param in params]
-        else:
-            with multiprocessing.Pool() as pool:
-                adaptation_results = pool.starmap(_adapt_shortest_path, params)
+        adaptation_results = [_adapt_shortest_path(*param) for param in params]
 
         adaptation_results = list(itertools.chain(*adaptation_results))
         adapted_paths[original_concept] = adaptation_results

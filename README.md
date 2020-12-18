@@ -1,12 +1,12 @@
 # ReCAP Argument Graph Adaptation
 
-## TODO
-
--   POS tags sind wichtig für die Zuordnung (Nomen drug vs. Verb drug/drag). Evtl. muss man sie doch nutzen.
-
 ## Installation
 
-TODO
+```sh
+poetry install
+cp config-example.toml config.toml
+poetry run python -m recap_argument_graph_adaptation
+```
 
 ## Folder Structure
 

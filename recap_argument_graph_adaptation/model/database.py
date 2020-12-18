@@ -182,7 +182,7 @@ class Database:
 
         return tuple()
 
-    # TODO: Currently, this function might return the same node that was given as input.
+    # Currently, this function might return the same node that was given as input.
     # To resolve this, we would need to fork the function _nodes_along_paths.
     @staticmethod
     def _nodes_generalizations(
