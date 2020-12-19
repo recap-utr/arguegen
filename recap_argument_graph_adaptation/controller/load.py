@@ -119,7 +119,7 @@ def _case(path: Path) -> adaptation.Case:
     )
 
 
-def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
+def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
     rules = []
 
     with path.open() as file:
@@ -131,7 +131,7 @@ def _parse_rules(path: Path) -> t.List[adaptation.Rule]:
 
             rules.append(adaptation.Rule(source, target))
 
-    return rules
+    return tuple(rules)
 
 
 def _parse_rule_concept(rule: str) -> Concept:

@@ -112,7 +112,7 @@ def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
     return None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Rule:
     source: Concept
     target: Concept
@@ -126,6 +126,9 @@ class Case:
     name: str
     query: str
     graph: ag.Graph
-    rules: t.List[Rule]
+    rules: t.Tuple[Rule]
     benchmark_graph: ag.Graph
-    benchmark_rules: t.List[Rule]
+    benchmark_rules: t.Tuple[Rule]
+
+    def __str__(self) -> str:
+        return self.name

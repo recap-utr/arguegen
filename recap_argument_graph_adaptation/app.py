@@ -1,3 +1,4 @@
+import statistics
 from collections import defaultdict
 import json
 import logging
@@ -22,25 +23,51 @@ def _timestamp() -> str:
     return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
 
 
-# TODO: Create a global statistics file for the parameter grid with the best config.
-
-
 def run():
     log.info("Initializing.")
     cases = load.cases()
     out_path = Path(config["path"]["output"], _timestamp())
 
-    param_grid = ParameterGrid(dict(config["tuning"]))
-    eval_results = defaultdict(list)
+    param_grid = list(ParameterGrid(dict(config["tuning"])))
+    case_results = defaultdict(list)
+    param_results = []
 
-    for case in cases:
-        for params in param_grid:
-            config["_tuning"] = params
+    for i, params in enumerate(param_grid):
+        config["_tuning"] = params
+        current_results = []
+
+        for case in cases:
             eval_result = _perform_adaptation(case, out_path)
-            eval_results[case].append((eval_result, config))
+            case_results[case].append((eval_result, i))
+            current_results.append(eval_result)
 
-    # TODO: Maybe the order of the previous loops needs to be switched.
-    # We want to find the best config among all cases.
+        param_results.append(current_results)
+
+    case_scores = {
+        case: max(results, key=lambda x: x[0]) for case, results in case_results.items()
+    }
+    best_case_results = {
+        str(case): {"max_score": result.score, "config": param_grid[i]}
+        for case, (result, i) in case_scores.items()
+    }
+
+    param_scores = [[result.score for result in results] for results in param_results]
+    mean_param_results = sorted(
+        [
+            {"mean_score": statistics.mean(scores), "config": param_grid[i]}
+            for i, scores in enumerate(param_scores)
+        ],
+        key=lambda x: x["mean_score"],
+    )
+
+    grid_stats_path = out_path / "grid_stats.json"
+    grid_stats = {
+        "param_results": mean_param_results,
+        "case_results": best_case_results,
+    }
+
+    with grid_stats_path.open("w") as file:
+        _json_dump(grid_stats, file)
 
 
 def _perform_adaptation(
@@ -96,13 +123,16 @@ def _write_output(
     stats_path = path / "stats.json"
 
     with stats_path.open("w") as file:
-        json.dump(
-            stats,
-            file,
-            ensure_ascii=False,
-            indent=4,
-            # default=lambda x: str(x),
-        )
+        _json_dump(stats, file)
+
+
+def _json_dump(mapping: t.Mapping[str, t.Any], file: t.TextIO) -> None:
+    json.dump(
+        mapping,
+        file,
+        ensure_ascii=False,
+        indent=4,
+    )
 
 
 if __name__ == "__main__":
