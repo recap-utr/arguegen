@@ -89,7 +89,7 @@ class TransformerModel(object):
 # Then preprocess the objects during multiprocessing.
 
 
-def cases() -> t.List[adaptation.Case]:
+def cases() -> t.List[adaptation.PlainCase]:
     input_path = Path(config["path"]["input"])
     result = []
 
@@ -103,7 +103,7 @@ def cases() -> t.List[adaptation.Case]:
     return result
 
 
-def _case(path: Path) -> adaptation.Case:
+def _case(path: Path) -> adaptation.PlainCase:
     input_graph = ag.Graph.open(path / "case-graph.json")
     input_rules = _parse_rules(path / "case-rules.csv")
 
@@ -113,7 +113,7 @@ def _case(path: Path) -> adaptation.Case:
     with (path / "query.txt").open() as file:
         query = file.read()
 
-    return adaptation.Case(
+    return adaptation.PlainCase(
         path.name,
         query,
         input_graph,
@@ -123,7 +123,7 @@ def _case(path: Path) -> adaptation.Case:
     )
 
 
-def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
+def _parse_rules(path: Path) -> t.Tuple[adaptation.PlainRule]:
     rules = []
 
     with path.open() as file:
@@ -133,16 +133,14 @@ def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
             source = _parse_rule_concept(row[0])
             target = _parse_rule_concept(row[1])
 
-            rules.append(adaptation.Rule(source, target))
+            rules.append(adaptation.PlainRule(source, target))
 
     return tuple(rules)
 
 
-def _parse_rule_concept(rule: str) -> Concept:
-    nlp = spacy_nlp()
-
+def _parse_rule_concept(rule: str) -> adaptation.PlainConcept:
     rule_parts = rule.split("/")
-    name = nlp(rule_parts[0])
+    name = rule_parts[0]
     pos = graph.POS.OTHER
 
     if len(rule_parts) > 1:
@@ -152,8 +150,8 @@ def _parse_rule_concept(rule: str) -> Concept:
     #     pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
-    nodes = db.nodes(name.text, pos)
-    synsets = wordnet.synsets(name.text, pos)
+    nodes = db.nodes(name, pos)
+    synsets = wordnet.synsets(name, pos)
 
     if config["nlp"]["knowledge_graph"] == "conceptnet" and not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
@@ -162,4 +160,6 @@ def _parse_rule_concept(rule: str) -> Concept:
             f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
         )
 
-    return Concept(name, pos, nodes, synsets, None, *metrics.best_concept_metrics)
+    return adaptation.PlainConcept(
+        name, pos, nodes, synsets, None, metrics.best_concept_metrics
+    )

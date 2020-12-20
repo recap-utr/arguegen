@@ -29,13 +29,13 @@ def _timestamp() -> str:
 def run():
     log.info("Initializing.")
     out_path = Path(config["path"]["output"], _timestamp())
+    cases = load.cases()
 
     param_grid = list(ParameterGrid(dict(config["tuning"])))
 
     run_args = (
-        (i, params, len(param_grid), out_path)
-        # for (i, params), case in itertools.product(enumerate(param_grid), cases)
-        for i, params in enumerate(param_grid)
+        (i, params, len(param_grid), case, out_path)
+        for (i, params), case in itertools.product(enumerate(param_grid), cases)
     )
 
     if config["debug"]:
@@ -44,7 +44,8 @@ def run():
         with multiprocessing.Pool() as pool:
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
-    raw_results = list(itertools.chain(*raw_results))
+    cases = [case.nlp(load.spacy_nlp()) for case in cases]
+    # raw_results = list(itertools.chain(*raw_results))
 
     case_results = defaultdict(list)
     param_results = [[] for _ in range(len(param_grid))]
@@ -83,18 +84,13 @@ def _multiprocessing_run(
     i: int,
     params: t.Mapping[str, t.Any],
     total_params: int,
+    case: adaptation.PlainCase,
     out_path: Path,
-) -> t.List[t.Tuple[str, int, float]]:
-    cases = load.cases()
-    output = []
-
-    for case in cases:
-        config["_tuning"] = params
-        config["_tuning_runs"] = total_params
-        eval_result = _perform_adaptation(case, out_path)
-        output.append((str(case), i, eval_result.score))
-
-    return output
+) -> t.Tuple[str, int, float]:
+    config["_tuning"] = params
+    config["_tuning_runs"] = total_params
+    eval_result = _perform_adaptation(case.nlp(load.spacy_nlp()), out_path)
+    return (str(case), i, eval_result.score)
 
 
 def _perform_adaptation(
