@@ -42,10 +42,12 @@ def run():
         for (i, params), case in itertools.product(enumerate(param_grid), cases)
     )
 
-    if config["debug"]:
+    processes = None if config["processes"] == 0 else config["processes"]
+
+    if processes == 1:
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
     else:
-        with multiprocessing.Pool() as pool:
+        with multiprocessing.Pool(processes) as pool:
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
     case_results = defaultdict(list)

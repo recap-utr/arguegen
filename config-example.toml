@@ -1,25 +1,18 @@
 version = "2.20"
-debug = true
-
+processes = 0
 
 [path]
 input = "data/input"
 output = "data/output"
 
 
-[nlp]
-lang = "en"
-embeddings = "integrated"
-max_distance = 200
-knowledge_graph = "wordnet"
-
-
 [tuning]
+# [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 hypernym_min_similarity = [0.8]
 
 # Threshold for extracting/adapting concepts
-extraction_min_score = [0.7]
-adaptation_min_score = [0.2]
+extraction_min_score = [0.8]
+adaptation_min_score = [0.4]
 
 # Of which metrics should the score consist
 score_keyword_weight = [0.6]
@@ -40,16 +33,23 @@ conceptnet_method = ["between"]
 conceptnet_selector = ["similarity"]
 
 
+[nlp]
+lang = "en"
+embeddings = "integrated"
+max_distance = 200
+knowledge_graph = "wordnet"
+
+
 [wordnet]
 hypernym_filter = [
-    "abstraction",
-    "artifact",
-    "causal_agent",
-    "living_thing",
-    "object",
-    "physical_entity",
-    "psychological_feature",
-    "whole",
+    "abstraction.n",
+    "artifact.n",
+    "causal_agent.n",
+    "living_thing.n",
+    "object.n",
+    "physical_entity.n",
+    "psychological_feature.n",
+    "whole.n",
 ]
 
 
@@ -114,6 +114,7 @@ all_types = [
 [conceptnet.path.max_length]
 shortest_path = 10
 generalization = 3
+
 
 [neo4j]
 url = "neo4j://localhost:7687"
