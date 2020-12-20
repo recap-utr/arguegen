@@ -34,6 +34,7 @@ def run():
 
     for i, params in enumerate(param_grid):
         config["_tuning"] = params
+        config["_tuning_runs"] = len(param_grid)
         current_results = []
 
         for case in cases:
@@ -79,10 +80,11 @@ def _perform_adaptation(
     )
 
     nested_out_path: Path = out_path / case.name
-    # TODO: Due to the parameter grid, a sensible folder structure has to be created
-    # nested_out_path = (
-    #         nested_out_path / adaptation_method.value / adaptation_selector.value
-    #     )
+
+    if config.get("_tuning_runs") and config["_tuning_runs"] > 1:
+        for tuning_key, tuning_value in config["_tuning"].items():
+            nested_out_path /= f"{tuning_key}_{tuning_value}"
+
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adapted_concepts = {}

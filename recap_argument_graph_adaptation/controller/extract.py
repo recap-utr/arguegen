@@ -31,6 +31,7 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
 
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
     rule_sources = {rule.source for rule in rules}
+    rule_targets = {rule.target for rule in rules}
 
     concepts: t.Set[Concept] = set()
     db = Database()
@@ -86,7 +87,7 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
                         ),
                     )
 
-                    if candidate not in rule_sources:
+                    if candidate not in rule_sources and candidate not in rule_targets:
                         concepts.add(candidate)
 
     concepts = Concept.only_relevant(concepts, config.tuning("extraction", "min_score"))
