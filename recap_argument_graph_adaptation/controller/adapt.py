@@ -61,6 +61,9 @@ def synsets(
     related_concept_weight = config.tuning("weight")
 
     if round(sum(related_concept_weight.values()), 2) != 1:
+        # TODO: Check this in app.py and do not raise an exception.
+        # Due to the param grid, it will happen that the sum is not 1 in some cases.
+        # Instead, just stop the computation of this case.
         raise ValueError("The sum is not 1.")
 
     for original_concept in concepts:
@@ -121,6 +124,9 @@ def paths(
     related_concept_weight = config.tuning("weight")
 
     if round(sum(related_concept_weight.values()), 2) != 1:
+        # TODO: Check this in app.py and do not raise an exception.
+        # Due to the param grid, it will happen that the sum is not 1 in some cases.
+        # Instead, just stop the computation of this case.
         raise ValueError("The sum is not 1.")
 
     adapted_concepts = {}

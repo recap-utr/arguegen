@@ -26,6 +26,10 @@ def _timestamp() -> str:
     return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
 
 
+def _file_path(path: Path) -> str:
+    return "file://" + str(path)
+
+
 def run():
     log.info("Initializing.")
     out_path = Path(config["path"]["output"], _timestamp())
@@ -44,9 +48,6 @@ def run():
         with multiprocessing.Pool() as pool:
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
-    cases = [case.nlp(load.spacy_nlp()) for case in cases]
-    # raw_results = list(itertools.chain(*raw_results))
-
     case_results = defaultdict(list)
     param_results = [[] for _ in range(len(param_grid))]
 
@@ -57,10 +58,19 @@ def run():
     case_max_results = {
         case: max(scores, key=lambda x: x[0]) for case, scores in case_results.items()
     }
-    best_case_results = {
-        case: {"max_score": score, "config": param_grid[i]}
-        for case, (score, i) in case_max_results.items()
-    }
+    best_case_results = {}
+
+    for case, (score, i) in case_max_results.items():
+        current_path = _nested_path(
+            out_path / case, len(param_grid), param_grid[i]
+        ).resolve()
+        best_case_results[case] = {
+            "max_score": score,
+            "case.json": _file_path(current_path / "case.json"),
+            "case.pdf": _file_path(current_path / "case.pdf"),
+            "stats.json": _file_path(current_path / "stats.json"),
+            "config": param_grid[i],
+        }
 
     mean_param_results = sorted(
         [
@@ -68,6 +78,7 @@ def run():
             for i, scores in enumerate(param_results)
         ],
         key=lambda x: x["mean_score"],
+        reverse=True,
     )
 
     grid_stats_path = out_path / "grid_stats.json"
@@ -89,8 +100,21 @@ def _multiprocessing_run(
 ) -> t.Tuple[str, int, float]:
     config["_tuning"] = params
     config["_tuning_runs"] = total_params
-    eval_result = _perform_adaptation(case.nlp(load.spacy_nlp()), out_path)
-    return (str(case), i, eval_result.score)
+    case_nlp = case.nlp(load.spacy_nlp())
+    eval_result = _perform_adaptation(case_nlp, out_path)
+    return (str(case_nlp), i, eval_result.score)
+
+
+def _nested_path(
+    path: Path, total_runs: int, nested_folders: t.Mapping[str, t.Any]
+) -> Path:
+    nested_path = path
+
+    if total_runs > 1:
+        for tuning_key, tuning_value in nested_folders.items():
+            nested_path /= f"{tuning_key}_{tuning_value}"
+
+    return nested_path
 
 
 def _perform_adaptation(
@@ -101,12 +125,9 @@ def _perform_adaptation(
         f"Processing '{case.name}' with rules {[str(rule) for rule in case.rules]}."
     )
 
-    nested_out_path: Path = out_path / case.name
-
-    if config.get("_tuning_runs") and config["_tuning_runs"] > 1:
-        for tuning_key, tuning_value in config["_tuning"].items():
-            nested_out_path /= f"{tuning_key}_{tuning_value}"
-
+    nested_out_path = _nested_path(
+        out_path / case.name, config["_tuning_runs"], config["_tuning"]
+    )
     nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adapted_concepts = {}
