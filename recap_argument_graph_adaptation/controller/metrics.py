@@ -38,7 +38,7 @@ def update_concept_metrics(
 def init_concept_metrics(
     name: Doc,
     nodes: t.Sequence[graph.Node],
-    synsets: t.Iterable[Synset],
+    synsets: t.Iterable[str],
     related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
 ) -> t.Tuple[
     t.Optional[float],

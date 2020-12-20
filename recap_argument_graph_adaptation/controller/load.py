@@ -85,10 +85,6 @@ class TransformerModel(object):
         return 1 - distance.cosine(obj1.vector, obj2.vector)
 
 
-# TODO: When loading, create intermediate representations without spacy objects.
-# Then preprocess the objects during multiprocessing.
-
-
 def cases() -> t.List[adaptation.PlainCase]:
     input_path = Path(config["path"]["input"])
     result = []
@@ -117,7 +113,7 @@ def _case(path: Path) -> adaptation.PlainCase:
         path.name,
         query,
         input_graph,
-        input_rules,
+        input_rules,  # TODO: If empty, an error is produced
         benchmark_graph,
         benchmark_rules,
     )
@@ -145,9 +141,6 @@ def _parse_rule_concept(rule: str) -> adaptation.PlainConcept:
 
     if len(rule_parts) > 1:
         pos = graph.POS(rule_parts[1])
-    # else:
-    #     spacy_pos = name[-1].pos_  # POS tags are only available on token level.
-    #     pos = graph.spacy_pos_mapping[spacy_pos]
 
     db = Database()
     nodes = db.nodes(name, pos)

@@ -21,7 +21,7 @@ class Concept:
     name: Doc
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     nodes: t.Tuple[graph.Node, ...]
-    synsets: t.Tuple[Synset, ...]
+    synsets: t.Tuple[str, ...]
     keyword_weight: t.Optional[float]
     semantic_similarity: t.Optional[float] = None
     conceptnet_path_distance: t.Optional[float] = None
@@ -86,7 +86,7 @@ class Concept:
         return {
             "concept": str(self),
             "nodes": [str(node) for node in self.nodes],
-            "synsets": [synset.name() for synset in self.synsets],
+            "synsets": self.synsets,
             "score": self.score,
         }
 
@@ -119,10 +119,6 @@ class Rule:
 
     def __str__(self) -> str:
         return f"({self.source})->({self.target})"
-
-    @classmethod
-    def from_plain_rule(cls, rule: PlainRule) -> Rule:
-        pass
 
 
 @dataclass(frozen=True)
@@ -159,7 +155,7 @@ class PlainConcept:
     name: str
     pos: graph.POS
     nodes: t.Tuple[graph.Node, ...]
-    synsets: t.Tuple[Synset, ...]
+    synsets: t.Tuple[str, ...]
     keyword_weight: t.Optional[float]
     metrics: t.Tuple[float, ...]
 

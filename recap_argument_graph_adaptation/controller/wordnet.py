@@ -1,4 +1,5 @@
 from __future__ import annotations
+import itertools
 import statistics
 
 from spacy.util import filter_spans
@@ -22,36 +23,36 @@ import neo4j.data as neo4j
 config = Config.instance()
 
 
-def log_synsets(synsets: t.Iterable[Synset]) -> None:
-    for synset in synsets:
-        print(f"Name:       {synset.name()}")
-        print(f"Definition: {synset.definition()}")
-        print(f"Examples:   {synset.examples()}")
+def synset(code: str) -> Synset:
+    return wn.synset(code)
+
+
+def log_synsets(synsets: t.Iterable[str]) -> None:
+    for s in synsets:
+        print(f"Name:       {synset(s).name()}")
+        print(f"Definition: {synset(s).definition()}")
+        print(f"Examples:   {synset(s).examples()}")
         print()
 
 
-def resolve_synset(synset: Synset) -> t.Tuple[str, graph.POS]:
-    parts = (synset.name() or "").split(".")
+def resolve_synset(s: str) -> t.Tuple[str, graph.POS]:
+    parts = (synset(s).name() or "").split(".")
     name = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
 
     return (name, pos)
 
 
-def synset(code: str) -> Synset:
-    return wn.synset(code)
-
-
-def synsets(term: str, pos: graph.POS) -> t.Tuple[Synset, ...]:
+def synsets(term: str, pos: graph.POS) -> t.Tuple[str, ...]:
     results = wn.synsets(term.replace(" ", "_"))
 
     if pos != graph.POS.OTHER:
         results = (ss for ss in results if str(ss.pos()) == graph.wn_pos(pos))
 
-    return tuple(results)
+    return tuple((res.name() for res in results))
 
 
-def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[Synset, ...]:
+def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     nlp = load.spacy_nlp()
     results = synsets(term, pos)
@@ -60,8 +61,9 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[Synset, .
 
     for result in results:
         similarity = 0
+        s = synset(result)
 
-        if definition := result.definition():
+        if definition := s.definition():
             result_doc = nlp(definition)
             similarity = doc.similarity(result_doc)
 
@@ -84,9 +86,7 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[Synset, .
     return tuple([synset for synset, _ in synset_tuples])
 
 
-def contextual_synset(
-    doc: Doc, term: str, pos: t.Optional[graph.POS]
-) -> t.Optional[Synset]:
+def contextual_synset(doc: Doc, term: str, pos: graph.POS) -> t.Optional[str]:
     synsets = contextual_synsets(doc, term, pos)
 
     if synsets:
@@ -96,14 +96,15 @@ def contextual_synset(
 
 
 def path_similarity(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+    synsets1: t.Iterable[str], synsets2: t.Iterable[str]
 ) -> t.Optional[float]:
     values = []
+    ss1 = [synset(s) for s in synsets1]
+    ss2 = [synset(s) for s in synsets2]
 
-    for s1 in synsets1:
-        for s2 in synsets2:
-            if value := s1.path_similarity(s2):
-                values.append(value)
+    for s1, s2 in itertools.product(ss1, ss2):
+        if value := s1.path_similarity(s2):
+            values.append(value)
 
     if values:
         return max(values)
@@ -112,14 +113,15 @@ def path_similarity(
 
 
 def wup_similarity(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+    synsets1: t.Iterable[str], synsets2: t.Iterable[str]
 ) -> t.Optional[float]:
     values = []
+    ss1 = [synset(s) for s in synsets1]
+    ss2 = [synset(s) for s in synsets2]
 
-    for s1 in synsets1:
-        for s2 in synsets2:
-            if value := s1.wup_similarity(s2):
-                values.append(value)
+    for s1, s2 in itertools.product(ss1, ss2):
+        if value := s1.wup_similarity(s2):
+            values.append(value)
 
     if values:
         return max(values)
@@ -128,14 +130,15 @@ def wup_similarity(
 
 
 def path_distance(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+    synsets1: t.Iterable[str], synsets2: t.Iterable[str]
 ) -> t.Optional[float]:
     values = []
+    ss1 = [synset(s) for s in synsets1]
+    ss2 = [synset(s) for s in synsets2]
 
-    for s1 in synsets1:
-        for s2 in synsets2:
-            if value := s1.shortest_path_distance(s2):
-                values.append(value)
+    for s1, s2 in itertools.product(ss1, ss2):
+        if value := s1.shortest_path_distance(s2):
+            values.append(value)
 
     if values:
         return min(values)
@@ -146,8 +149,8 @@ def path_distance(
 best_metrics = (1, 1, 0)
 
 
-def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
-    hypernym_trees = [[synset]]
+def hypernym_trees(s: str) -> t.List[t.List[str]]:
+    hypernym_trees = [[synset(s)]]
     has_hypernyms = [True]
     final_hypernym_trees = []
 
@@ -169,19 +172,18 @@ def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
 
         hypernym_trees = new_hypernym_trees
 
-    return final_hypernym_trees
+    return [[s.name() for s in tree] for tree in final_hypernym_trees]
 
 
-def remove_index(synset: Synset) -> str:
-    name = synset.name() or ""
-    parts = name.split(".")[:-1]
+def remove_index(s: str) -> str:
+    parts = s.split(".")[:-1]
 
     return ".".join(parts)
 
 
-def hypernyms(synset: Synset) -> t.Set[Synset]:
+def hypernyms(s: str) -> t.Set[str]:
     result = set()
-    trees = hypernym_trees(synset)
+    trees = hypernym_trees(s)
 
     for tree in trees:
         # The first synset is the original one, the last always entity
