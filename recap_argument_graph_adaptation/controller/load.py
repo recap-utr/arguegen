@@ -106,6 +106,11 @@ def _case(path: Path) -> adaptation.PlainCase:
     benchmark_graph = ag.Graph.open(path / "benchmark-graph.json")
     benchmark_rules = _parse_rules(path / "benchmark-rules.csv")
 
+    if not (input_graph and input_rules and benchmark_graph and benchmark_rules):
+        raise RuntimeError(
+            "Not all required assets ('case-graph.json', 'case-rules.csv', 'benchmark-graph.json', 'benchmark-rules.csv') were found"
+        )
+
     with (path / "query.txt").open() as file:
         query = file.read()
 
@@ -113,7 +118,7 @@ def _case(path: Path) -> adaptation.PlainCase:
         path.name,
         query,
         input_graph,
-        input_rules,  # TODO: If empty, an error is produced
+        input_rules,
         benchmark_graph,
         benchmark_rules,
     )
