@@ -44,7 +44,7 @@ def run():
         for (i, params), case in itertools.product(enumerate(param_grid), cases)
     )
 
-    processes = None if config["processes"] == 0 else config["processes"]
+    processes = None if config["processes"] == 0 else int(config["processes"])
 
     if processes == 1:
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
