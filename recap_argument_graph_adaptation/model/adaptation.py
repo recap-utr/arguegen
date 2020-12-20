@@ -132,3 +132,25 @@ class Case:
 
     def __str__(self) -> str:
         return self.name
+
+
+@dataclass(frozen=True)
+class PlainConcept:
+    name: str
+    pos: graph.POS
+
+
+@dataclass(frozen=True)
+class PlainRule:
+    source: PlainConcept
+    target: PlainConcept
+
+
+@dataclass(frozen=True)
+class PlainCase:
+    name: str
+    query: str
+    graph: ag.Graph
+    rules: t.Tuple[PlainRule]
+    benchmark_graph: ag.Graph
+    benchmark_rules: t.Tuple[PlainRule]

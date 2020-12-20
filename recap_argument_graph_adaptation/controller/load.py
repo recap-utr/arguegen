@@ -85,6 +85,10 @@ class TransformerModel(object):
         return 1 - distance.cosine(obj1.vector, obj2.vector)
 
 
+# TODO: When loading, create intermediate representations without spacy objects.
+# Then preprocess the objects during multiprocessing.
+
+
 def cases() -> t.List[adaptation.Case]:
     input_path = Path(config["path"]["input"])
     result = []

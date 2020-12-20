@@ -1,8 +1,11 @@
+import enum
+import itertools
 import statistics
 from collections import defaultdict
 import json
 import logging
 import os
+import multiprocessing
 from recap_argument_graph_adaptation.model.evaluation import Evaluation
 from recap_argument_graph_adaptation.controller import evaluate
 import typing as t
@@ -25,38 +28,43 @@ def _timestamp() -> str:
 
 def run():
     log.info("Initializing.")
-    cases = load.cases()
     out_path = Path(config["path"]["output"], _timestamp())
 
     param_grid = list(ParameterGrid(dict(config["tuning"])))
+
+    run_args = (
+        (i, params, len(param_grid), out_path)
+        # for (i, params), case in itertools.product(enumerate(param_grid), cases)
+        for i, params in enumerate(param_grid)
+    )
+
+    if config["debug"]:
+        raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
+    else:
+        with multiprocessing.Pool() as pool:
+            raw_results = pool.starmap(_multiprocessing_run, run_args)
+
+    raw_results = list(itertools.chain(*raw_results))
+
     case_results = defaultdict(list)
-    param_results = []
+    param_results = [[] for _ in range(len(param_grid))]
 
-    for i, params in enumerate(param_grid):
-        config["_tuning"] = params
-        config["_tuning_runs"] = len(param_grid)
-        current_results = []
+    for case, i, score in raw_results:
+        case_results[case].append((score, i))
+        param_results[i].append(score)
 
-        for case in cases:
-            eval_result = _perform_adaptation(case, out_path)
-            case_results[case].append((eval_result, i))
-            current_results.append(eval_result)
-
-        param_results.append(current_results)
-
-    case_scores = {
-        case: max(results, key=lambda x: x[0]) for case, results in case_results.items()
+    case_max_results = {
+        case: max(scores, key=lambda x: x[0]) for case, scores in case_results.items()
     }
     best_case_results = {
-        str(case): {"max_score": result.score, "config": param_grid[i]}
-        for case, (result, i) in case_scores.items()
+        case: {"max_score": score, "config": param_grid[i]}
+        for case, (score, i) in case_max_results.items()
     }
 
-    param_scores = [[result.score for result in results] for results in param_results]
     mean_param_results = sorted(
         [
             {"mean_score": statistics.mean(scores), "config": param_grid[i]}
-            for i, scores in enumerate(param_scores)
+            for i, scores in enumerate(param_results)
         ],
         key=lambda x: x["mean_score"],
     )
@@ -69,6 +77,24 @@ def run():
 
     with grid_stats_path.open("w") as file:
         _json_dump(grid_stats, file)
+
+
+def _multiprocessing_run(
+    i: int,
+    params: t.Mapping[str, t.Any],
+    total_params: int,
+    out_path: Path,
+) -> t.List[t.Tuple[str, int, float]]:
+    cases = load.cases()
+    output = []
+
+    for case in cases:
+        config["_tuning"] = params
+        config["_tuning_runs"] = total_params
+        eval_result = _perform_adaptation(case, out_path)
+        output.append((str(case), i, eval_result.score))
+
+    return output
 
 
 def _perform_adaptation(
