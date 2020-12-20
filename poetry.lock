@@ -557,6 +557,14 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "stackprinter"
+version = "0.2.5"
+description = "Debug-friendly stack traces, with variable values and semantic highlighting"
+category = "main"
+optional = false
+python-versions = ">=3.4"
+
+[[package]]
 name = "symspellpy"
 version = "6.7.0"
 description = "Python SymSpell"
@@ -772,7 +780,7 @@ mecab = ["mecab-python3"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "a7dc963f79de0943935caf7fedce2328d81e8d48c4ff9f3146eaba6dc509097a"
+content-hash = "90c6020a1cf041fc28a1ceedef2a566a9a56ad9159f08461f6e01e781e3beb14"
 
 [metadata.files]
 blis = [
@@ -1276,6 +1284,10 @@ srsly = [
     {file = "srsly-1.0.5-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:4c43a1f28e555891a1e65650adea2c5d0f0fe4b3d63821de65c8357f32c3a11c"},
     {file = "srsly-1.0.5-cp39-cp39-win_amd64.whl", hash = "sha256:334f29435099e644a8047b63d60b8386a98b5f7b4739f7efc86b46ca0200aa0e"},
     {file = "srsly-1.0.5.tar.gz", hash = "sha256:d3dd796372367c71946d0cd6f734e49db3d99dd13a57bdac937d9eb62689fc9e"},
+]
+stackprinter = [
+    {file = "stackprinter-0.2.5-py3-none-any.whl", hash = "sha256:e6770d1f932992caa37f1c734ca40429ee7358163ec7f262dcd3c8371b260006"},
+    {file = "stackprinter-0.2.5.tar.gz", hash = "sha256:e0197c54dafe7867020731c3dcab96a14d103c1e39130fa0b5159a2f0af427b6"},
 ]
 symspellpy = [
     {file = "symspellpy-6.7.0-py3-none-any.whl", hash = "sha256:4b296166f03b5871d2a88d94e8d68e84594b22d5c531b015355d3dc7b9c5127b"},

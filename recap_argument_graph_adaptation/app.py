@@ -1,5 +1,6 @@
 import enum
 import itertools
+import stackprinter
 import statistics
 from collections import defaultdict
 import json
@@ -20,6 +21,7 @@ from .model.config import config
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
+stackprinter.set_excepthook(style="darkbg2")
 
 
 def _timestamp() -> str:
