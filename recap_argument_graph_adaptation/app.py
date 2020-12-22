@@ -112,6 +112,8 @@ def run():
         ) as pool:  # , initializer=init_child, initargs=(lock,)
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
+    wordnet.lock = None
+
     raw_results = [entry for entry in raw_results if entry is not None]
 
     case_results = defaultdict(list)
