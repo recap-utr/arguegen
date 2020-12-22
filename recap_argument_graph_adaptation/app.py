@@ -1,5 +1,6 @@
 import enum
 import itertools
+from multiprocessing.synchronize import Lock
 import requests
 import stackprinter
 import statistics
@@ -8,9 +9,10 @@ import uvicorn
 import json
 import logging
 import os
+import socket
 import multiprocessing
 from recap_argument_graph_adaptation.model.evaluation import Evaluation
-from recap_argument_graph_adaptation.controller import evaluate
+from recap_argument_graph_adaptation.controller import evaluate, wordnet
 import typing as t
 from pathlib import Path
 from sklearn.model_selection import ParameterGrid
@@ -24,7 +26,7 @@ from .model.config import config
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
-stackprinter.set_excepthook(style="darkbg2")
+# stackprinter.set_excepthook(style="darkbg2")
 
 
 def _timestamp() -> str:
@@ -35,18 +37,32 @@ def _file_path(path: Path) -> str:
     return "file://" + str(path)
 
 
-# https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
+def init_child(lock_):
+    global lock
+    lock = lock_
 
 
-def run():
-    log.info("Initializing.")
+def _get_open_port() -> int:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(("", 0))
+    s.listen(1)
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def _start_server() -> None:
+    # config["wordnet"]["port"] = _get_open_port()
+
     wn_server = multiprocessing.Process(
         target=uvicorn.run,
         args=("recap_argument_graph_adaptation.wn_server:app",),
         kwargs={
             "host": config["wordnet"]["host"],
             "port": config["wordnet"]["port"],
-            "log_level": "warning",
+            "log_level": "info",
+            "limit_max_requests": 1,
+            "workers": 1,
         },
         daemon=True,
     )
@@ -65,10 +81,19 @@ def run():
         except requests.ConnectionError:
             time.sleep(0.5)
 
+
+# https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
+
+
+def run():
+    log.info("Initializing.")
+    # _start_server()
+
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()
 
     param_grid = list(ParameterGrid(dict(config["tuning"])))
+    lock = multiprocessing.Lock()
 
     run_args = (
         (i, params, len(param_grid), case, out_path)
@@ -80,7 +105,9 @@ def run():
     if processes == 1:
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
     else:
-        with multiprocessing.Pool(processes) as pool:
+        with multiprocessing.Pool(
+            processes, initializer=init_child, initargs=(lock,)
+        ) as pool:
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
     case_results = defaultdict(list)
@@ -135,6 +162,8 @@ def _multiprocessing_run(
 ) -> t.Tuple[str, int, float]:
     config["_tuning"] = params
     config["_tuning_runs"] = total_params
+    wordnet.lock = lock
+
     case_nlp = case.nlp(load.spacy_nlp())
     eval_result = _perform_adaptation(case_nlp, out_path)
     return (str(case_nlp), i, eval_result.score)

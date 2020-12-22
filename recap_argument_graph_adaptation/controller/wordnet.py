@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import multiprocessing
 import statistics
 import typing as t
 
@@ -14,11 +15,13 @@ from ..model.config import Config
 
 config = Config.instance()
 session = requests.Session()
-host = f"http://{config['wordnet']['host']}:{config['wordnet']['port']}"
+lock = multiprocessing.Lock()
 
 
 def _url(parts: t.Iterable[str]) -> str:
-    return "/".join([host, *parts])
+    return "/".join(
+        [f"http://{config['wordnet']['host']}:{config['wordnet']['port']}", *parts]
+    )
 
 
 # def log_synsets(synsets: t.Iterable[str]) -> None:
@@ -38,10 +41,11 @@ def resolve(code: str) -> t.Tuple[str, graph.POS]:
 
 
 def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
-    results = session.get(
-        _url(["concept", name, "synsets"]),
-        params={"pos": graph.wn_pos(pos)},
-    ).json()
+    with lock:
+        results = session.get(
+            _url(["concept", name, "synsets"]),
+            params={"pos": graph.wn_pos(pos)},
+        ).json()
 
     return tuple(results)
 
@@ -55,7 +59,8 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
 
     for synset in results:
         similarity = 0
-        definition = session.get(_url(["synset", synset, "definition"])).text
+        with lock:
+            definition = session.get(_url(["synset", synset, "definition"])).text
 
         if definition:
             result_doc = nlp(definition)
@@ -99,7 +104,8 @@ def metrics(
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
-        retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
+        with lock:
+            retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
 
         for key, value in retrieved_metrics.items():
             if value:
@@ -130,9 +136,10 @@ def hypernym_trees(synset: str) -> t.List[t.List[str]]:
         new_hypernym_trees = []
 
         for hypernym_tree in hypernym_trees:
-            new_hypernyms = session.get(
-                _url(["synset", hypernym_tree[-1], "hypernyms"])
-            ).json()
+            with lock:
+                new_hypernyms = session.get(
+                    _url(["synset", hypernym_tree[-1], "hypernyms"])
+                ).json()
 
             if new_hypernyms:
                 has_hypernyms.append(True)
