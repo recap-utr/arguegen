@@ -14,7 +14,7 @@ from ..model.config import Config
 
 config = Config.instance()
 session = requests.Session()
-host = f"http://{config['worndet']['host']}:{config['wordnet']['port']}"
+host = f"http://{config['wordnet']['host']}:{config['wordnet']['port']}"
 
 
 def _url(parts: t.Iterable[str]) -> str:

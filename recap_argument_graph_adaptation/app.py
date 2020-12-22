@@ -44,7 +44,7 @@ def run():
         target=uvicorn.run,
         args=("recap_argument_graph_adaptation.wn_server:app",),
         kwargs={
-            "host": config["worndet"]["host"],
+            "host": config["wordnet"]["host"],
             "port": config["wordnet"]["port"],
             "log_level": "warning",
         },
@@ -56,7 +56,7 @@ def run():
     while not wn_server_ready:
         try:
             response = requests.get(
-                f"http://{config['worndet']['host']}:{config['wordnet']['port']}"
+                f"http://{config['wordnet']['host']}:{config['wordnet']['port']}"
             )
 
             if response.ok:
