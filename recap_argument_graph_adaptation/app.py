@@ -82,6 +82,18 @@ def _start_server() -> None:
             time.sleep(0.5)
 
 
+def _filter_mapping(
+    mapping: t.Mapping[str, t.Any], prefix: str
+) -> t.Mapping[str, t.Any]:
+    prefix = f"{prefix}_"
+
+    return {
+        key[len(prefix) :]: value
+        for key, value in mapping.items()
+        if key.startswith(prefix)
+    }
+
+
 # https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
 
 
@@ -92,7 +104,12 @@ def run():
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()
 
-    param_grid = list(ParameterGrid(dict(config["tuning"])))
+    param_grid = [
+        params
+        for params in ParameterGrid(dict(config["tuning"]))
+        if round(sum(_filter_mapping(params, "weight").values()), 2) == 1
+        and round(sum(_filter_mapping(params, "score").values()), 2) == 1
+    ]
     # lock = multiprocessing.Lock()
 
     run_args = [
@@ -171,17 +188,10 @@ def _multiprocessing_run(
     total_runs: int,
     case: adaptation.PlainCase,
     out_path: Path,
-) -> t.Optional[t.Tuple[str, int, float]]:
+) -> t.Tuple[str, int, float]:
     config["_tuning"] = params
     config["_tuning_runs"] = total_runs
     # wordnet.lock = lock
-
-    if (
-        round(sum(config.tuning("weight").values()), 2) != 1
-        or round(sum(config.tuning("score").values()), 2) != 1
-    ):
-        log.info(f"Finished with run {i + 1}/{total_runs}.")
-        return None
 
     case_nlp = case.nlp(load.spacy_nlp())
     eval_result = _perform_adaptation(case_nlp, out_path)

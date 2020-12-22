@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import statistics
 import typing as t
@@ -59,9 +60,13 @@ def init_concept_metrics(
     for related_concept, weight in related_concepts.items():
         wn_metrics = wordnet.metrics(synsets, related_concept.synsets)
 
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            sim = name.similarity(related_concept.name)
+
         for i, metric in enumerate(
             (
-                name.similarity(related_concept.name),
+                sim,
                 db.distance(nodes, related_concept.nodes),
                 wn_metrics["path_similarity"],
                 wn_metrics["wup_similarity"],

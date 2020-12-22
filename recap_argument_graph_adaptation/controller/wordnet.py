@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 import itertools
 import multiprocessing
 import statistics
@@ -113,7 +114,10 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
 
         if definition:
             result_doc = nlp(definition)
-            similarity = doc.similarity(result_doc)
+
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                similarity = doc.similarity(result_doc)
 
         synset_tuples.append((synset, similarity))
 
