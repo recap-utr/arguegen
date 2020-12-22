@@ -93,7 +93,7 @@ def run():
     cases = load.cases()
 
     param_grid = list(ParameterGrid(dict(config["tuning"])))
-    lock = multiprocessing.Lock()
+    # lock = multiprocessing.Lock()
 
     run_args = (
         (i, params, len(param_grid), case, out_path)
@@ -106,8 +106,8 @@ def run():
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
     else:
         with multiprocessing.Pool(
-            processes, initializer=init_child, initargs=(lock,)
-        ) as pool:
+            processes
+        ) as pool:  # , initializer=init_child, initargs=(lock,)
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
     case_results = defaultdict(list)
@@ -162,8 +162,7 @@ def _multiprocessing_run(
 ) -> t.Tuple[str, int, float]:
     config["_tuning"] = params
     config["_tuning_runs"] = total_params
-    wordnet.lock = lock
-
+    # wordnet.lock = lock
     case_nlp = case.nlp(load.spacy_nlp())
     eval_result = _perform_adaptation(case_nlp, out_path)
     return (str(case_nlp), i, eval_result.score)

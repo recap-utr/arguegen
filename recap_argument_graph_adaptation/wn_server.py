@@ -60,5 +60,5 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
 
 @app.get("/concept/{name}/synsets")
-def synsets_of_concept(name: str, pos: t.Optional[str] = None) -> t.List[str]:
+def concept_synsets(name: str, pos: t.Optional[str] = None) -> t.List[str]:
     return _plain_synsets(name, pos)
