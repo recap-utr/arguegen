@@ -23,6 +23,7 @@ from ..model.database import Database
 log = logging.getLogger(__name__)
 
 
+# TODO: Massively improve performance of this step
 def argument_graph(
     graph: ag.Graph,
     rules: t.Collection[adaptation.Rule],

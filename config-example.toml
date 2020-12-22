@@ -4,6 +4,7 @@ processes = 0
 [path]
 input = "data/input"
 output = "data/output"
+export_graph = false
 
 
 [tuning]

@@ -95,18 +95,23 @@ def run():
     param_grid = list(ParameterGrid(dict(config["tuning"])))
     # lock = multiprocessing.Lock()
 
-    run_args = (
+    run_args = [
         (i, params, len(param_grid), case, out_path)
         for (i, params), case in itertools.product(enumerate(param_grid), cases)
+    ]
+
+    processes = (
+        multiprocessing.cpu_count() - 1
+        if config["processes"] == 0
+        else int(config["processes"])
     )
 
-    processes = None if config["processes"] == 0 else int(config["processes"])
-
-    log.info(f"Starting with {len(param_grid)} runs.")
-
-    if processes == 1:
+    if processes == 1 or len(run_args) == 1:
+        logging.getLogger(__package__).setLevel(logging.DEBUG)
+        log.info("Single run.")
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
     else:
+        log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
         with multiprocessing.Pool(
             processes
         ) as pool:  # , initializer=init_child, initargs=(lock,)
@@ -115,7 +120,6 @@ def run():
     wordnet.lock = None
 
     raw_results = [entry for entry in raw_results if entry is not None]
-
     case_results = defaultdict(list)
     param_results = [[] for _ in range(len(param_grid))]
 
@@ -156,6 +160,7 @@ def run():
         "case_results": best_case_results,
     }
 
+    grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
     with grid_stats_path.open("w") as file:
         _json_dump(grid_stats, file)
 
@@ -209,7 +214,6 @@ def _perform_adaptation(
     nested_out_path = _nested_path(
         out_path / case.name, config["_tuning_runs"], config["_tuning"]
     )
-    nested_out_path.mkdir(parents=True, exist_ok=True)
 
     adapted_concepts = {}
     reference_paths = {}
@@ -224,7 +228,8 @@ def _perform_adaptation(
         reference_paths = extract.paths(concepts, case.rules)
         adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
 
-    adapt.argument_graph(case.graph, case.rules, adapted_concepts)
+    if config["path"]["export_graph"]:
+        adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
     adaptation_results = export.statistic(
         concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
@@ -244,11 +249,13 @@ def _perform_adaptation(
 def _write_output(
     case: adaptation.Case, stats: t.Mapping[str, t.Any], path: Path
 ) -> None:
-    case.graph.save(path / "case.json")
-    case.graph.render(path / "case.pdf")
-    stats_path = path / "stats.json"
+    path.mkdir(parents=True, exist_ok=True)
 
-    with stats_path.open("w") as file:
+    if config["path"]["export_graph"]:
+        case.graph.save(path / "case.json")
+        case.graph.render(path / "case.pdf")
+
+    with (path / "stats.json").open("w") as file:
         _json_dump(stats, file)
 
 
