@@ -41,6 +41,8 @@ knowledge_graph = "wordnet"
 
 
 [wordnet]
+host = "0.0.0.0"
+port = "8765"
 hypernym_filter = [
     "abstraction.n",
     "artifact.n",

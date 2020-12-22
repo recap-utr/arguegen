@@ -1,0 +1,8 @@
+version: "3"
+
+services:
+  app:
+    build: .
+    volumes:
+      - .:/app
+    command: python -m recap_argument_graph_adaptation

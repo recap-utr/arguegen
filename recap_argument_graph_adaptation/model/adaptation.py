@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 import recap_argument_graph as ag
-from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
 from spacy.tokens import Doc  # type: ignore

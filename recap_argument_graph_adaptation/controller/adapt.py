@@ -3,7 +3,6 @@ import logging
 import multiprocessing
 import re
 
-from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.controller import metrics, wordnet
 import typing as t
 from collections import defaultdict
@@ -84,7 +83,7 @@ def synsets(
             hypernyms = wordnet.hypernyms(synset)
 
             for hypernym in hypernyms:
-                _name, pos = wordnet.resolve_synset(hypernym)
+                _name, pos = wordnet.resolve(hypernym)
                 name = nlp(_name)
                 nodes = tuple()
                 synsets = (hypernym,)

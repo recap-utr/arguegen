@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 import recap_argument_graph as ag
-from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.controller import wordnet
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
@@ -58,13 +57,15 @@ def init_concept_metrics(
     metrics = [[] for _ in best_concept_metrics]
 
     for related_concept, weight in related_concepts.items():
+        wn_metrics = wordnet.metrics(synsets, related_concept.synsets)
+
         for i, metric in enumerate(
             (
                 name.similarity(related_concept.name),
                 db.distance(nodes, related_concept.nodes),
-                wordnet.path_similarity(synsets, related_concept.synsets),
-                wordnet.wup_similarity(synsets, related_concept.synsets),
-                wordnet.path_distance(synsets, related_concept.synsets),
+                wn_metrics["path_similarity"],
+                wn_metrics["wup_similarity"],
+                wn_metrics["path_distance"],
             )
         ):
             if metric:

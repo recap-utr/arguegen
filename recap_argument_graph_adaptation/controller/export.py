@@ -1,7 +1,5 @@
 import typing as t
 
-from nltk.corpus.reader.wordnet import Synset
-
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.adaptation import Concept
 from recap_argument_graph_adaptation.helper import convert

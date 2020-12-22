@@ -3,8 +3,6 @@ from __future__ import annotations
 import typing as t
 from dataclasses import dataclass
 from enum import Enum
-from nltk.corpus.reader.wordnet import Synset, wup_similarity
-from nltk.corpus import wordnet as wn
 
 from spacy.tokens import Doc  # type: ignore
 

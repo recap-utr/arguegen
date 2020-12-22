@@ -1,8 +1,10 @@
 import enum
 import itertools
+import requests
 import stackprinter
 import statistics
 from collections import defaultdict
+import uvicorn
 import json
 import logging
 import os
@@ -12,6 +14,7 @@ from recap_argument_graph_adaptation.controller import evaluate
 import typing as t
 from pathlib import Path
 from sklearn.model_selection import ParameterGrid
+import time
 
 import pendulum
 
@@ -32,8 +35,36 @@ def _file_path(path: Path) -> str:
     return "file://" + str(path)
 
 
+# https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
+
+
 def run():
     log.info("Initializing.")
+    wn_server = multiprocessing.Process(
+        target=uvicorn.run,
+        args=("recap_argument_graph_adaptation.wn_server:app",),
+        kwargs={
+            "host": config["worndet"]["host"],
+            "port": config["wordnet"]["port"],
+            "log_level": "warning",
+        },
+        daemon=True,
+    )
+    wn_server.start()
+    wn_server_ready = False
+
+    while not wn_server_ready:
+        try:
+            response = requests.get(
+                f"http://{config['worndet']['host']}:{config['wordnet']['port']}"
+            )
+
+            if response.ok:
+                wn_server_ready = True
+
+        except requests.ConnectionError:
+            time.sleep(0.5)
+
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()
 
@@ -162,6 +193,9 @@ def _perform_adaptation(
     _write_output(case, stats_export, nested_out_path)
 
     return eval_results
+
+
+# TODO: On the GPU server, multiprocessing fails at the end.
 
 
 def _write_output(

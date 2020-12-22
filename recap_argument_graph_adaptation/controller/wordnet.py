@@ -1,55 +1,49 @@
 from __future__ import annotations
+
 import itertools
 import statistics
-
-from spacy.util import filter_spans
-
-
-from recap_argument_graph_adaptation.controller import load
-
 import typing as t
-from dataclasses import dataclass
-from enum import Enum
-from nltk.corpus.reader.wordnet import Synset, wup_similarity
-from nltk.corpus import wordnet as wn
+
+import requests
+from recap_argument_graph_adaptation.controller import load
+from spacy.tokens import Doc  # type: ignore
+from spacy.util import filter_spans
 
 from ..model import graph
 from ..model.config import Config
 
-from spacy.tokens import Doc  # type: ignore
-
-import neo4j.data as neo4j
-
 config = Config.instance()
+session = requests.Session()
+host = f"http://{config['worndet']['host']}:{config['wordnet']['port']}"
 
 
-def synset(code: str) -> Synset:
-    return wn.synset(code)
+def _url(parts: t.Iterable[str]) -> str:
+    return "/".join([host, *parts])
 
 
-def log_synsets(synsets: t.Iterable[str]) -> None:
-    for s in synsets:
-        print(f"Name:       {synset(s).name()}")
-        print(f"Definition: {synset(s).definition()}")
-        print(f"Examples:   {synset(s).examples()}")
-        print()
+# def log_synsets(synsets: t.Iterable[str]) -> None:
+#     for synset in synsets:
+#         print(f"Name:       {synset(s).name()}")
+#         print(f"Definition: {synset(s).definition()}")
+#         print(f"Examples:   {synset(s).examples()}")
+#         print()
 
 
-def resolve_synset(s: str) -> t.Tuple[str, graph.POS]:
-    parts = (synset(s).name() or "").split(".")
+def resolve(code: str) -> t.Tuple[str, graph.POS]:
+    parts = code.split(".")
     name = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
 
     return (name, pos)
 
 
-def synsets(term: str, pos: graph.POS) -> t.Tuple[str, ...]:
-    results = wn.synsets(term.replace(" ", "_"))
+def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
+    results = session.get(
+        _url(["concept", name, "synsets"]),
+        params={"pos": graph.wn_pos(pos)},
+    ).json()
 
-    if pos != graph.POS.OTHER:
-        results = (ss for ss in results if str(ss.pos()) == graph.wn_pos(pos))
-
-    return tuple((res.name() for res in results))
+    return tuple(results)
 
 
 def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
@@ -59,15 +53,15 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
 
     synset_tuples = []
 
-    for result in results:
+    for synset in results:
         similarity = 0
-        s = synset(result)
+        definition = session.get(_url(["synset", synset, "definition"])).text
 
-        if definition := s.definition():
+        if definition:
             result_doc = nlp(definition)
             similarity = doc.similarity(result_doc)
 
-        synset_tuples.append((result, similarity))
+        synset_tuples.append((synset, similarity))
 
     synset_tuples.sort(key=lambda item: item[1])
 
@@ -95,62 +89,39 @@ def contextual_synset(doc: Doc, term: str, pos: graph.POS) -> t.Optional[str]:
     return None
 
 
-def path_similarity(
+def metrics(
     synsets1: t.Iterable[str], synsets2: t.Iterable[str]
-) -> t.Optional[float]:
-    values = []
-    ss1 = [synset(s) for s in synsets1]
-    ss2 = [synset(s) for s in synsets2]
+) -> t.Dict[str, t.Optional[float]]:
+    tmp_results: t.Dict[str, t.List[float]] = {
+        "path_similarity": [],
+        "wup_similarity": [],
+        "path_distance": [],
+    }
 
-    for s1, s2 in itertools.product(ss1, ss2):
-        if value := s1.path_similarity(s2):
-            values.append(value)
+    for s1, s2 in itertools.product(synsets1, synsets2):
+        retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
 
-    if values:
-        return max(values)
+        for key, value in retrieved_metrics.items():
+            if value:
+                tmp_results[key].append(value)
 
-    return None
+    results: t.Dict[str, t.Optional[float]] = {key: None for key in tmp_results.keys()}
 
+    for key, values in tmp_results.items():
+        if values:
+            if "distance" in key:
+                results[key] = min(values)
+            else:
+                results[key] = max(values)
 
-def wup_similarity(
-    synsets1: t.Iterable[str], synsets2: t.Iterable[str]
-) -> t.Optional[float]:
-    values = []
-    ss1 = [synset(s) for s in synsets1]
-    ss2 = [synset(s) for s in synsets2]
-
-    for s1, s2 in itertools.product(ss1, ss2):
-        if value := s1.wup_similarity(s2):
-            values.append(value)
-
-    if values:
-        return max(values)
-
-    return None
-
-
-def path_distance(
-    synsets1: t.Iterable[str], synsets2: t.Iterable[str]
-) -> t.Optional[float]:
-    values = []
-    ss1 = [synset(s) for s in synsets1]
-    ss2 = [synset(s) for s in synsets2]
-
-    for s1, s2 in itertools.product(ss1, ss2):
-        if value := s1.shortest_path_distance(s2):
-            values.append(value)
-
-    if values:
-        return min(values)
-
-    return None
+    return results
 
 
 best_metrics = (1, 1, 0)
 
 
-def hypernym_trees(s: str) -> t.List[t.List[str]]:
-    hypernym_trees = [[synset(s)]]
+def hypernym_trees(synset: str) -> t.List[t.List[str]]:
+    hypernym_trees = [[synset]]
     has_hypernyms = [True]
     final_hypernym_trees = []
 
@@ -159,7 +130,9 @@ def hypernym_trees(s: str) -> t.List[t.List[str]]:
         new_hypernym_trees = []
 
         for hypernym_tree in hypernym_trees:
-            new_hypernyms = hypernym_tree[-1].hypernyms()
+            new_hypernyms = session.get(
+                _url(["synset", hypernym_tree[-1], "hypernyms"])
+            ).json()
 
             if new_hypernyms:
                 has_hypernyms.append(True)
@@ -172,7 +145,7 @@ def hypernym_trees(s: str) -> t.List[t.List[str]]:
 
         hypernym_trees = new_hypernym_trees
 
-    return [[s.name() for s in tree] for tree in final_hypernym_trees]
+    return final_hypernym_trees
 
 
 def remove_index(s: str) -> str:
