@@ -52,7 +52,7 @@ def init_concept_metrics(
         related_concepts = {related_concepts: 1.0}
 
     if sum(related_concepts.values()) != 1:
-        raise ValueError("The weights do not sum up to 1.")
+        raise ValueError("The weights of the related concepts do not sum up to 1.")
 
     metrics = [[] for _ in best_concept_metrics]
 

@@ -66,9 +66,6 @@ class Concept:
             "wordnet_path_distance": _dist2sim(self.wordnet_path_distance),
         }
 
-        if round(sum(config.tuning("score").values()), 2) != 1:
-            raise ValueError("The sum is not 1.")
-
         result = 0
         total_weight = 0
 

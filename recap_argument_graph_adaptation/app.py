@@ -102,6 +102,8 @@ def run():
 
     processes = None if config["processes"] == 0 else int(config["processes"])
 
+    log.info(f"Starting with {len(param_grid)} runs.")
+
     if processes == 1:
         raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
     else:
@@ -109,6 +111,8 @@ def run():
             processes
         ) as pool:  # , initializer=init_child, initargs=(lock,)
             raw_results = pool.starmap(_multiprocessing_run, run_args)
+
+    raw_results = [entry for entry in raw_results if entry is not None]
 
     case_results = defaultdict(list)
     param_results = [[] for _ in range(len(param_grid))]
@@ -138,6 +142,7 @@ def run():
         [
             {"mean_score": statistics.mean(scores), "config": param_grid[i]}
             for i, scores in enumerate(param_results)
+            if scores
         ],
         key=lambda x: x["mean_score"],
         reverse=True,
@@ -156,15 +161,26 @@ def run():
 def _multiprocessing_run(
     i: int,
     params: t.Mapping[str, t.Any],
-    total_params: int,
+    total_runs: int,
     case: adaptation.PlainCase,
     out_path: Path,
-) -> t.Tuple[str, int, float]:
+) -> t.Optional[t.Tuple[str, int, float]]:
     config["_tuning"] = params
-    config["_tuning_runs"] = total_params
+    config["_tuning_runs"] = total_runs
     # wordnet.lock = lock
+
+    if (
+        round(sum(config.tuning("weight").values()), 2) != 1
+        or round(sum(config.tuning("score").values()), 2) != 1
+    ):
+        log.info(f"Finished with run {i + 1}/{total_runs}.")
+        return None
+
     case_nlp = case.nlp(load.spacy_nlp())
     eval_result = _perform_adaptation(case_nlp, out_path)
+
+    log.info(f"Finished with run {i + 1}/{total_runs}.")
+
     return (str(case_nlp), i, eval_result.score)
 
 
@@ -184,7 +200,7 @@ def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> Evaluation:
-    log.info(
+    log.debug(
         f"Processing '{case.name}' with rules {[str(rule) for rule in case.rules]}."
     )
 
@@ -221,9 +237,6 @@ def _perform_adaptation(
     _write_output(case, stats_export, nested_out_path)
 
     return eval_results
-
-
-# TODO: On the GPU server, multiprocessing fails at the end.
 
 
 def _write_output(

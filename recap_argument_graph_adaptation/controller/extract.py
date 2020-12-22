@@ -92,7 +92,7 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
 
     concepts = Concept.only_relevant(concepts, config.tuning("extraction", "min_score"))
 
-    log.info(
+    log.debug(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
     )
 
@@ -118,7 +118,7 @@ def paths(
 
             if paths:
                 result[concept] = paths
-                log.info(f"Found {len(paths)} reference path(s) for '{concept}'.")
+                log.debug(f"Found {len(paths)} reference path(s) for '{concept}'.")
 
     elif method == "between":
         paths = []
@@ -129,7 +129,7 @@ def paths(
             ):
                 paths.extend(candidates)
 
-            log.info(f"Found {len(paths)} reference path(s) for '{rule.target}'.")
+            log.debug(f"Found {len(paths)} reference path(s) for '{rule.target}'.")
 
         if paths:
             for concept in concepts:

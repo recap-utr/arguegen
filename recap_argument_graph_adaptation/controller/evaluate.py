@@ -23,9 +23,9 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
     only_benchmark = {k for k in benchmark_keys - computed_keys}
     only_computed = {k for k in computed_keys - benchmark_keys}
 
-    log.info(f"Common adaptations: {convert.list_str(benchmark_and_computed)}")
-    log.info(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
-    log.info(f"Only computed adaptations: {convert.list_str(only_computed)}")
+    log.debug(f"Common adaptations: {convert.list_str(benchmark_and_computed)}")
+    log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
+    log.debug(f"Only computed adaptations: {convert.list_str(only_computed)}")
 
     scores = []
 
@@ -44,7 +44,7 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
         scores.append(_compute_score(original_concept, computed_adaptation))
 
     mean = statistics.mean(scores)
-    log.info(f"Finished with global score of {round(mean, 3)}.")
+    log.debug(f"Finished with global score of {round(mean, 3)}.")
 
     return Evaluation(mean, benchmark_and_computed, only_benchmark, only_computed)
 

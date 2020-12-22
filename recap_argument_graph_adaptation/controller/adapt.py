@@ -59,12 +59,6 @@ def synsets(
     nlp = load.spacy_nlp()
     related_concept_weight = config.tuning("weight")
 
-    if round(sum(related_concept_weight.values()), 2) != 1:
-        # TODO: Check this in app.py and do not raise an exception.
-        # Due to the param grid, it will happen that the sum is not 1 in some cases.
-        # Instead, just stop the computation of this case.
-        raise ValueError("The sum is not 1.")
-
     for original_concept in concepts:
         adaptation_candidates = set()
         related_concepts = {}
@@ -106,10 +100,10 @@ def synsets(
 
         if adapted_concept:
             adapted_concepts[original_concept] = adapted_concept
-            log.info(f"Adapt ({original_concept})->({adapted_concept}).")
+            log.debug(f"Adapt ({original_concept})->({adapted_concept}).")
 
         else:
-            log.info(f"No adaptation for ({original_concept}).")
+            log.debug(f"No adaptation for ({original_concept}).")
 
     return adapted_concepts, adapted_synsets
 
@@ -121,18 +115,10 @@ def paths(
     nlp = load.spacy_nlp()
 
     related_concept_weight = config.tuning("weight")
-
-    if round(sum(related_concept_weight.values()), 2) != 1:
-        # TODO: Check this in app.py and do not raise an exception.
-        # Due to the param grid, it will happen that the sum is not 1 in some cases.
-        # Instead, just stop the computation of this case.
-        raise ValueError("The sum is not 1.")
-
     adapted_concepts = {}
     adapted_paths = {}
 
     for original_concept, all_shortest_paths in reference_paths.items():
-        log.debug(f"Adapting '{original_concept}'.")
 
         params = [
             (shortest_path, original_concept, rules)
@@ -143,9 +129,6 @@ def paths(
         adaptation_results = list(itertools.chain(*adaptation_results))
         adapted_paths[original_concept] = adaptation_results
         adaptation_candidates = set()
-        log.debug(
-            f"Found the following candidates: {', '.join((str(path) for path in adaptation_results))}"
-        )
 
         for result in adaptation_results:
             name = nlp(result.end_node.processed_name)
@@ -185,10 +168,10 @@ def paths(
             # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
 
             adapted_concepts[original_concept] = adapted_concept
-            log.info(f"Adapt ({original_concept})->({adapted_concept}).")
+            log.debug(f"Adapt ({original_concept})->({adapted_concept}).")
 
         else:
-            log.info(f"No adaptation for ({original_concept}).")
+            log.debug(f"No adaptation for ({original_concept}).")
 
     return adapted_concepts, adapted_paths
 
