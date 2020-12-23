@@ -57,8 +57,6 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
             for (term, term_weight), (lemma, lemma_weight) in zip(
                 terms, terms_lemmatized
             ):
-                # TODO: Maybe only use term or lemma for synsets to improve performance.
-                # Results should be identical.
                 nodes = db.nodes(term.text, pos_tag) or db.nodes(lemma.text, pos_tag)
                 synsets = wordnet.contextual_synsets(
                     doc, term.text, pos_tag

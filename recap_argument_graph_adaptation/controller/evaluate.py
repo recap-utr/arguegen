@@ -33,14 +33,16 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
         computed_adaptation = computed_adaptations[original_concept]
         scores.append(_compute_score(benchmark_adaptation, computed_adaptation))
 
+    # TODO: Check if penalty here is correct. Maybe add a new one for other cases.
     # Here, a penalty is applied, because we assume that ignoring a specified adaptation is the worst case.
     for original_concept in only_benchmark:
         benchmark_adaptation = benchmark_adaptations[original_concept]
-        scores.append(0.5 * _compute_score(benchmark_adaptation, original_concept))
+        # scores.append(0.5 * _compute_score(benchmark_adaptation, original_concept))
+        scores.append(0.0)
 
     for original_concept in only_computed:
         computed_adaptation = computed_adaptations[original_concept]
-        scores.append(_compute_score(original_concept, computed_adaptation))
+        scores.append(0.5 * _compute_score(original_concept, computed_adaptation))
 
     mean = statistics.mean(scores)
     log.debug(f"Finished with global score of {round(mean, 3)}.")
