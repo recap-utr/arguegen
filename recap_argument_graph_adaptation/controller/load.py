@@ -36,7 +36,10 @@ def spacy_nlp() -> Language:
     model_name = f"{lang}-{embeddings}"
 
     if not spacy_cache.get(model_name):
-        model = spacy.load(spacy_models[model_name])
+        model = spacy.load(
+            spacy_models[model_name], disable=["ner", "textcat", "parser"]
+        )  # parser needed for noun chunks
+        model.add_pipe(model.create_pipe("sentencizer"))
 
         if embeddings == "transformer":
             model.add_pipe(TransformerModel(lang), first=True)

@@ -57,23 +57,25 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
             for (term, term_weight), (lemma, lemma_weight) in zip(
                 terms, terms_lemmatized
             ):
+                # TODO: Maybe only use term or lemma for synsets to improve performance.
+                # Results should be identical.
                 nodes = db.nodes(term.text, pos_tag) or db.nodes(lemma.text, pos_tag)
                 synsets = wordnet.contextual_synsets(
                     doc, term.text, pos_tag
                 ) or wordnet.contextual_synsets(doc, lemma.text, pos_tag)
 
-                if not (nodes or synsets):  # test if the root word is in conceptnet
-                    term_chunks = next(term.noun_chunks, None)
+                # if not (nodes or synsets):  # test if the root word is in conceptnet
+                #     term_chunks = next(term.noun_chunks, None)
 
-                    if term_chunks:
-                        root = term_chunks.root
+                #     if term_chunks:
+                #         root = term_chunks.root
 
-                        if not nodes:
-                            nodes = db.nodes(root.text, pos_tag)
-                        if not synsets:
-                            synsets = wordnet.contextual_synsets(
-                                doc, root.text, pos_tag
-                            )
+                #         if not nodes:
+                #             nodes = db.nodes(root.text, pos_tag)
+                #         if not synsets:
+                #             synsets = wordnet.contextual_synsets(
+                #                 doc, root.text, pos_tag
+                #             )
 
                 if nodes or synsets:
                     candidate = Concept(

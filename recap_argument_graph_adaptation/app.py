@@ -99,7 +99,6 @@ def _filter_mapping(
 
 def run():
     log.info("Initializing.")
-    # _start_server()
 
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()
@@ -134,6 +133,7 @@ def run():
         ) as pool:  # , initializer=init_child, initargs=(lock,)
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
+    log.info("Exporting grid stats.")
     wordnet.lock = None
 
     raw_results = [entry for entry in raw_results if entry is not None]
@@ -181,6 +181,8 @@ def run():
     with grid_stats_path.open("w") as file:
         _json_dump(grid_stats, file)
 
+    log.info("Finished.")
+
 
 def _multiprocessing_run(
     i: int,
@@ -189,11 +191,16 @@ def _multiprocessing_run(
     case: adaptation.PlainCase,
     out_path: Path,
 ) -> t.Tuple[str, int, float]:
+    log.debug(f"Starting run {i + 1}/{total_runs}.")
+
     config["_tuning"] = params
     config["_tuning_runs"] = total_runs
     # wordnet.lock = lock
 
+    log.debug("Applying nlp to case.")
     case_nlp = case.nlp(load.spacy_nlp())
+
+    log.debug("Starting adaptation pipeline.")
     eval_result = _perform_adaptation(case_nlp, out_path)
 
     log.info(f"Finished with run {i + 1}/{total_runs}.")
@@ -217,10 +224,6 @@ def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> Evaluation:
-    log.debug(
-        f"Processing '{case.name}' with rules {[str(rule) for rule in case.rules]}."
-    )
-
     nested_out_path = _nested_path(
         out_path / case.name, config["_tuning_runs"], config["_tuning"]
     )
@@ -230,8 +233,10 @@ def _perform_adaptation(
     adapted_paths = {}
     adapted_synsets = {}
 
+    log.debug("Extracting keywords.")
     concepts = extract.keywords(case.graph, case.rules)
 
+    log.debug("Adapting concepts.")
     if config["nlp"]["knowledge_graph"] == "wordnet":
         adapted_concepts, adapted_synsets = adapt.synsets(concepts, case.rules)
     elif config["nlp"]["knowledge_graph"] == "conceptnet":
@@ -239,13 +244,16 @@ def _perform_adaptation(
         adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
 
     if config["path"]["export_graph"]:
+        log.debug("Exporting graph.")
         adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
+    log.debug("Evaluating adaptations.")
+    eval_results = evaluate.case(case, adapted_concepts)
+
+    log.debug("Exporting statistics.")
     adaptation_results = export.statistic(
         concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
     )
-    eval_results = evaluate.case(case, adapted_concepts)
-
     stats_export = {
         "evaluation": eval_results.to_dict(),
         "results": adaptation_results,

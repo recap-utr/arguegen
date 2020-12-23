@@ -10,7 +10,6 @@ from recap_argument_graph_adaptation.helper import convert
 log = logging.getLogger(__name__)
 
 
-# TODO: Eventually improve performance
 def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluation:
     computed_adaptations = {**adapted_concepts}
     computed_adaptations.update({rule.source: rule.target for rule in case.rules})
