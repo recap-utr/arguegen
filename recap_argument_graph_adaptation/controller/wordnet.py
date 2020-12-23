@@ -10,15 +10,18 @@ import requests
 from recap_argument_graph_adaptation.controller import load
 from spacy.tokens import Doc  # type: ignore
 from spacy.util import filter_spans
-from nltk.corpus import wordnet as wn
+
+# from nltk.corpus import wordnet as wn
 from nltk.corpus.reader import Synset
+import xmlrpc.client
 
 from ..model import graph
 from ..model.config import Config
 
 config = Config.instance()
 # session = requests.Session()
-lock = multiprocessing.Lock()
+# lock = multiprocessing.Lock()
+server = xmlrpc.client.ServerProxy("http://localhost:8000")
 
 
 # def _url(parts: t.Iterable[str]) -> str:
@@ -27,21 +30,21 @@ lock = multiprocessing.Lock()
 #     )
 
 
-def _synset(code: str) -> Synset:
-    return wn.synset(code)
+# def _synset(code: str) -> Synset:
+#     return wn.synset(code)
 
 
-def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
-    results = wn.synsets(name.replace(" ", "_"))
+# def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
+#     results = wn.synsets(name.replace(" ", "_"))
 
-    if pos:
-        results = [ss for ss in results if str(ss.pos()) == pos]
+#     if pos:
+#         results = [ss for ss in results if str(ss.pos()) == pos]
 
-    return results
+#     return results
 
 
-def _plain_synsets(name: str, pos: t.Optional[str]) -> t.List[str]:
-    return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
+# def _plain_synsets(name: str, pos: t.Optional[str]) -> t.List[str]:
+#     return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
 
 
 # def log_synsets(synsets: t.Iterable[str]) -> None:
@@ -52,32 +55,32 @@ def _plain_synsets(name: str, pos: t.Optional[str]) -> t.List[str]:
 #         print()
 
 
-def synset_definition(code: str) -> str:
-    return _synset(code).definition() or ""
+# def synset_definition(code: str) -> str:
+#     return _synset(code).definition() or ""
 
 
-def synset_examples(code: str) -> t.List[str]:
-    return _synset(code).examples() or []
+# def synset_examples(code: str) -> t.List[str]:
+#     return _synset(code).examples() or []
 
 
-def synset_hypernyms(code: str) -> t.List[str]:
-    hypernyms = _synset(code).hypernyms()
-    return [h.name() for h in hypernyms if h]
+# def synset_hypernyms(code: str) -> t.List[str]:
+#     hypernyms = _synset(code).hypernyms()
+#     return [h.name() for h in hypernyms if h]
 
 
-def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
-    s1 = _synset(code1)
-    s2 = _synset(code2)
+# def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
+#     s1 = _synset(code1)
+#     s2 = _synset(code2)
 
-    return {
-        "path_similarity": s1.path_similarity(s2),
-        "wup_similarity": s1.wup_similarity(s2),
-        "path_distance": s1.shortest_path_distance(s2),
-    }
+#     return {
+#         "path_similarity": s1.path_similarity(s2),
+#         "wup_similarity": s1.wup_similarity(s2),
+#         "path_distance": s1.shortest_path_distance(s2),
+#     }
 
 
-def concept_synsets(name: str, pos: t.Optional[str] = None) -> t.List[str]:
-    return _plain_synsets(name, pos)
+# def concept_synsets(name: str, pos: t.Optional[str] = None) -> t.List[str]:
+#     return _plain_synsets(name, pos)
 
 
 def resolve(code: str) -> t.Tuple[str, graph.POS]:
@@ -89,12 +92,13 @@ def resolve(code: str) -> t.Tuple[str, graph.POS]:
 
 
 def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
-    with lock:
-        # results = session.get(
-        #     _url(["concept", name, "synsets"]),
-        #     params={"pos": graph.wn_pos(pos)},
-        # ).json()
-        results = concept_synsets(name, graph.wn_pos(pos))
+    # results = session.get(
+    #     _url(["concept", name, "synsets"]),
+    #     params={"pos": graph.wn_pos(pos)},
+    # ).json()
+    results: t.List[str] = server.concept_synsets(name, graph.wn_pos(pos))  # type: ignore
+    # with lock:
+    #     results = concept_synsets(name, graph.wn_pos(pos))
 
     return tuple(results)
 
@@ -108,9 +112,10 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
 
     for synset in results:
         similarity = 0
-        with lock:
-            # definition = session.get(_url(["synset", synset, "definition"])).text
-            definition = synset_definition(synset)
+        # definition = session.get(_url(["synset", synset, "definition"])).text
+        definition: str = server.synset_definition(synset)  # type: ignore
+        # with lock:
+        #     definition = synset_definition(synset)
 
         if definition:
             result_doc = nlp(definition)
@@ -126,6 +131,7 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
     # Check if the best result has a higher similarity than demanded.
     # If true, only include the synsets with higher similarity.
     # Otherwise, include only the best one.
+    # TODO: Why hypernym similarity???
     if best_synset_tuple := next(iter(synset_tuples), None):
         if best_synset_tuple[1] > config.tuning("hypernym", "min_similarity"):
             synset_tuples = filter(
@@ -157,9 +163,10 @@ def metrics(
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
-        with lock:
-            # retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
-            retrieved_metrics = synset_metrics(s1, s2)
+        # retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
+        retrieved_metrics: t.Dict[str, t.Optional[float]] = server.synset_metrics(s1, s2)  # type: ignore
+        # with lock:
+        #     retrieved_metrics = synset_metrics(s1, s2)
 
         for key, value in retrieved_metrics.items():
             if value:
@@ -190,11 +197,12 @@ def hypernym_trees(synset: str) -> t.List[t.List[str]]:
         new_hypernym_trees = []
 
         for hypernym_tree in hypernym_trees:
-            with lock:
-                # new_hypernyms = session.get(
-                #     _url(["synset", hypernym_tree[-1], "hypernyms"])
-                # ).json()
-                new_hypernyms = synset_hypernyms(hypernym_tree[-1])
+            # new_hypernyms = session.get(
+            #     _url(["synset", hypernym_tree[-1], "hypernyms"])
+            # ).json()
+            new_hypernyms: t.List[str] = server.synset_hypernyms(hypernym_tree[-1])  # type: ignore
+            # with lock:
+            #     new_hypernyms = synset_hypernyms(hypernym_tree[-1])
 
             if new_hypernyms:
                 has_hypernyms.append(True)

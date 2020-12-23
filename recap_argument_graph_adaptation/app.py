@@ -134,7 +134,7 @@ def run():
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
     log.info("Exporting grid stats.")
-    wordnet.lock = None
+    # wordnet.lock = None
 
     raw_results = [entry for entry in raw_results if entry is not None]
     case_results = defaultdict(list)
