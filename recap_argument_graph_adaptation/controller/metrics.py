@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import logging
 import warnings
+
+import numpy as np
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import statistics
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
+from scipy.spatial import distance
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import wordnet
@@ -31,12 +34,12 @@ def update_concept_metrics(
     t.Optional[float],
 ]:
     return init_concept_metrics(
-        concept.name, concept.nodes, concept.synsets, related_concepts
+        concept.vector, concept.nodes, concept.synsets, related_concepts
     )
 
 
 def init_concept_metrics(
-    name: Doc,
+    vector: np.ndarray,
     nodes: t.Sequence[graph.Node],
     synsets: t.Iterable[str],
     related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
@@ -59,10 +62,7 @@ def init_concept_metrics(
 
     for related_concept, weight in related_concepts.items():
         wn_metrics = wordnet.metrics(synsets, related_concept.synsets)
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            sim = name.similarity(related_concept.name)
+        sim = 1 - distance.cosine(vector, related_concept.vector)
 
         for i, metric in enumerate(
             (

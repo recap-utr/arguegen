@@ -6,6 +6,7 @@ import statistics
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
+import numpy as np
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import graph
@@ -17,7 +18,8 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Concept:
-    name: Doc
+    name: str
+    vector: np.ndarray
     pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
     nodes: t.Tuple[graph.Node, ...]
     synsets: t.Tuple[str, ...]
@@ -34,15 +36,15 @@ class Concept:
 
     def __str__(self):
         if self.pos != graph.POS.OTHER:
-            return f"{self.name.text}/{self.pos.value}"
+            return f"{self.name}/{self.pos.value}"
 
-        return self.name.text
+        return self.name
 
     def __eq__(self, other: Concept) -> bool:
-        return self.name.text == other.name.text and self.pos == other.pos
+        return self.name == other.name and self.pos == other.pos
 
     def __hash__(self) -> int:
-        return hash((self.name.text, self.pos))
+        return hash((self.name, self.pos))
 
     @staticmethod
     def only_relevant(
@@ -98,7 +100,14 @@ class Concept:
             t.Optional[float],
         ],
     ) -> Concept:
-        return Concept(source.name, source.pos, source.nodes, source.synsets, *metrics)
+        return Concept(
+            source.name,
+            source.vector,
+            source.pos,
+            source.nodes,
+            source.synsets,
+            *metrics,
+        )
 
 
 def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
@@ -129,67 +138,67 @@ class Case:
     def __str__(self) -> str:
         return self.name
 
-    @classmethod
-    def from_plain_case(
-        cls,
-        source: PlainCase,
-        rules: t.Tuple[Rule, ...],
-        benchmark_rules: t.Tuple[Rule, ...],
-    ) -> Case:
-        return cls(
-            source.name,
-            source.query,
-            source.graph,
-            rules,
-            source.benchmark_graph,
-            benchmark_rules,
-        )
+    # @classmethod
+    # def from_plain_case(
+    #     cls,
+    #     source: PlainCase,
+    #     rules: t.Tuple[Rule, ...],
+    #     benchmark_rules: t.Tuple[Rule, ...],
+    # ) -> Case:
+    #     return cls(
+    #         source.name,
+    #         source.query,
+    #         source.graph,
+    #         rules,
+    #         source.benchmark_graph,
+    #         benchmark_rules,
+    #     )
 
 
-@dataclass(frozen=True)
-class PlainConcept:
-    name: str
-    pos: graph.POS
-    nodes: t.Tuple[graph.Node, ...]
-    synsets: t.Tuple[str, ...]
-    keyword_weight: t.Optional[float]
-    metrics: t.Tuple[float, ...]
+# @dataclass(frozen=True)
+# class PlainConcept:
+#     name: str
+#     pos: graph.POS
+#     nodes: t.Tuple[graph.Node, ...]
+#     synsets: t.Tuple[str, ...]
+#     keyword_weight: t.Optional[float]
+#     metrics: t.Tuple[float, ...]
 
-    def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Concept:
-        return Concept(
-            nlp_func(self.name),
-            self.pos,
-            self.nodes,
-            self.synsets,
-            self.keyword_weight,
-            *self.metrics,
-        )
-
-
-@dataclass(frozen=True)
-class PlainRule:
-    source: PlainConcept
-    target: PlainConcept
-
-    def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Rule:
-        return Rule(self.source.nlp(nlp_func), self.target.nlp(nlp_func))
+#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Concept:
+#         return Concept(
+#             nlp_func(self.name),
+#             self.pos,
+#             self.nodes,
+#             self.synsets,
+#             self.keyword_weight,
+#             *self.metrics,
+#         )
 
 
-@dataclass(frozen=True)
-class PlainCase:
-    name: str
-    query: str
-    graph: ag.Graph
-    rules: t.Tuple[PlainRule, ...]
-    benchmark_graph: ag.Graph
-    benchmark_rules: t.Tuple[PlainRule, ...]
+# @dataclass(frozen=True)
+# class PlainRule:
+#     source: PlainConcept
+#     target: PlainConcept
 
-    def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Case:
-        return Case(
-            self.name,
-            self.query,
-            self.graph,
-            tuple((rule.nlp(nlp_func) for rule in self.rules)),
-            self.benchmark_graph,
-            tuple((rule.nlp(nlp_func) for rule in self.benchmark_rules)),
-        )
+#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Rule:
+#         return Rule(self.source.nlp(nlp_func), self.target.nlp(nlp_func))
+
+
+# @dataclass(frozen=True)
+# class PlainCase:
+#     name: str
+#     query: str
+#     graph: ag.Graph
+#     rules: t.Tuple[PlainRule, ...]
+#     benchmark_graph: ag.Graph
+#     benchmark_rules: t.Tuple[PlainRule, ...]
+
+#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Case:
+#         return Case(
+#             self.name,
+#             self.query,
+#             self.graph,
+#             tuple((rule.nlp(nlp_func) for rule in self.rules)),
+#             self.benchmark_graph,
+#             tuple((rule.nlp(nlp_func) for rule in self.benchmark_rules)),
+#         )

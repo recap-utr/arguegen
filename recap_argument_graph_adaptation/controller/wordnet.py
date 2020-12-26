@@ -5,6 +5,7 @@ import itertools
 import multiprocessing
 import statistics
 import typing as t
+import numpy as np
 
 import requests
 from recap_argument_graph_adaptation.controller import load
@@ -99,9 +100,9 @@ def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
     return tuple(results)
 
 
-def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
+def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    nlp = load.spacy_nlp()
+    nlp = load.spacy_server
     results = synsets(term, pos)
 
     synset_tuples = []
@@ -113,11 +114,7 @@ def contextual_synsets(doc: Doc, term: str, pos: graph.POS) -> t.Tuple[str, ...]
             definition = synset_definition(synset)
 
         if definition:
-            result_doc = nlp(definition)
-
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                similarity = doc.similarity(result_doc)
+            similarity = nlp.similarity(text, definition)
 
         synset_tuples.append((synset, similarity))
 

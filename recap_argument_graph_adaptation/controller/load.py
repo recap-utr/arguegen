@@ -1,9 +1,12 @@
 import csv
 import logging
+
+import numpy as np
 from recap_argument_graph_adaptation.controller import metrics, wordnet
 import typing as t
 import warnings
 from pathlib import Path
+from xmlrpc.client import ServerProxy
 
 import lmproof
 import recap_argument_graph as ag
@@ -28,6 +31,8 @@ transformer_models = {
     "de": "distiluse-base-multilingual-cased",
     "en": "roberta-large-nli-stsb-mean-tokens",
 }
+
+spacy_server = ServerProxy("http://localhost:8000")
 
 
 def spacy_nlp() -> Language:
@@ -88,7 +93,7 @@ class TransformerModel(object):
         return 1 - distance.cosine(obj1.vector, obj2.vector)
 
 
-def cases() -> t.List[adaptation.PlainCase]:
+def cases() -> t.List[adaptation.Case]:
     input_path = Path(config["path"]["input"])
     result = []
 
@@ -102,7 +107,7 @@ def cases() -> t.List[adaptation.PlainCase]:
     return result
 
 
-def _case(path: Path) -> adaptation.PlainCase:
+def _case(path: Path) -> adaptation.Case:
     input_graph = ag.Graph.open(path / "case-graph.json")
     input_rules = _parse_rules(path / "case-rules.csv")
 
@@ -117,7 +122,7 @@ def _case(path: Path) -> adaptation.PlainCase:
     with (path / "query.txt").open() as file:
         query = file.read()
 
-    return adaptation.PlainCase(
+    return adaptation.Case(
         path.name,
         query,
         input_graph,
@@ -127,7 +132,7 @@ def _case(path: Path) -> adaptation.PlainCase:
     )
 
 
-def _parse_rules(path: Path) -> t.Tuple[adaptation.PlainRule]:
+def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
     rules = []
 
     with path.open() as file:
@@ -137,14 +142,15 @@ def _parse_rules(path: Path) -> t.Tuple[adaptation.PlainRule]:
             source = _parse_rule_concept(row[0])
             target = _parse_rule_concept(row[1])
 
-            rules.append(adaptation.PlainRule(source, target))
+            rules.append(adaptation.Rule(source, target))
 
     return tuple(rules)
 
 
-def _parse_rule_concept(rule: str) -> adaptation.PlainConcept:
+def _parse_rule_concept(rule: str) -> adaptation.Concept:
     rule_parts = rule.split("/")
     name = rule_parts[0]
+    vector = np.array(spacy_server.vector(name))
     pos = graph.POS.OTHER
 
     if len(rule_parts) > 1:
@@ -161,6 +167,6 @@ def _parse_rule_concept(rule: str) -> adaptation.PlainConcept:
             f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
         )
 
-    return adaptation.PlainConcept(
-        name, pos, nodes, synsets, None, metrics.best_concept_metrics
+    return adaptation.Concept(
+        name, vector, pos, nodes, synsets, None, *metrics.best_concept_metrics
     )

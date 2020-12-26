@@ -1,4 +1,6 @@
 import logging
+
+import numpy as np
 from recap_argument_graph_adaptation.controller import metrics
 import typing as t
 
@@ -26,69 +28,41 @@ spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ", "ADV"]
 
 
 def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
-    extractor = ke.yake
-    # ke.textrank, ke.yake, ke.scake, ke.sgrank
-
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
     rule_sources = {rule.source for rule in rules}
     rule_targets = {rule.target for rule in rules}
 
     concepts: t.Set[Concept] = set()
     db = Database()
-    nlp = load.spacy_nlp()
+    nlp = load.spacy_server
 
-    for spacy_pos_tag in spacy_pos_tags:
-        pos_tag = spacy_pos_mapping[spacy_pos_tag]
+    for node in graph.inodes:
+        terms = nlp.keywords(node.plain_text, spacy_pos_tags, False)
+        lemmas = nlp.keywords(node.plain_text, spacy_pos_tags, True)
 
-        for node in graph.inodes:
-            doc = nlp(node.plain_text)
+        for (term, _pos_tag, weight), (lemma, _, _) in zip(terms, lemmas):
+            pos_tag = spacy_pos_mapping[_pos_tag]
+            vector = np.array(nlp.vector(term))
+            nodes = db.nodes(term, pos_tag) or db.nodes(lemma, pos_tag)
+            synsets = wordnet.contextual_synsets(
+                node.plain_text, term, pos_tag
+            ) or wordnet.contextual_synsets(node.plain_text, lemma, pos_tag)
 
-            terms = [
-                (nlp(key_term), weight)
-                for (key_term, weight) in extractor(
-                    doc, normalize=None, include_pos=spacy_pos_tag
+            if nodes or synsets:
+                candidate = Concept(
+                    term,
+                    vector,
+                    pos_tag,
+                    nodes,
+                    synsets,
+                    weight,
+                    *metrics.init_concept_metrics(
+                        vector, nodes, synsets, related_concepts
+                    ),
                 )
-            ]
-            terms_lemmatized = [
-                (nlp(key_term), weight)
-                for (key_term, weight) in extractor(doc, include_pos=spacy_pos_tag)
-            ]
 
-            for (term, term_weight), (lemma, lemma_weight) in zip(
-                terms, terms_lemmatized
-            ):
-                nodes = db.nodes(term.text, pos_tag) or db.nodes(lemma.text, pos_tag)
-                synsets = wordnet.contextual_synsets(
-                    doc, term.text, pos_tag
-                ) or wordnet.contextual_synsets(doc, lemma.text, pos_tag)
-
-                # if not (nodes or synsets):  # test if the root word is in conceptnet
-                #     term_chunks = next(term.noun_chunks, None)
-
-                #     if term_chunks:
-                #         root = term_chunks.root
-
-                #         if not nodes:
-                #             nodes = db.nodes(root.text, pos_tag)
-                #         if not synsets:
-                #             synsets = wordnet.contextual_synsets(
-                #                 doc, root.text, pos_tag
-                #             )
-
-                if nodes or synsets:
-                    candidate = Concept(
-                        term,
-                        pos_tag,
-                        nodes,
-                        synsets,
-                        term_weight,
-                        *metrics.init_concept_metrics(
-                            term, nodes, synsets, related_concepts
-                        ),
-                    )
-
-                    if candidate not in rule_sources and candidate not in rule_targets:
-                        concepts.add(candidate)
+                if candidate not in rule_sources and candidate not in rule_targets:
+                    concepts.add(candidate)
 
     concepts = Concept.only_relevant(concepts, config.tuning("extraction", "min_score"))
 

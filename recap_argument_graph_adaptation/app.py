@@ -184,11 +184,14 @@ def run():
     log.info("Finished.")
 
 
+# TODO: load.cases darf keine PlainCase Instanzen erzeugen
+
+
 def _multiprocessing_run(
     i: int,
     params: t.Mapping[str, t.Any],
     total_runs: int,
-    case: adaptation.PlainCase,
+    case: adaptation.Case,
     out_path: Path,
 ) -> t.Tuple[str, int, float]:
     log.debug(f"Starting run {i + 1}/{total_runs}.")
@@ -197,15 +200,12 @@ def _multiprocessing_run(
     config["_tuning_runs"] = total_runs
     # wordnet.lock = lock
 
-    log.debug("Applying nlp to case.")
-    case_nlp = case.nlp(load.spacy_nlp())
-
     log.debug("Starting adaptation pipeline.")
-    eval_result = _perform_adaptation(case_nlp, out_path)
+    eval_result = _perform_adaptation(case, out_path)
 
     log.info(f"Finished with run {i + 1}/{total_runs}.")
 
-    return (str(case_nlp), i, eval_result.score)
+    return (str(case), i, eval_result.score)
 
 
 def _nested_path(
