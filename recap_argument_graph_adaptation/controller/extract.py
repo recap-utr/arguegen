@@ -1,11 +1,10 @@
 import logging
 
 import numpy as np
-from recap_argument_graph_adaptation.controller import metrics
+from recap_argument_graph_adaptation.controller import metrics, spacy
 import typing as t
 
 import recap_argument_graph as ag
-import spacy
 from textacy import ke
 import nltk.wsd
 
@@ -34,15 +33,14 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
 
     concepts: t.Set[Concept] = set()
     db = Database()
-    nlp = load.spacy_server
 
     for node in graph.inodes:
-        terms = nlp.keywords(node.plain_text, spacy_pos_tags, False)
-        lemmas = nlp.keywords(node.plain_text, spacy_pos_tags, True)
+        terms = spacy.keywords(node.plain_text, spacy_pos_tags, False)
+        lemmas = spacy.keywords(node.plain_text, spacy_pos_tags, True)
 
         for (term, _pos_tag, weight), (lemma, _, _) in zip(terms, lemmas):
             pos_tag = spacy_pos_mapping[_pos_tag]
-            vector = np.array(nlp.vector(term))
+            vector = np.array(spacy.vector(term))
             nodes = db.nodes(term, pos_tag) or db.nodes(lemma, pos_tag)
             synsets = wordnet.contextual_synsets(
                 node.plain_text, term, pos_tag

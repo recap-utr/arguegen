@@ -1,9 +1,11 @@
 import csv
 import logging
+from socketserver import ThreadingMixIn
 import typing as t
 import warnings
 from pathlib import Path
 from xmlrpc.server import SimpleXMLRPCServer
+import threading
 
 import lmproof
 import recap_argument_graph as ag
@@ -79,9 +81,16 @@ nlp = spacy_nlp()
 extractor = ke.yake
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
-# https://github.com/dcavar/spacyxmlrpc/blob/master/spacyRPCServer.py
+# https://stackoverflow.com/questions/53621682/multi-threaded-xml-rpc-python3-7-1
+class SimpleThreadedXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
+    pass
 
-server = SimpleXMLRPCServer(("localhost", 8000), allow_none=True)
+
+# https://github.com/dcavar/spacyxmlrpc/blob/master/spacyRPCServer.py
+# server = SimpleXMLRPCServer(("localhost", 8000), allow_none=True, logRequests=False)
+server = SimpleThreadedXMLRPCServer(
+    ("localhost", 8000), allow_none=True, logRequests=False
+)
 server.register_introspection_functions()
 
 # Register a function under function.__name__.
@@ -117,3 +126,7 @@ def ready() -> bool:
 
 print("Ready.")
 server.serve_forever()
+
+# https://stackoverflow.com/questions/15074393/python-multithreading-xmlrpc-server
+# server_thread = threading.Thread(target=server.serve_forever)
+# server_thread.start()

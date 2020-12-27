@@ -8,7 +8,7 @@ import typing as t
 import numpy as np
 
 import requests
-from recap_argument_graph_adaptation.controller import load
+from recap_argument_graph_adaptation.controller import load, spacy
 from spacy.tokens import Doc  # type: ignore
 from spacy.util import filter_spans
 from nltk.corpus import wordnet as wn
@@ -102,7 +102,6 @@ def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
 
 def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    nlp = load.spacy_server
     results = synsets(term, pos)
 
     synset_tuples = []
@@ -114,7 +113,7 @@ def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...
             definition = synset_definition(synset)
 
         if definition:
-            similarity = nlp.similarity(text, definition)
+            similarity = spacy.similarity(text, definition)
 
         synset_tuples.append((synset, similarity))
 

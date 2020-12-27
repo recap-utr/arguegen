@@ -5,14 +5,13 @@ import re
 
 import numpy as np
 
-from recap_argument_graph_adaptation.controller import metrics, wordnet
+from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 import typing as t
 from collections import defaultdict
 import warnings
 import itertools
 
 import recap_argument_graph as ag
-import spacy
 from scipy.spatial import distance
 
 from . import load
@@ -59,7 +58,6 @@ def synsets(
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Concept]]]:
     adapted_synsets = {}
     adapted_concepts = {}
-    nlp = load.spacy_server
     related_concept_weight = config.tuning("weight")
 
     for original_concept in concepts:
@@ -81,7 +79,7 @@ def synsets(
 
             for hypernym in hypernyms:
                 name, pos = wordnet.resolve(hypernym)
-                vector = np.array(nlp.vector(name))
+                vector = np.array(spacy.vector(name))
                 nodes = tuple()
                 synsets = (hypernym,)
 
@@ -116,8 +114,6 @@ def paths(
     reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
     rules: t.Collection[adaptation.Rule],
 ) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
-    nlp = load.spacy_server
-
     related_concept_weight = config.tuning("weight")
     adapted_concepts = {}
     adapted_paths = {}
@@ -136,7 +132,7 @@ def paths(
 
         for result in adaptation_results:
             name = result.end_node.processed_name
-            vector = np.array(nlp.vector(name))
+            vector = np.array(spacy.vector(name))
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
             synsets = wordnet.synsets(name, pos)
@@ -254,7 +250,6 @@ def _filter_paths(
     reference_path: graph.Path,
     start_node: graph.Node,
 ) -> t.List[graph.Path]:
-    nlp = load.spacy_server
     selector = config.tuning("conceptnet", "selector")
     candidate_values = {}
 
@@ -262,8 +257,8 @@ def _filter_paths(
     start_index = end_index - 1
 
     val_reference = _aggregate_features(
-        np.array(nlp.vector(reference_path.nodes[start_index].processed_name)),
-        np.array(nlp.vector(reference_path.nodes[end_index].processed_name)),
+        np.array(spacy.vector(reference_path.nodes[start_index].processed_name)),
+        np.array(spacy.vector(reference_path.nodes[end_index].processed_name)),
         selector,
     )
 
@@ -271,8 +266,8 @@ def _filter_paths(
         candidate = candidate_path.end_node
 
         val_adapted = _aggregate_features(
-            np.array(nlp.vector(start_node.processed_name)),
-            np.array(nlp.vector(candidate.processed_name)),
+            np.array(spacy.vector(start_node.processed_name)),
+            np.array(spacy.vector(candidate.processed_name)),
             selector,
         )
         candidate_values[candidate_path] = _compare_features(
