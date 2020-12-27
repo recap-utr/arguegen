@@ -78,7 +78,10 @@ class Concept:
 
         # If one metric is not set, the weights would not sum to 1.
         # Thus, the result is normalized.
-        return result * (1 / total_weight)
+        if total_weight > 0:
+            return result * (1 / total_weight)
+
+        return 0.0
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {
