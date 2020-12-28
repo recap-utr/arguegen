@@ -12,6 +12,10 @@ from sentence_transformers import SentenceTransformer
 from spacy.language import Language
 from pydantic import BaseModel
 
+from .model.config import Config
+
+config = Config.instance()["spacy"]
+
 
 spacy_cache = {}
 proof_reader_cache = {}
@@ -28,8 +32,8 @@ transformer_models = {
 
 
 def spacy_nlp() -> Language:
-    lang = "en"  # TODO: config["nlp"]["lang"]
-    embeddings = "integrated"  # TODO: config["nlp"]["embeddings"]
+    lang = config["lang"]
+    embeddings = config["embeddings"]
     model_name = f"{lang}-{embeddings}"
 
     if not spacy_cache.get(model_name):

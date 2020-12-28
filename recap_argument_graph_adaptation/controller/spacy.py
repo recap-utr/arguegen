@@ -130,7 +130,7 @@ def keywords(
 
     # return terms
 
-    result = rest.post(
+    return rest.post(
         _url("keywords"),
         json={"text": text, "pos_tags": pos_tags, "normalize": normalize},
     ).json()

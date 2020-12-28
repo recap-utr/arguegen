@@ -29,6 +29,13 @@ log = logging.getLogger(__name__)
 # stackprinter.set_excepthook(style="darkbg2")
 
 
+request_exceptions = (
+    requests.exceptions.ConnectionError,
+    requests.exceptions.Timeout,
+    requests.exceptions.HTTPError,
+)
+
+
 def _timestamp() -> str:
     return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
 
@@ -53,33 +60,38 @@ def _get_open_port() -> int:
 
 def _start_server() -> None:
     # config["wordnet"]["port"] = _get_open_port()
+    host = config["wordnet"]["host"]
+    port = config["wordnet"]["port"]
 
-    wn_server = multiprocessing.Process(
-        target=uvicorn.run,
-        args=("recap_argument_graph_adaptation.wn_server:app",),
-        kwargs={
-            "host": config["wordnet"]["host"],
-            "port": config["wordnet"]["port"],
-            "log_level": "info",
-            "limit_max_requests": 1,
-            "workers": 1,
-        },
-        daemon=True,
-    )
-    wn_server.start()
-    wn_server_ready = False
+    try:
+        response = requests.get(f"http://{host}:{port}")
+        response.raise_for_status()
 
-    while not wn_server_ready:
-        try:
-            response = requests.get(
-                f"http://{config['wordnet']['host']}:{config['wordnet']['port']}"
-            )
+    except request_exceptions:
+        log.warning("No spacy server running, starting a temporary one.")
 
-            if response.ok:
-                wn_server_ready = True
+        server = multiprocessing.Process(
+            target=uvicorn.run,
+            args=("recap_argument_graph_adaptation.spacy_server_rest:app",),
+            kwargs={
+                "host": host,
+                "port": port,
+                "log_level": "warning",
+                # "workers": config["processes"],
+            },
+            daemon=True,
+        )
+        server.start()
+        server_ready = False
 
-        except requests.ConnectionError:
-            time.sleep(0.5)
+        while not server_ready:
+            try:
+                response = requests.get(f"http://{host}:{port}")
+                response.raise_for_status()
+            except request_exceptions:
+                time.sleep(0.5)
+            else:
+                server_ready = True
 
 
 def _filter_mapping(
@@ -99,6 +111,7 @@ def _filter_mapping(
 
 def run():
     log.info("Initializing.")
+    _start_server()
 
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()

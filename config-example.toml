@@ -35,15 +35,18 @@ conceptnet_selector = ["similarity"]
 
 
 [nlp]
-lang = "en"
-embeddings = "integrated"
 max_distance = 200
 knowledge_graph = "wordnet"
 
 
+[spacy]
+host = "0.0.0.0" 
+port = "8765" 
+lang = "en" 
+embeddings = "transformer" # transformer, integrated
+
+
 [wordnet]
-host = "0.0.0.0"
-port = "8765"
 hypernym_filter = [
     "abstraction.n",
     "artifact.n",
