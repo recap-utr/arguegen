@@ -22,8 +22,8 @@ gibberish = "^0.4"
 nltk = "^3.5"
 stackprinter = "^0.2.5"
 fastapi = "^0.63.0"
-uvicorn = "^0.13.2"
 requests = "^2.25.1"
+uvicorn = {extras = ["standard"], version = "^0.13.2"}
 
 [tool.poetry.dev-dependencies]
 

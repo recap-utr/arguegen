@@ -11,6 +11,7 @@ from scipy.spatial import distance
 from sentence_transformers import SentenceTransformer
 from spacy.language import Language
 from pydantic import BaseModel
+import numpy as np
 
 from .model.config import Config
 
@@ -75,7 +76,10 @@ class TransformerModel(object):
         return embeddings[0]
 
     def similarity(self, obj1, obj2):
-        return 1 - distance.cosine(obj1.vector, obj2.vector)
+        if np.any(obj1) and np.any(obj2):
+            return 1 - distance.cosine(obj1.vector, obj2.vector)
+
+        return 0.0
 
 
 app = FastAPI()
@@ -106,20 +110,25 @@ def similarity(query: SimilarityQuery) -> float:
 class KeywordQuery(BaseModel):
     text: str
     pos_tags: t.Iterable[str]
-    normalize: bool
 
 
 @app.post("/keywords")
-def keywords(query: KeywordQuery) -> t.List[t.Tuple[str, str, float]]:
+def keywords(query: KeywordQuery) -> t.List[t.Tuple[str, str, str, float]]:
     doc = nlp(query.text)
-    terms = []
-    normalize_func = "lemma" if query.normalize else None
+    results = []
 
     for pos_tag in query.pos_tags:
-        keywords = extractor(doc, include_pos=pos_tag, normalize=normalize_func)
-        terms.extend(((keyword, pos_tag, weight) for keyword, weight in keywords))
+        term_keywords = extractor(doc, include_pos=pos_tag, normalize=None)
+        lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
 
-    return terms
+        results.extend(
+            (
+                (term, lemma, pos_tag, weight)
+                for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords)
+            )
+        )
+
+    return results
 
 
 @app.get("/")

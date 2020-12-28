@@ -23,7 +23,7 @@ from . import wordnet
 
 log = logging.getLogger(__name__)
 
-spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ", "ADV"]
+spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ"]  # ADV
 
 
 def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
@@ -35,12 +35,11 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
     db = Database()
 
     for node in graph.inodes:
-        terms = spacy.keywords(node.plain_text, spacy_pos_tags, False)
-        lemmas = spacy.keywords(node.plain_text, spacy_pos_tags, True)
+        keywords = spacy.keywords(node.plain_text, spacy_pos_tags)
 
-        for (term, _pos_tag, weight), (lemma, _, _) in zip(terms, lemmas):
+        for (term, lemma, _pos_tag, weight) in keywords:
             pos_tag = spacy_pos_mapping[_pos_tag]
-            vector = np.array(spacy.vector(term))
+            vector = spacy.vector(term)
             nodes = db.nodes(term, pos_tag) or db.nodes(lemma, pos_tag)
             synsets = wordnet.contextual_synsets(
                 node.plain_text, term, pos_tag

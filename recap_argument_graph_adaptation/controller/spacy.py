@@ -27,12 +27,13 @@ transformer_models = {
     "en": "roberta-large-nli-stsb-mean-tokens",
 }
 
-rpc = ServerProxy("http://127.0.0.1:8765")
+_base_url = f"http://{config['spacy']['host']}:{config['spacy']['port']}"
+rpc = ServerProxy(_base_url)
 rest = requests.Session()
 
 
 def _url(*parts: str) -> str:
-    return "/".join([f"http://127.0.0.1:8765", *parts])
+    return "/".join([_base_url, *parts])
 
 
 def _nlp() -> Language:
@@ -90,7 +91,10 @@ class TransformerModel(object):
         return embeddings[0]
 
     def similarity(self, obj1, obj2):
-        return 1 - distance.cosine(obj1.vector, obj2.vector)
+        if np.any(obj1) and np.any(obj2):
+            return 1 - distance.cosine(obj1.vector, obj2.vector)
+
+        return 0.0
 
 
 def vector(text: str) -> np.ndarray:
@@ -111,12 +115,15 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
     if isinstance(obj2, str):
         obj2 = vector(obj2)
 
-    return float(1 - distance.cosine(obj1, obj2))
+    if np.any(obj1) and np.any(obj2):
+        return float(1 - distance.cosine(obj1, obj2))
+
+    return 0.0
 
 
 def keywords(
-    text: str, pos_tags: t.Iterable[str], normalize: bool
-) -> t.List[t.Tuple[str, str, float]]:
+    text: str, pos_tags: t.Iterable[str]
+) -> t.List[t.Tuple[str, str, str, float]]:
     # if not pos_tags:
     #     pos_tags = []
 
@@ -132,5 +139,5 @@ def keywords(
 
     return rest.post(
         _url("keywords"),
-        json={"text": text, "pos_tags": pos_tags, "normalize": normalize},
+        json={"text": text, "pos_tags": pos_tags},
     ).json()

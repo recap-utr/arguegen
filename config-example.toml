@@ -40,10 +40,11 @@ knowledge_graph = "wordnet"
 
 
 [spacy]
-host = "0.0.0.0" 
-port = "8765" 
-lang = "en" 
-embeddings = "transformer" # transformer, integrated
+host = "0.0.0.0"
+port = 8765
+workers = 5
+lang = "en"
+embeddings = "integrated" # transformer, integrated
 
 
 [wordnet]

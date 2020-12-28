@@ -29,13 +29,6 @@ log = logging.getLogger(__name__)
 # stackprinter.set_excepthook(style="darkbg2")
 
 
-request_exceptions = (
-    requests.exceptions.ConnectionError,
-    requests.exceptions.Timeout,
-    requests.exceptions.HTTPError,
-)
-
-
 def _timestamp() -> str:
     return pendulum.now().format("YYYY-MM-DD-HH-mm-ss")
 
@@ -47,51 +40,6 @@ def _file_path(path: Path) -> str:
 def init_child(lock_):
     global lock
     lock = lock_
-
-
-def _get_open_port() -> int:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(("", 0))
-    s.listen(1)
-    port = s.getsockname()[1]
-    s.close()
-    return port
-
-
-def _start_server() -> None:
-    # config["wordnet"]["port"] = _get_open_port()
-    host = config["wordnet"]["host"]
-    port = config["wordnet"]["port"]
-
-    try:
-        response = requests.get(f"http://{host}:{port}")
-        response.raise_for_status()
-
-    except request_exceptions:
-        log.warning("No spacy server running, starting a temporary one.")
-
-        server = multiprocessing.Process(
-            target=uvicorn.run,
-            args=("recap_argument_graph_adaptation.spacy_server_rest:app",),
-            kwargs={
-                "host": host,
-                "port": port,
-                "log_level": "warning",
-                # "workers": config["processes"],
-            },
-            daemon=True,
-        )
-        server.start()
-        server_ready = False
-
-        while not server_ready:
-            try:
-                response = requests.get(f"http://{host}:{port}")
-                response.raise_for_status()
-            except request_exceptions:
-                time.sleep(0.5)
-            else:
-                server_ready = True
 
 
 def _filter_mapping(
@@ -111,7 +59,6 @@ def _filter_mapping(
 
 def run():
     log.info("Initializing.")
-    _start_server()
 
     out_path = Path(config["path"]["output"], _timestamp())
     cases = load.cases()
@@ -195,9 +142,6 @@ def run():
         _json_dump(grid_stats, file)
 
     log.info("Finished.")
-
-
-# TODO: load.cases darf keine PlainCase Instanzen erzeugen
 
 
 def _multiprocessing_run(

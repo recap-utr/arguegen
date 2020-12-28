@@ -12,7 +12,7 @@ from enum import Enum
 from scipy.spatial import distance
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import wordnet
+from recap_argument_graph_adaptation.controller import spacy, wordnet
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
 from recap_argument_graph_adaptation.model.database import Database
@@ -62,7 +62,7 @@ def init_concept_metrics(
 
     for related_concept, weight in related_concepts.items():
         wn_metrics = wordnet.metrics(synsets, related_concept.synsets)
-        sim = 1 - distance.cosine(vector, related_concept.vector)
+        sim = spacy.similarity(vector, related_concept.vector)
 
         for i, metric in enumerate(
             (

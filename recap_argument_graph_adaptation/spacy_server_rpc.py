@@ -8,6 +8,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 import threading
 
 import lmproof
+import numpy as np
 import recap_argument_graph as ag
 import spacy
 from textacy import ke
@@ -31,8 +32,8 @@ transformer_models = {
 
 
 def spacy_nlp() -> Language:
-    lang = "en"  # TODO: config["nlp"]["lang"]
-    embeddings = "integrated"  # TODO: config["nlp"]["embeddings"]
+    lang = "en"  # config["nlp"]["lang"]
+    embeddings = "integrated"  # config["nlp"]["embeddings"]
     model_name = f"{lang}-{embeddings}"
 
     if not spacy_cache.get(model_name):
@@ -74,7 +75,10 @@ class TransformerModel(object):
         return embeddings[0]
 
     def similarity(self, obj1, obj2):
-        return 1 - distance.cosine(obj1.vector, obj2.vector)
+        if np.any(obj1) and np.any(obj2):
+            return 1 - distance.cosine(obj1.vector, obj2.vector)
+
+        return 0.0
 
 
 nlp = spacy_nlp()

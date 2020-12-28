@@ -30,7 +30,7 @@ def argument_graph(
     rules: t.Collection[adaptation.Rule],
     adapted_concepts: t.Mapping[Concept, Concept],
 ) -> None:
-    pr = load.proof_reader()
+    # pr = load.proof_reader()
     substitutions = {
         concept.name: adapted_concept.name
         for concept, adapted_concept in adapted_concepts.items()
@@ -79,7 +79,7 @@ def synsets(
 
             for hypernym in hypernyms:
                 name, pos = wordnet.resolve(hypernym)
-                vector = np.array(spacy.vector(name))
+                vector = spacy.vector(name)
                 nodes = tuple()
                 synsets = (hypernym,)
 
@@ -132,7 +132,7 @@ def paths(
 
         for result in adaptation_results:
             name = result.end_node.processed_name
-            vector = np.array(spacy.vector(name))
+            vector = spacy.vector(name)
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
             synsets = wordnet.synsets(name, pos)
@@ -257,8 +257,8 @@ def _filter_paths(
     start_index = end_index - 1
 
     val_reference = _aggregate_features(
-        np.array(spacy.vector(reference_path.nodes[start_index].processed_name)),
-        np.array(spacy.vector(reference_path.nodes[end_index].processed_name)),
+        spacy.vector(reference_path.nodes[start_index].processed_name),
+        spacy.vector(reference_path.nodes[end_index].processed_name),
         selector,
     )
 
@@ -266,8 +266,8 @@ def _filter_paths(
         candidate = candidate_path.end_node
 
         val_adapted = _aggregate_features(
-            np.array(spacy.vector(start_node.processed_name)),
-            np.array(spacy.vector(candidate.processed_name)),
+            spacy.vector(start_node.processed_name),
+            spacy.vector(candidate.processed_name),
             selector,
         )
         candidate_values[candidate_path] = _compare_features(
@@ -286,21 +286,15 @@ def _aggregate_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
     if selector == "difference":
         return abs(feat1 - feat2)
     elif selector == "similarity":
-        return _cosine(feat1, feat2)
+        return spacy.similarity(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
 
 
 def _compare_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
     if selector == "difference":
-        return _cosine(feat1, feat2)
+        return spacy.similarity(feat1, feat2)
     elif selector == "similarity":
         return abs(feat1 - feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
-
-
-def _cosine(feat1, feat2):
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return distance.cosine(feat1, feat2)

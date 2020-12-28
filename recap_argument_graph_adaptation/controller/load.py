@@ -68,7 +68,7 @@ def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
 def _parse_rule_concept(rule: str) -> adaptation.Concept:
     rule_parts = rule.split("/")
     name = rule_parts[0]
-    vector = np.array(spacy.vector(name))
+    vector = spacy.vector(name)
     pos = graph.POS.OTHER
 
     if len(rule_parts) > 1:
