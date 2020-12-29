@@ -48,6 +48,9 @@ embeddings = "integrated" # transformer, integrated
 
 
 [wordnet]
+host = "0.0.0.0"
+port = 8766
+workers = 1
 hypernym_filter = [
     "abstraction.n",
     "artifact.n",

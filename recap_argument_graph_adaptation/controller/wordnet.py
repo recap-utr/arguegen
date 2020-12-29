@@ -4,14 +4,8 @@ import itertools
 import multiprocessing
 import typing as t
 
-import numpy as np
 import requests
-from nltk.corpus import wordnet as wn
-from nltk.corpus.reader import Synset
-from recap_argument_graph_adaptation.controller import load, spacy
-
-from spacy.tokens import Doc  # type: ignore
-from spacy.util import filter_spans
+from recap_argument_graph_adaptation.controller import spacy
 
 from ..model import graph
 from ..model.config import Config
@@ -47,13 +41,17 @@ def _url(parts: t.Iterable[str]) -> str:
 #     return results
 
 
-def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
+def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[str]:
     if pos and isinstance(pos, graph.POS):
         pos = graph.wn_pos(pos)
 
     # return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
 
-    return session.get(_url(["concept", name, "synsets"]), params={"pos": pos}).json()
+    results = tuple(
+        session.post(_url(["synsets"]), json={"name": name, "pos": pos}).json()
+    )
+
+    return results
 
 
 def synset_definition(code: str) -> str:
@@ -64,7 +62,7 @@ def synset_definition(code: str) -> str:
 
     # return definition
 
-    return session.get(_url(["synset", code, "definition"])).text
+    return session.post(_url(["synset", "definition"]), json={"code": code}).text
 
 
 def synset_examples(code: str) -> t.List[str]:
@@ -75,7 +73,7 @@ def synset_examples(code: str) -> t.List[str]:
 
     # return examples
 
-    return session.get(_url(["synset", code, "examples"])).json()
+    return session.post(_url(["synset", "examples"]), json={"code": code}).json()
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
@@ -86,7 +84,7 @@ def synset_hypernyms(code: str) -> t.List[str]:
 
     # return [h.name() for h in hypernyms if h]
 
-    return session.get(_url(["synset", code, "hypernyms"])).json()
+    return session.post(_url(["synset", "hypernyms"]), json={"code": code}).json()
 
 
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
@@ -102,7 +100,7 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
     # return result
 
-    return session.get(_url(["synset", code1, "metrics", code2])).json()
+    return session.post(_url(["synset", "metrics"]), json={"code1": code1, "code2": code2}).json()
 
 
 # DERIVED FUNCTIONS

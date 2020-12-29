@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 import typing as t
 
-import lmproof
-import recap_argument_graph as ag
 import spacy
 from textacy import ke
 from scipy.spatial import distance

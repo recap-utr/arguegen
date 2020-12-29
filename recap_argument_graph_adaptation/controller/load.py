@@ -1,11 +1,9 @@
 import csv
-
-import numpy as np
-from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 import typing as t
 from pathlib import Path
 
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 from recap_argument_graph_adaptation.model import adaptation, graph
 from recap_argument_graph_adaptation.model.config import config
 from recap_argument_graph_adaptation.model.database import Database
@@ -76,7 +74,7 @@ def _parse_rule_concept(rule: str) -> adaptation.Concept:
 
     db = Database()
     nodes = db.nodes(name, pos)
-    synsets = wordnet.synsets(name, pos)
+    synsets = wordnet.concept_synsets(name, pos)
 
     if config["nlp"]["knowledge_graph"] == "conceptnet" and not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")

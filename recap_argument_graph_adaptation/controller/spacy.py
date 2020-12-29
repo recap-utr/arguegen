@@ -98,7 +98,7 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
     if isinstance(obj1, str) and isinstance(obj2, str):
         # return _nlp(obj1).similarity(_nlp(obj2))
         return float(
-            session.post(_url("similarity"), json={"text1": obj1, "text2": obj2}).json()
+            session.post(_url("similarity"), json={"text1": obj1, "text2": obj2}).text
         )
 
     if isinstance(obj1, str):
@@ -112,6 +112,8 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
 
     return 0.0
 
+
+# TODO: Sometimes an exception is thrown.
 
 def keywords(
     text: str, pos_tags: t.Iterable[str]
@@ -129,7 +131,9 @@ def keywords(
 
     # return terms
 
-    return session.post(
+    keywords = session.post(
         _url("keywords"),
         json={"text": text, "pos_tags": pos_tags},
     ).json()
+
+    return keywords

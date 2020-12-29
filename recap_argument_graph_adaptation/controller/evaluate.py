@@ -4,7 +4,6 @@ import statistics
 import typing as t
 from recap_argument_graph_adaptation.model.adaptation import Case, Concept
 from recap_argument_graph_adaptation.controller import metrics
-from recap_argument_graph_adaptation.controller import export
 from recap_argument_graph_adaptation.helper import convert
 
 log = logging.getLogger(__name__)

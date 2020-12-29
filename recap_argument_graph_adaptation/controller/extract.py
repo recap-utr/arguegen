@@ -1,23 +1,17 @@
 import logging
 
-import numpy as np
 from recap_argument_graph_adaptation.controller import metrics, spacy
 import typing as t
 
 import recap_argument_graph as ag
-from textacy import ke
-import nltk.wsd
 
-from . import adapt, load
 from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
 from ..model import adaptation
 from ..model.graph import (
-    POS,
     Path,
-    spacy_pos_mapping,
-    wn_pos,
+    spacy_pos_mapping
 )
 from . import wordnet
 

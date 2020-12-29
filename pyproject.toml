@@ -24,6 +24,7 @@ stackprinter = "^0.2.5"
 fastapi = "^0.63.0"
 requests = "^2.25.1"
 uvicorn = {extras = ["standard"], version = "^0.13.2"}
+typer = "^0.3.2"
 
 [tool.poetry.dev-dependencies]
 

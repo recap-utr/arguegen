@@ -5,14 +5,10 @@ import logging
 import numpy as np
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import typing as t
-from scipy.spatial import distance
 
-import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import spacy, wordnet
 from recap_argument_graph_adaptation.model import graph
-from recap_argument_graph_adaptation.model.config import config
 from recap_argument_graph_adaptation.model.database import Database
-from spacy.tokens import Doc  # type: ignore
 
 log = logging.getLogger(__name__)
 

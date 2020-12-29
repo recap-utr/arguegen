@@ -4,7 +4,6 @@ import typing as t
 from dataclasses import dataclass
 from enum import Enum
 
-from spacy.tokens import Doc  # type: ignore
 
 import neo4j.data as neo4j
 

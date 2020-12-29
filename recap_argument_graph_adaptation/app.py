@@ -1,20 +1,18 @@
 import itertools
-from multiprocessing.synchronize import Lock
-import requests
-import stackprinter
-import statistics
-from collections import defaultdict
-import uvicorn
 import json
 import logging
 import multiprocessing
-from recap_argument_graph_adaptation.model.evaluation import Evaluation
-from recap_argument_graph_adaptation.controller import evaluate, wordnet
+import statistics
 import typing as t
+from collections import defaultdict
 from pathlib import Path
-from sklearn.model_selection import ParameterGrid
 
 import pendulum
+import requests
+from sklearn.model_selection import ParameterGrid
+
+from recap_argument_graph_adaptation.controller import evaluate, spacy, wordnet
+from recap_argument_graph_adaptation.model.evaluation import Evaluation
 
 from .controller import adapt, export, extract, load
 from .model import adaptation
@@ -151,6 +149,8 @@ def _multiprocessing_run(
 
     config["_tuning"] = params
     config["_tuning_runs"] = total_runs
+    wordnet.session = requests.Session()
+    spacy.session = requests.Session()
     # wordnet.lock = lock
 
     log.debug("Starting adaptation pipeline.")

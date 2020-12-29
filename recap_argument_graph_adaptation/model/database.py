@@ -1,5 +1,3 @@
-from gibberish import Gibberish
-from recap_argument_graph_adaptation.model.adaptation import Concept
 import neo4j
 from .config import config
 from . import graph

@@ -1,18 +1,14 @@
 import logging
 import re
 
-import numpy as np
 
 from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 import typing as t
 import itertools
 
 import recap_argument_graph as ag
-from scipy.spatial import distance
 
-from . import load
 from ..model import graph, adaptation
-from ..util import conceptnet
 from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
