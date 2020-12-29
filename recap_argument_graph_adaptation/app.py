@@ -72,8 +72,8 @@ def run():
 
     processes = (
         multiprocessing.cpu_count() - 1
-        if config['resources']['processes"] == 0
-        else int(config['resources']['processes"])
+        if config["resources"]["processes"] == 0
+        else int(config["resources"]["processes"])
     )
 
     if processes == 1 or len(run_args) == 1:
