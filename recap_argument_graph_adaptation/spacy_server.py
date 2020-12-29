@@ -17,9 +17,9 @@ config = Config.instance()
 spacy_cache = {}
 proof_reader_cache = {}
 spacy_models = {
-    "de-integrated": "de_core_news_lg",
+    "de-spacy": "de_core_news_lg",
     "de-transformers": "de_core_news_sm",
-    "en-integrated": "en_core_web_lg",
+    "en-spacy": "en_core_web_lg",
     "en-transformers": "en_core_web_sm",
 }
 transformer_models = {
