@@ -3,7 +3,6 @@ import numpy as np
 import typing as t
 import warnings
 from pathlib import Path
-from xmlrpc.client import ServerProxy
 
 import lmproof
 from numpy.lib.arraysetops import isin
@@ -28,8 +27,7 @@ transformer_models = {
 }
 
 _base_url = f"http://{config['spacy']['host']}:{config['spacy']['port']}"
-rpc = ServerProxy(_base_url)
-rest = requests.Session()
+session = requests.Session()
 
 
 def _url(*parts: str) -> str:
@@ -99,14 +97,14 @@ class TransformerModel(object):
 
 def vector(text: str) -> np.ndarray:
     # return _nlp(text).vector
-    return np.array(rest.post(_url("vector"), json={"text": text}).json())
+    return np.array(session.post(_url("vector"), json={"text": text}).json())
 
 
 def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -> float:
     if isinstance(obj1, str) and isinstance(obj2, str):
         # return _nlp(obj1).similarity(_nlp(obj2))
         return float(
-            rest.post(_url("similarity"), json={"text1": obj1, "text2": obj2}).json()
+            session.post(_url("similarity"), json={"text1": obj1, "text2": obj2}).json()
         )
 
     if isinstance(obj1, str):
@@ -137,7 +135,7 @@ def keywords(
 
     # return terms
 
-    return rest.post(
+    return session.post(
         _url("keywords"),
         json={"text": text, "pos_tags": pos_tags},
     ).json()

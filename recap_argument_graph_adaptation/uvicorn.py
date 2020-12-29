@@ -59,7 +59,7 @@ def _get_open_port() -> int:
 
 def run() -> None:
     uvicorn.run(
-        "recap_argument_graph_adaptation.spacy_server_rest:app",
+        "recap_argument_graph_adaptation.spacy_server:app",
         host=config["spacy"]["host"],
         port=config["spacy"]["port"],
         log_level="warning",
