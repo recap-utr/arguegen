@@ -54,7 +54,7 @@ def _filter_mapping(
 def run():
     log.info("Initializing.")
 
-    out_path = Path(config["path"]["output"], _timestamp())
+    out_path = Path(config["resources"]["cases"]["output"], _timestamp())
     cases = load.cases()
 
     param_grid = [
@@ -190,13 +190,13 @@ def _perform_adaptation(
     concepts = extract.keywords(case.graph, case.rules)
 
     log.debug("Adapting concepts.")
-    if config["nlp"]["knowledge_graph"] == "wordnet":
+    if config["adaptation"]["knowledge_graph"] == "wordnet":
         adapted_concepts, adapted_synsets = adapt.synsets(concepts, case.rules)
-    elif config["nlp"]["knowledge_graph"] == "conceptnet":
+    elif config["adaptation"]["knowledge_graph"] == "conceptnet":
         reference_paths = extract.paths(concepts, case.rules)
         adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
 
-    if config["path"]["export_graph"]:
+    if config["adaptation"]["export_graph"]:
         log.debug("Exporting graph.")
         adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
@@ -222,7 +222,7 @@ def _write_output(
 ) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
-    if config["path"]["export_graph"]:
+    if config["adaptation"]["export_graph"]:
         case.graph.save(path / "case.json")
         case.graph.render(path / "case.pdf")
 

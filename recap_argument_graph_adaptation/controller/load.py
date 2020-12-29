@@ -10,7 +10,7 @@ from recap_argument_graph_adaptation.model.database import Database
 
 
 def cases() -> t.List[adaptation.Case]:
-    input_path = Path(config["path"]["input"])
+    input_path = Path(config["resources"]["cases"]["input"])
     result = []
 
     for folder in sorted(input_path.iterdir()):
@@ -76,9 +76,9 @@ def _parse_rule_concept(rule: str) -> adaptation.Concept:
     nodes = db.nodes(name, pos)
     synsets = wordnet.concept_synsets(name, pos)
 
-    if config["nlp"]["knowledge_graph"] == "conceptnet" and not nodes:
+    if config["adaptation"]["knowledge_graph"] == "conceptnet" and not nodes:
         raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
-    elif config["nlp"]["knowledge_graph"] == "wordnet" and not synsets:
+    elif config["adaptation"]["knowledge_graph"] == "wordnet" and not synsets:
         raise ValueError(
             f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
         )

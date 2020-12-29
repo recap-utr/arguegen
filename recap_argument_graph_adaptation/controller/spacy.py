@@ -10,10 +10,10 @@ from scipy.spatial import distance
 spacy_cache = {}
 proof_reader_cache = {}
 spacy_models = {
-    "de-integrated": "de_core_news_lg",
-    "de-transformer": "de_core_news_sm",
-    "en-integrated": "en_core_web_lg",
-    "en-transformer": "en_core_web_sm",
+    "de-spacy": "de_core_news_lg",
+    "de-transformers": "de_core_news_sm",
+    "en-spacy": "en_core_web_lg",
+    "en-transformers": "en_core_web_sm",
 }
 transformer_models = {
     "de": "distiluse-base-multilingual-cased",
@@ -39,7 +39,7 @@ def _url(*parts: str) -> str:
 #         )  # parser needed for noun chunks
 #         model.add_pipe(model.create_pipe("sentencizer"))
 
-#         if embeddings == "transformer":
+#         if embeddings == "transformers":
 #             model.add_pipe(TransformerModel(lang), first=True)
 
 #         spacy_cache[model_name] = model
@@ -114,6 +114,7 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
 
 
 # TODO: Sometimes an exception is thrown.
+
 
 def keywords(
     text: str, pos_tags: t.Iterable[str]

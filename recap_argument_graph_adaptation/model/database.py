@@ -12,15 +12,15 @@ class Database:
 
     def __init__(self):
         self.active = (
-            True if config["nlp"]["knowledge_graph"] == "conceptnet" else False
+            True if config["adaptation"]["knowledge_graph"] == "conceptnet" else False
         )
 
         if self.active:
             driver = neo4j.GraphDatabase.driver(
-                config["neo4j"]["url"],
+                config["resources"]["conceptnet"]["url"],
                 auth=(
-                    config["neo4j"]["username"],
-                    config["neo4j"]["password"],
+                    config["resources"]["conceptnet"]["username"],
+                    config["resources"]["conceptnet"]["password"],
                 ),
                 encrypted=False,
             )

@@ -1,26 +1,26 @@
-from fastapi import FastAPI
 import typing as t
 
+import numpy as np
 import spacy
-from textacy import ke
+from fastapi import FastAPI
+from pydantic import BaseModel
 from scipy.spatial import distance
 from sentence_transformers import SentenceTransformer
 from spacy.language import Language
-from pydantic import BaseModel
-import numpy as np
+from textacy import ke
 
 from .model.config import Config
 
-config = Config.instance()["spacy"]
+config = Config.instance()
 
 
 spacy_cache = {}
 proof_reader_cache = {}
 spacy_models = {
     "de-integrated": "de_core_news_lg",
-    "de-transformer": "de_core_news_sm",
+    "de-transformers": "de_core_news_sm",
     "en-integrated": "en_core_web_lg",
-    "en-transformer": "en_core_web_sm",
+    "en-transformers": "en_core_web_sm",
 }
 transformer_models = {
     "de": "distiluse-base-multilingual-cased",
@@ -29,8 +29,8 @@ transformer_models = {
 
 
 def spacy_nlp() -> Language:
-    lang = config["lang"]
-    embeddings = config["embeddings"]
+    lang = config["nlp"]["lang"]
+    embeddings = config["nlp"]["embeddings"]
     model_name = f"{lang}-{embeddings}"
 
     if not spacy_cache.get(model_name):
@@ -39,7 +39,7 @@ def spacy_nlp() -> Language:
         )  # parser needed for noun chunks
         model.add_pipe(model.create_pipe("sentencizer"))
 
-        if embeddings == "transformer":
+        if embeddings == "transformers":
             model.add_pipe(TransformerModel(lang), first=True)
 
         spacy_cache[model_name] = model

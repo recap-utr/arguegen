@@ -1,29 +1,55 @@
-version = "2.20"
+version = "3.0"
+
+
+# PRIVATE
+
+[resources]
 processes = 0
 
-[path]
+[resources.cases]
 input = "data/input"
 output = "data/output"
+
+[resources.conceptnet]
+url = "neo4j://localhost:7687"
+username = "neo4j"
+password = ""
+
+[resources.spacy]
+host = "0.0.0.0"
+port = 8765
+workers = 1
+
+[resources.wordnet]
+host = "0.0.0.0"
+port = 8766
+workers = 1 # Do not edit
+
+
+# PUBLIC
+
+[adaptation]
 export_graph = false
+knowledge_graph = "wordnet"
 
 
 [tuning]
 # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-hypernym_min_similarity = [0.8]
+hypernym_min_similarity = [0.25, 0.5, 0.75]
 
 # Threshold for extracting/adapting concepts
-extraction_min_score = [0.8]
-adaptation_min_score = [0.4]
+extraction_min_score = [0.25, 0.5, 0.75]
+adaptation_min_score = [0.25, 0.5, 0.75]
 
 # Of which metrics should the score consist
-score_keyword_weight = [0.6]
-score_semantic_similarity = [0.3]
-score_wordnet_path_distance = [0.1]
+score_keyword_weight = [0.25, 0.5, 0.75]
+score_semantic_similarity = [0.25, 0.5, 0.75]
+score_wordnet_path_distance = [0.25, 0.5, 0.75]
 
 # From what concepts should the metrics be derived
-weight_rule_source = [0]
-weight_rule_target = [0.7]
-weight_original_concept = [0.3]
+weight_rule_source = [0.25, 0.5, 0.75]
+weight_rule_target = [0.25, 0.5, 0.75]
+weight_original_concept = [0.25, 0.5, 0.75]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
@@ -36,21 +62,11 @@ conceptnet_selector = ["similarity"]
 
 [nlp]
 max_distance = 200
-knowledge_graph = "wordnet"
-
-
-[spacy]
-host = "0.0.0.0"
-port = 8765
-workers = 5
 lang = "en"
-embeddings = "integrated" # transformer, integrated
+embeddings = "spacy" # transformers, spacy
 
 
 [wordnet]
-host = "0.0.0.0"
-port = 8766
-workers = 1
 hypernym_filter = [
     "abstraction.n",
     "artifact.n",
@@ -124,9 +140,3 @@ all_types = [
 [conceptnet.path.max_length]
 shortest_path = 10
 generalization = 3
-
-
-[neo4j]
-url = "neo4j://localhost:7687"
-username = "neo4j"
-password = "password"
