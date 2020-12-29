@@ -90,18 +90,26 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
     s1 = _synset(code1)
     s2 = _synset(code2)
     results: t.Dict[str, t.Optional[float]] = {
-            "path_similarity": None,
-            "wup_similarity": None,
-            "path_distance": None,
-        }
+        "path_similarity": None,
+        "wup_similarity": None,
+        "path_distance": None,
+    }
 
     with lock:
         try:
             results["path_similarity"] = s1.path_similarity(s2)
+        except Exception:
+            pass
+
         try:
             results["wup_similarity"] = s1.wup_similarity(s2)
+        except Exception:
+            pass
+
         try:
             results["path_distance"] = s1.shortest_path_distance(s2)
+        except Exception:
+            pass
 
         return results
 
