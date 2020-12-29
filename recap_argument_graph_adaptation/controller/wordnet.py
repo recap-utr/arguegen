@@ -30,77 +30,79 @@ def _url(parts: t.Iterable[str]) -> str:
 # WORDNET API
 
 
-def _synset(code: str) -> Synset:
-    with lock:
-        return wn.synset(code)
+# def _synset(code: str) -> Synset:
+#     with lock:
+#         return wn.synset(code)
 
 
-def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
-    name = name.replace(" ", "_")
+# def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
+#     name = name.replace(" ", "_")
 
-    with lock:
-        results = wn.synsets()
+#     with lock:
+#         results = wn.synsets()
 
-    if pos:
-        results = [ss for ss in results if str(ss.pos()) == pos]
+#     if pos:
+#         results = [ss for ss in results if str(ss.pos()) == pos]
 
-    return results
+#     return results
 
 
 def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
     if pos and isinstance(pos, graph.POS):
         pos = graph.wn_pos(pos)
 
-    return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
+    # return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
+
+    return session.get(_url(["concept", name, "synsets"]), params={"pos": pos}).json()
 
 
 def synset_definition(code: str) -> str:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        definition = synset.definition() or ""
+    # with lock:
+    #     definition = synset.definition() or ""
 
-    return definition
+    # return definition
 
-    # return session.get(_url(["synset", synset, "definition"])).text
+    return session.get(_url(["synset", code, "definition"])).text
 
 
 def synset_examples(code: str) -> t.List[str]:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        examples = synset.examples() or []
+    # with lock:
+    #     examples = synset.examples() or []
 
-    return examples
+    # return examples
+
+    return session.get(_url(["synset", code, "examples"])).json()
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        hypernyms = synset.hypernyms()
+    # with lock:
+    #     hypernyms = synset.hypernyms()
 
-    return [h.name() for h in hypernyms if h]
+    # return [h.name() for h in hypernyms if h]
 
-    # return session.get(
-    #     _url(["synset", synset, "hypernyms"])
-    # ).json()
+    return session.get(_url(["synset", code, "hypernyms"])).json()
 
 
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
-    s1 = _synset(code1)
-    s2 = _synset(code2)
+    # s1 = _synset(code1)
+    # s2 = _synset(code2)
 
-    with lock:
-        result = {
-            "path_similarity": s1.path_similarity(s2),
-            "wup_similarity": s1.wup_similarity(s2),
-            "path_distance": s1.shortest_path_distance(s2),
-        }
+    # with lock:
+    #     result = {
+    #         "path_similarity": s1.path_similarity(s2),
+    #         "wup_similarity": s1.wup_similarity(s2),
+    #         "path_distance": s1.shortest_path_distance(s2),
+    #     }
 
-    return result
+    # return result
 
-    # return session.get(_url(["synset", code1, "metrics", code2])).json()
+    return session.get(_url(["synset", code1, "metrics", code2])).json()
 
 
 # DERIVED FUNCTIONS

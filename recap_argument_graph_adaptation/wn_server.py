@@ -1,7 +1,8 @@
+import typing as t
+
+from fastapi import FastAPI
 from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.wordnet import Synset
-from fastapi import FastAPI
-import typing as t
 
 app = FastAPI()
 wn.ensure_loaded()
@@ -20,10 +21,6 @@ def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
         results = [ss for ss in results if str(ss.pos()) == pos]
 
     return results
-
-
-def _plain_synsets(name: str, pos: t.Optional[str]) -> t.List[str]:
-    return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
 
 
 @app.get("/")
@@ -61,4 +58,4 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
 @app.get("/concept/{name}/synsets")
 def concept_synsets(name: str, pos: t.Optional[str] = None) -> t.List[str]:
-    return _plain_synsets(name, pos)
+    return [str(ss.name()) for ss in _synsets(name, pos) if ss]
