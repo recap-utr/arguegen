@@ -1,7 +1,5 @@
 from fastapi import FastAPI
 import typing as t
-import warnings
-from pathlib import Path
 
 import lmproof
 import recap_argument_graph as ag

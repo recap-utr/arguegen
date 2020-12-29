@@ -1,4 +1,3 @@
-import json
 from gibberish import Gibberish
 from recap_argument_graph_adaptation.model.adaptation import Concept
 import neo4j

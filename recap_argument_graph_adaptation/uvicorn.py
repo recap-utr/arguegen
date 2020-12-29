@@ -1,7 +1,4 @@
-import multiprocessing
-import subprocess
 import socket
-import time
 
 import requests
 

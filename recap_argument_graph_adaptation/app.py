@@ -1,4 +1,3 @@
-import enum
 import itertools
 from multiprocessing.synchronize import Lock
 import requests
@@ -8,15 +7,12 @@ from collections import defaultdict
 import uvicorn
 import json
 import logging
-import os
-import socket
 import multiprocessing
 from recap_argument_graph_adaptation.model.evaluation import Evaluation
 from recap_argument_graph_adaptation.controller import evaluate, wordnet
 import typing as t
 from pathlib import Path
 from sklearn.model_selection import ParameterGrid
-import time
 
 import pendulum
 

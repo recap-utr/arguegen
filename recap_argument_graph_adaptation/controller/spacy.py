@@ -1,17 +1,11 @@
-from recap_argument_graph_adaptation.model import graph
-import numpy as np
 import typing as t
-import warnings
-from pathlib import Path
 
-import lmproof
-from numpy.lib.arraysetops import isin
-import spacy
+import numpy as np
+import requests
 from recap_argument_graph_adaptation.model.config import config
 from scipy.spatial import distance
 from sentence_transformers import SentenceTransformer
-from spacy.language import Language
-import requests
+
 
 spacy_cache = {}
 proof_reader_cache = {}
@@ -34,34 +28,34 @@ def _url(*parts: str) -> str:
     return "/".join([_base_url, *parts])
 
 
-def _nlp() -> Language:
-    lang = config["nlp"]["lang"]
-    embeddings = config["nlp"]["embeddings"]
-    model_name = f"{lang}-{embeddings}"
+# def _nlp() -> Language:
+#     lang = config["nlp"]["lang"]
+#     embeddings = config["nlp"]["embeddings"]
+#     model_name = f"{lang}-{embeddings}"
 
-    if not spacy_cache.get(model_name):
-        model = spacy.load(
-            spacy_models[model_name], disable=["ner", "textcat", "parser"]
-        )  # parser needed for noun chunks
-        model.add_pipe(model.create_pipe("sentencizer"))
+#     if not spacy_cache.get(model_name):
+#         model = spacy.load(
+#             spacy_models[model_name], disable=["ner", "textcat", "parser"]
+#         )  # parser needed for noun chunks
+#         model.add_pipe(model.create_pipe("sentencizer"))
 
-        if embeddings == "transformer":
-            model.add_pipe(TransformerModel(lang), first=True)
+#         if embeddings == "transformer":
+#             model.add_pipe(TransformerModel(lang), first=True)
 
-        spacy_cache[model_name] = model
+#         spacy_cache[model_name] = model
 
-    return spacy_cache[model_name]  # type: ignore
+#     return spacy_cache[model_name]  # type: ignore
 
 
-def _proof_reader() -> lmproof.Proofreader:
-    lang = config["nlp"]["lang"]
+# def _proof_reader() -> lmproof.Proofreader:
+#     lang = config["nlp"]["lang"]
 
-    if not proof_reader_cache.get(lang):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
+#     if not proof_reader_cache.get(lang):
+#         with warnings.catch_warnings():
+#             warnings.simplefilter("ignore")
+#             proof_reader_cache[lang] = lmproof.load(lang)  # type: ignore
 
-    return proof_reader_cache[lang]  # type: ignore
+#     return proof_reader_cache[lang]  # type: ignore
 
 
 # https://spacy.io/usage/processing-pipelines#custom-components-user-hooks

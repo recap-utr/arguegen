@@ -1,14 +1,10 @@
 from __future__ import annotations
 
 import logging
-import warnings
 
 import numpy as np
 from recap_argument_graph_adaptation.model.adaptation import Concept
-import statistics
 import typing as t
-from dataclasses import dataclass, field
-from enum import Enum
 from scipy.spatial import distance
 
 import recap_argument_graph as ag
