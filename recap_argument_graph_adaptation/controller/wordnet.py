@@ -18,14 +18,17 @@ from ..model import graph
 from ..model.config import Config
 
 config = Config.instance()
-# session = requests.Session()
+session = requests.Session()
 lock = multiprocessing.Lock()
 
 
-# def _url(parts: t.Iterable[str]) -> str:
-#     return "/".join(
-#         [f"http://{config['wordnet']['host']}:{config['wordnet']['port']}", *parts]
-#     )
+def _url(parts: t.Iterable[str]) -> str:
+    return "/".join(
+        [f"http://{config['wordnet']['host']}:{config['wordnet']['port']}", *parts]
+    )
+
+
+# WORDNET API
 
 
 def _synset(code: str) -> Synset:
@@ -41,44 +44,63 @@ def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
     return results
 
 
-def _plain_synsets(name: str, pos: t.Optional[str]) -> t.List[str]:
+def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
+    if pos and isinstance(pos, graph.POS):
+        pos = graph.wn_pos(pos)
+
     return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
 
 
-# def log_synsets(synsets: t.Iterable[str]) -> None:
-#     for synset in synsets:
-#         print(f"Name:       {synset(s).name()}")
-#         print(f"Definition: {synset(s).definition()}")
-#         print(f"Examples:   {synset(s).examples()}")
-#         print()
-
-
 def synset_definition(code: str) -> str:
-    return _synset(code).definition() or ""
+    synset = _synset(code)
+
+    with lock:
+        definition = synset.definition() or ""
+
+    return definition
+
+    # return session.get(_url(["synset", synset, "definition"])).text
 
 
 def synset_examples(code: str) -> t.List[str]:
-    return _synset(code).examples() or []
+    synset = _synset(code)
+
+    with lock:
+        examples = synset.examples() or []
+
+    return examples
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
-    hypernyms = _synset(code).hypernyms()
+    synset = _synset(code)
+
+    with lock:
+        hypernyms = synset.hypernyms()
+
     return [h.name() for h in hypernyms if h]
+
+    # return session.get(
+    #     _url(["synset", synset, "hypernyms"])
+    # ).json()
 
 
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
     s1 = _synset(code1)
     s2 = _synset(code2)
 
-    return {
-        "path_similarity": s1.path_similarity(s2),
-        "wup_similarity": s1.wup_similarity(s2),
-        "path_distance": s1.shortest_path_distance(s2),
-    }
+    with lock:
+        result = {
+            "path_similarity": s1.path_similarity(s2),
+            "wup_similarity": s1.wup_similarity(s2),
+            "path_distance": s1.shortest_path_distance(s2),
+        }
+
+    return result
+
+    # return session.get(_url(["synset", code1, "metrics", code2])).json()
 
 
-def concept_synsets(name: str, pos: t.Optional[str] = None) -> t.List[str]:
-    return _plain_synsets(name, pos)
+# DERIVED FUNCTIONS
 
 
 def resolve(code: str) -> t.Tuple[str, graph.POS]:
@@ -89,31 +111,17 @@ def resolve(code: str) -> t.Tuple[str, graph.POS]:
     return (name, pos)
 
 
-def synsets(name: str, pos: graph.POS) -> t.Tuple[str, ...]:
-    with lock:
-        # results = session.get(
-        #     _url(["concept", name, "synsets"]),
-        #     params={"pos": graph.wn_pos(pos)},
-        # ).json()
-        results = concept_synsets(name, graph.wn_pos(pos))
-
-    return tuple(results)
-
-
 def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    results = synsets(term, pos)
+    results = concept_synsets(term, pos)
 
     synset_tuples = []
 
     for synset in results:
         similarity = 0
-        with lock:
-            # definition = session.get(_url(["synset", synset, "definition"])).text
-            definition = synset_definition(synset)
 
-        if definition:
-            similarity = spacy.similarity(text, definition)
+        if synset_def := synset_definition(synset):
+            similarity = spacy.similarity(text, synset_def)
 
         synset_tuples.append((synset, similarity))
 
@@ -134,10 +142,10 @@ def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...
     return tuple([synset for synset, _ in synset_tuples])
 
 
-def contextual_synset(doc: Doc, term: str, pos: graph.POS) -> t.Optional[str]:
-    synsets = contextual_synsets(doc, term, pos)
+def contextual_synset(text: str, term: str, pos: graph.POS) -> t.Optional[str]:
+    synsets = contextual_synsets(text, term, pos)
 
-    if synsets:
+    if len(synsets) > 0:
         return synsets[0]
 
     return None
@@ -153,9 +161,7 @@ def metrics(
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
-        with lock:
-            # retrieved_metrics = session.get(_url(["synset", s1, "metrics", s2])).json()
-            retrieved_metrics = synset_metrics(s1, s2)
+        retrieved_metrics = synset_metrics(s1, s2)
 
         for key, value in retrieved_metrics.items():
             if value:
@@ -186,11 +192,7 @@ def hypernym_trees(synset: str) -> t.List[t.List[str]]:
         new_hypernym_trees = []
 
         for hypernym_tree in hypernym_trees:
-            with lock:
-                # new_hypernyms = session.get(
-                #     _url(["synset", hypernym_tree[-1], "hypernyms"])
-                # ).json()
-                new_hypernyms = synset_hypernyms(hypernym_tree[-1])
+            new_hypernyms = synset_hypernyms(hypernym_tree[-1])
 
             if new_hypernyms:
                 has_hypernyms.append(True)
