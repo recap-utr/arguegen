@@ -4,8 +4,8 @@ import numpy as np
 import requests
 from recap_argument_graph_adaptation.model.config import config
 from scipy.spatial import distance
-from sentence_transformers import SentenceTransformer
 
+# from sentence_transformers import SentenceTransformer
 
 spacy_cache = {}
 proof_reader_cache = {}
@@ -60,33 +60,33 @@ def _url(*parts: str) -> str:
 
 # https://spacy.io/usage/processing-pipelines#custom-components-user-hooks
 # https://github.com/explosion/spaCy/issues/3823
-class TransformerModel(object):
-    def __init__(self, lang):
-        self._model = SentenceTransformer(transformer_models[lang])
+# class TransformerModel(object):
+#     def __init__(self, lang):
+#         self._model = SentenceTransformer(transformer_models[lang])
 
-    def __call__(self, doc):
-        doc.user_hooks["vector"] = self.vector
-        doc.user_span_hooks["vector"] = self.vector
-        doc.user_token_hooks["vector"] = self.vector
+#     def __call__(self, doc):
+#         doc.user_hooks["vector"] = self.vector
+#         doc.user_span_hooks["vector"] = self.vector
+#         doc.user_token_hooks["vector"] = self.vector
 
-        doc.user_hooks["similarity"] = self.similarity
-        doc.user_span_hooks["similarity"] = self.similarity
-        doc.user_token_hooks["similarity"] = self.similarity
+#         doc.user_hooks["similarity"] = self.similarity
+#         doc.user_span_hooks["similarity"] = self.similarity
+#         doc.user_token_hooks["similarity"] = self.similarity
 
-        return doc
+#         return doc
 
-    def vector(self, obj):
-        # The function `encode` expects a list of strings.
-        sentences = [obj.text]
-        embeddings = self._model.encode(sentences)
+#     def vector(self, obj):
+#         # The function `encode` expects a list of strings.
+#         sentences = [obj.text]
+#         embeddings = self._model.encode(sentences)
 
-        return embeddings[0]
+#         return embeddings[0]
 
-    def similarity(self, obj1, obj2):
-        if np.any(obj1) and np.any(obj2):
-            return 1 - distance.cosine(obj1.vector, obj2.vector)
+#     def similarity(self, obj1, obj2):
+#         if np.any(obj1) and np.any(obj2):
+#             return 1 - distance.cosine(obj1.vector, obj2.vector)
 
-        return 0.0
+#         return 0.0
 
 
 def vector(text: str) -> np.ndarray:

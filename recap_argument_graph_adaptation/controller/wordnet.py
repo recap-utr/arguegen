@@ -3,14 +3,15 @@ from __future__ import annotations
 import itertools
 import multiprocessing
 import typing as t
-import numpy as np
 
+import numpy as np
 import requests
-from recap_argument_graph_adaptation.controller import load, spacy
-from spacy.tokens import Doc  # type: ignore
-from spacy.util import filter_spans
 from nltk.corpus import wordnet as wn
 from nltk.corpus.reader import Synset
+from recap_argument_graph_adaptation.controller import load, spacy
+
+from spacy.tokens import Doc  # type: ignore
+from spacy.util import filter_spans
 
 from ..model import graph
 from ..model.config import Config
@@ -30,11 +31,15 @@ def _url(parts: t.Iterable[str]) -> str:
 
 
 def _synset(code: str) -> Synset:
-    return wn.synset(code)
+    with lock:
+        return wn.synset(code)
 
 
 def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
-    results = wn.synsets(name.replace(" ", "_"))
+    name = name.replace(" ", "_")
+
+    with lock:
+        results = wn.synsets()
 
     if pos:
         results = [ss for ss in results if str(ss.pos()) == pos]
