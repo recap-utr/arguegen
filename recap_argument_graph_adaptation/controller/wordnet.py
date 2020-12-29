@@ -5,6 +5,8 @@ import multiprocessing
 import typing as t
 
 import requests
+from nltk.corpus import wordnet as wn
+from nltk.corpus.reader import Synset
 from recap_argument_graph_adaptation.controller import spacy
 
 from ..model import graph
@@ -27,85 +29,77 @@ def _url(parts: t.Iterable[str]) -> str:
 # WORDNET API
 
 
-# def _synset(code: str) -> Synset:
-#     with lock:
-#         return wn.synset(code)
+def _synset(code: str) -> Synset:
+    with lock:
+        return wn.synset(code)
 
 
-# def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
-#     name = name.replace(" ", "_")
+def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
+    name = name.replace(" ", "_")
 
-#     with lock:
-#         results = wn.synsets()
+    with lock:
+        results = wn.synsets(name)
 
-#     if pos:
-#         results = [ss for ss in results if str(ss.pos()) == pos]
+    if pos:
+        results = [ss for ss in results if str(ss.pos()) == pos]
 
-#     return results
+    return results
 
 
 def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[str]:
     if pos and isinstance(pos, graph.POS):
         pos = graph.wn_pos(pos)
 
-    # return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
+    return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
 
-    results = tuple(
-        session.post(_url(["synsets"]), json={"name": name, "pos": pos}).json()
-    )
-
-    return results
+    # return tuple(
+    #     session.post(_url(["synsets"]), json={"name": name, "pos": pos}).json()
+    # )
 
 
 def synset_definition(code: str) -> str:
-    # synset = _synset(code)
+    synset = _synset(code)
 
-    # with lock:
-    #     definition = synset.definition() or ""
+    with lock:
+        return synset.definition() or ""
 
-    # return definition
-
-    return session.post(_url(["synset", "definition"]), json={"code": code}).text
+    # return session.post(_url(["synset", "definition"]), json={"code": code}).text
 
 
 def synset_examples(code: str) -> t.List[str]:
-    # synset = _synset(code)
+    synset = _synset(code)
 
-    # with lock:
-    #     examples = synset.examples() or []
+    with lock:
+        return synset.examples() or []
 
-    # return examples
-
-    return session.post(_url(["synset", "examples"]), json={"code": code}).json()
+    # return session.post(_url(["synset", "examples"]), json={"code": code}).json()
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
-    # synset = _synset(code)
+    synset = _synset(code)
 
-    # with lock:
-    #     hypernyms = synset.hypernyms()
+    with lock:
+        hypernyms = synset.hypernyms()
 
-    # return [h.name() for h in hypernyms if h]
+    return [h.name() for h in hypernyms if h]
 
-    return session.post(_url(["synset", "hypernyms"]), json={"code": code}).json()
+    # return session.post(_url(["synset", "hypernyms"]), json={"code": code}).json()
 
 
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
-    # s1 = _synset(code1)
-    # s2 = _synset(code2)
+    s1 = _synset(code1)
+    s2 = _synset(code2)
 
-    # with lock:
-    #     result = {
-    #         "path_similarity": s1.path_similarity(s2),
-    #         "wup_similarity": s1.wup_similarity(s2),
-    #         "path_distance": s1.shortest_path_distance(s2),
-    #     }
+    with lock:
+        return {
+            "path_similarity": s1.path_similarity(s2),
+            "wup_similarity": s1.wup_similarity(s2),
+            "path_distance": s1.shortest_path_distance(s2),
+        }
 
-    # return result
-
-    return session.post(
-        _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
-    ).json()
+    # return session.post(
+    #     _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
+    # ).json()
 
 
 # DERIVED FUNCTIONS
