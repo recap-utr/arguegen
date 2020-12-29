@@ -30,6 +30,8 @@ workers = 1 # Do not edit
 
 [adaptation]
 export_graph = false
+export_single_stats = false
+export_grid_stats = true
 knowledge_graph = "wordnet"
 
 

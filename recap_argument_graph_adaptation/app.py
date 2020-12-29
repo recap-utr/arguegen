@@ -87,53 +87,55 @@ def run():
         ) as pool:  # , initializer=init_child, initargs=(lock,)
             raw_results = pool.starmap(_multiprocessing_run, run_args)
 
-    log.info("Exporting grid stats.")
-    wordnet.lock = None
+    if config["adaptation"]["export_grid_stats"]:
+        log.info("Exporting grid stats.")
+        wordnet.lock = None
 
-    raw_results = [entry for entry in raw_results if entry is not None]
-    case_results = defaultdict(list)
-    param_results = [[] for _ in range(len(param_grid))]
+        raw_results = [entry for entry in raw_results if entry is not None]
+        case_results = defaultdict(list)
+        param_results = [[] for _ in range(len(param_grid))]
 
-    for case, i, score in raw_results:
-        case_results[case].append((score, i))
-        param_results[i].append(score)
+        for case, i, score in raw_results:
+            case_results[case].append((score, i))
+            param_results[i].append(score)
 
-    case_max_results = {
-        case: max(scores, key=lambda x: x[0]) for case, scores in case_results.items()
-    }
-    best_case_results = {}
+        case_max_results = {
+            case: max(scores, key=lambda x: x[0])
+            for case, scores in case_results.items()
+        }
+        best_case_results = {}
 
-    for case, (score, i) in case_max_results.items():
-        current_path = _nested_path(
-            out_path / case, len(param_grid), param_grid[i]
-        ).resolve()
-        best_case_results[case] = {
-            "max_score": score,
-            "case.json": _file_path(current_path / "case.json"),
-            "case.pdf": _file_path(current_path / "case.pdf"),
-            "stats.json": _file_path(current_path / "stats.json"),
-            "config": param_grid[i],
+        for case, (score, i) in case_max_results.items():
+            current_path = _nested_path(
+                out_path / case, len(param_grid), param_grid[i]
+            ).resolve()
+            best_case_results[case] = {
+                "max_score": score,
+                "case.json": _file_path(current_path / "case.json"),
+                "case.pdf": _file_path(current_path / "case.pdf"),
+                "stats.json": _file_path(current_path / "stats.json"),
+                "config": param_grid[i],
+            }
+
+        mean_param_results = sorted(
+            [
+                {"mean_score": statistics.mean(scores), "config": param_grid[i]}
+                for i, scores in enumerate(param_results)
+                if scores
+            ],
+            key=lambda x: x["mean_score"],
+            reverse=True,
+        )
+
+        grid_stats_path = out_path / "grid_stats.json"
+        grid_stats = {
+            "param_results": mean_param_results,
+            "case_results": best_case_results,
         }
 
-    mean_param_results = sorted(
-        [
-            {"mean_score": statistics.mean(scores), "config": param_grid[i]}
-            for i, scores in enumerate(param_results)
-            if scores
-        ],
-        key=lambda x: x["mean_score"],
-        reverse=True,
-    )
-
-    grid_stats_path = out_path / "grid_stats.json"
-    grid_stats = {
-        "param_results": mean_param_results,
-        "case_results": best_case_results,
-    }
-
-    grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
-    with grid_stats_path.open("w") as file:
-        _json_dump(grid_stats, file)
+        grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
+        with grid_stats_path.open("w") as file:
+            _json_dump(grid_stats, file)
 
     log.info("Finished.")
 
@@ -226,8 +228,9 @@ def _write_output(
         case.graph.save(path / "case.json")
         case.graph.render(path / "case.pdf")
 
-    with (path / "stats.json").open("w") as file:
-        _json_dump(stats, file)
+    if config["adaptation"]["export_single_stats"]:
+        with (path / "stats.json").open("w") as file:
+            _json_dump(stats, file)
 
 
 def _json_dump(mapping: t.Mapping[str, t.Any], file: t.TextIO) -> None:

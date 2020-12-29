@@ -89,13 +89,21 @@ def synset_hypernyms(code: str) -> t.List[str]:
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
     s1 = _synset(code1)
     s2 = _synset(code2)
+    results: t.Dict[str, t.Optional[float]] = {
+            "path_similarity": None,
+            "wup_similarity": None,
+            "path_distance": None,
+        }
 
     with lock:
-        return {
-            "path_similarity": s1.path_similarity(s2),
-            "wup_similarity": s1.wup_similarity(s2),
-            "path_distance": s1.shortest_path_distance(s2),
-        }
+        try:
+            results["path_similarity"] = s1.path_similarity(s2)
+        try:
+            results["wup_similarity"] = s1.wup_similarity(s2)
+        try:
+            results["path_distance"] = s1.shortest_path_distance(s2)
+
+        return results
 
     # return session.post(
     #     _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
