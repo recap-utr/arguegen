@@ -20,7 +20,7 @@ transformer_models = {
     "en": "roberta-large-nli-stsb-mean-tokens",
 }
 
-_base_url = f"http://{config['spacy']['host']}:{config['spacy']['port']}"
+_base_url = f"http://{config['resources']['spacy']['host']}:{config['resources']['spacy']['port']}"
 session = requests.Session()
 
 

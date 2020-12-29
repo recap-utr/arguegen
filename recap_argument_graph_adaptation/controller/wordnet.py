@@ -17,7 +17,10 @@ lock = multiprocessing.Lock()
 
 def _url(parts: t.Iterable[str]) -> str:
     return "/".join(
-        [f"http://{config['wordnet']['host']}:{config['wordnet']['port']}", *parts]
+        [
+            f"http://{config['resources']['wordnet']['host']}:{config['resources']['wordnet']['port']}",
+            *parts,
+        ]
     )
 
 
@@ -100,7 +103,9 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
     # return result
 
-    return session.post(_url(["synset", "metrics"]), json={"code1": code1, "code2": code2}).json()
+    return session.post(
+        _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
+    ).json()
 
 
 # DERIVED FUNCTIONS
