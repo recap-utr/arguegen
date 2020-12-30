@@ -5,10 +5,12 @@ import multiprocessing
 import statistics
 import typing as t
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 
 import pendulum
 import requests
+import typer
 from sklearn.model_selection import ParameterGrid
 
 from recap_argument_graph_adaptation.controller import evaluate, spacy, wordnet
@@ -66,7 +68,7 @@ def run():
     # lock = multiprocessing.Lock()
 
     run_args = [
-        (i, params, len(param_grid), case, out_path)
+        RunArgs(i, params, len(param_grid), case, out_path)
         for (i, params), case in itertools.product(enumerate(param_grid), cases)
     ]
 
@@ -75,17 +77,26 @@ def run():
         if config["resources"]["processes"] == 0
         else int(config["resources"]["processes"])
     )
+    raw_results = []
 
     if processes == 1 or len(run_args) == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
         log.info("Single run.")
-        raw_results = [_multiprocessing_run(*run_arg) for run_arg in run_args]
+        raw_results = [_multiprocessing_run(run_arg) for run_arg in run_args]
     else:
         log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
         with multiprocessing.Pool(
             processes
         ) as pool:  # , initializer=init_child, initargs=(lock,)
-            raw_results = pool.starmap(_multiprocessing_run, run_args)
+            with typer.progressbar(
+                pool.imap(_multiprocessing_run, run_args),
+                length=len(run_args),
+                show_percent=True,
+                show_pos=True,
+                show_eta=True,
+            ) as iterator:
+                for raw_result in iterator:
+                    raw_results.append(raw_result)
 
     if config["adaptation"]["export_grid_stats"]:
         log.info("Exporting grid stats.")
@@ -140,27 +151,30 @@ def run():
     log.info("Finished.")
 
 
-def _multiprocessing_run(
-    i: int,
-    params: t.Mapping[str, t.Any],
-    total_runs: int,
-    case: adaptation.Case,
-    out_path: Path,
-) -> t.Tuple[str, int, float]:
-    log.debug(f"Starting run {i + 1}/{total_runs}.")
+@dataclass()
+class RunArgs:
+    i: int
+    params: t.Mapping[str, t.Any]
+    total_runs: int
+    case: adaptation.Case
+    out_path: Path
 
-    config["_tuning"] = params
-    config["_tuning_runs"] = total_runs
+
+def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
+    log.debug(f"Starting run {args.i + 1}/{args.total_runs}.")
+
+    config["_tuning"] = args.params
+    config["_tuning_runs"] = args.total_runs
     wordnet.session = requests.Session()
     spacy.session = requests.Session()
     # wordnet.lock = lock
 
     log.debug("Starting adaptation pipeline.")
-    eval_result = _perform_adaptation(case, out_path)
+    eval_result = _perform_adaptation(args.case, args.out_path)
 
-    log.info(f"Finished with run {i + 1}/{total_runs}.")
+    # log.info(f"Finished with run {args.i + 1}/{args.total_runs}.")
 
-    return (str(case), i, eval_result.score)
+    return (str(args.case), args.i, eval_result.score)
 
 
 def _nested_path(

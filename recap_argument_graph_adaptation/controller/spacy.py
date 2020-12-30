@@ -113,9 +113,6 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
     return 0.0
 
 
-# TODO: Sometimes an exception is thrown.
-
-
 def keywords(
     text: str, pos_tags: t.Iterable[str]
 ) -> t.List[t.Tuple[str, str, str, float]]:
