@@ -34,26 +34,34 @@ def _synset(code: str) -> Synset:
         return wn.synset(code)
 
 
-def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
+def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
     name = name.replace(" ", "_")
 
     with lock:
         results = wn.synsets(name)
 
     if pos:
-        results = [ss for ss in results if str(ss.pos()) == pos]
+        if isinstance(pos, str):
+            pos = [pos]
+
+        results = [ss for ss in results if str(ss.pos()) in pos]
 
     return results
 
 
 def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[str]:
-    if pos and isinstance(pos, graph.POS):
-        pos = graph.wn_pos(pos)
+    pos_candidates = None
 
-    return [ss.name() for ss in _synsets(name, pos) if ss]  # type: ignore
+    if pos:
+        if isinstance(pos, graph.POS):
+            pos_candidates = graph.wn_pos(pos)
+        else:
+            pos_candidates = [pos]
+
+    return [ss.name() for ss in _synsets(name, pos_candidates) if ss]  # type: ignore
 
     # return tuple(
-    #     session.post(_url(["synsets"]), json={"name": name, "pos": pos}).json()
+    #     session.post(_url(["synsets"]), json={"name": name, "pos": pos_candidates}).json()
     # )
 
 

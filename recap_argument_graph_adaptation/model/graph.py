@@ -4,7 +4,6 @@ import typing as t
 from dataclasses import dataclass
 from enum import Enum
 
-
 import neo4j.data as neo4j
 
 
@@ -29,20 +28,26 @@ spacy_pos_mapping = {
     "ADV": POS.ADVERB,
 }
 
-wn_pos_mapping = {"n": POS.NOUN, "v": POS.VERB, "a": POS.ADJECTIVE, "r": POS.ADVERB}
+wn_pos_mapping = {
+    "n": POS.NOUN,
+    "v": POS.VERB,
+    "a": POS.ADJECTIVE,
+    "r": POS.ADVERB,
+    "s": POS.ADJECTIVE,
+}
 
 
-def wn_pos(pos: POS) -> t.Optional[str]:
+def wn_pos(pos: POS) -> t.List[str]:
     if pos == POS.NOUN:
-        return "n"
+        return ["n"]
     elif pos == POS.VERB:
-        return "v"
+        return ["v"]
     elif pos == POS.ADJECTIVE:
-        return "a"
+        return ["a", "s"]
     elif pos == POS.ADVERB:
-        return "r"
+        return ["r"]
 
-    return None
+    return []
 
 
 class Source(Enum):

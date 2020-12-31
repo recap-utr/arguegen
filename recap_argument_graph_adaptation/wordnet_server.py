@@ -18,12 +18,17 @@ def _synset(code: str) -> Synset:
         return wn.synset(code)
 
 
-def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
+def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
+    name = name.replace(" ", "_")
+
     with lock:
-        results = wn.synsets(name.replace(" ", "_"))
+        results = wn.synsets(name)
 
     if pos:
-        results = [ss for ss in results if str(ss.pos()) == pos]
+        if isinstance(pos, str):
+            pos = [pos]
+
+        results = [ss for ss in results if str(ss.pos()) in pos]
 
     return results
 
@@ -31,13 +36,16 @@ def _synsets(name: str, pos: t.Optional[str]) -> t.List[Synset]:
 class SynsetQuery(BaseModel):
     code: str
 
+
 class SynsetPairQuery(BaseModel):
     code1: str
     code2: str
 
+
 class ConceptQuery(BaseModel):
     name: str
-    pos: t.Optional[str] = None
+    pos: t.Union[str, None, t.List[str]] = None
+
 
 @app.get("/")
 def ready() -> bool:

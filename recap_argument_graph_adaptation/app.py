@@ -65,10 +65,13 @@ def run():
         if round(sum(_filter_mapping(params, "weight").values()), 2) == 1
         and round(sum(_filter_mapping(params, "score").values()), 2) == 1
     ]
+    if not param_grid:
+        param_grid = [{key: values[0] for key, values in config["tuning"].items()}]
+
     # lock = multiprocessing.Lock()
 
     run_args = [
-        RunArgs(i, params, len(param_grid), case, out_path)
+        RunArgs(i, params, len(param_grid) * len(cases), case, out_path)
         for (i, params), case in itertools.product(enumerate(param_grid), cases)
     ]
 
