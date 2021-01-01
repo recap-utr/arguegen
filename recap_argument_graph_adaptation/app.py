@@ -71,8 +71,10 @@ def run():
     # lock = multiprocessing.Lock()
 
     run_args = [
-        RunArgs(i, params, len(param_grid) * len(cases), case, out_path)
-        for (i, params), case in itertools.product(enumerate(param_grid), cases)
+        RunArgs(i_params, params, i_case, case, out_path)
+        for (i_params, params), (i_case, case) in itertools.product(
+            enumerate(param_grid), enumerate(cases)
+        )
     ]
 
     processes = (
@@ -84,7 +86,7 @@ def run():
 
     if processes == 1 or len(run_args) == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
-        log.info("Single run.")
+        log.info("Run without multiprocessing.")
         raw_results = [_multiprocessing_run(run_arg) for run_arg in run_args]
     else:
         log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
@@ -156,18 +158,21 @@ def run():
 
 @dataclass()
 class RunArgs:
-    i: int
+    current_params: int
     params: t.Mapping[str, t.Any]
-    total_runs: int
+    current_case: int
     case: adaptation.Case
     out_path: Path
 
 
 def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
-    log.debug(f"Starting run {args.i + 1}/{args.total_runs}.")
+    total_runs = args.current_case * args.current_params
+    log.debug(
+        f"Starting run {args.current_case + args.current_params + 1}/{total_runs}."
+    )
 
     config["_tuning"] = args.params
-    config["_tuning_runs"] = args.total_runs
+    config["_tuning_runs"] = total_runs
     wordnet.session = requests.Session()
     spacy.session = requests.Session()
     # wordnet.lock = lock
@@ -177,7 +182,7 @@ def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
 
     # log.info(f"Finished with run {args.i + 1}/{args.total_runs}.")
 
-    return (str(args.case), args.i, eval_result.score)
+    return (str(args.case), args.current_params, eval_result.score)
 
 
 def _nested_path(

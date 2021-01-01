@@ -1,10 +1,11 @@
 import logging
-from recap_argument_graph_adaptation.model.evaluation import Evaluation
 import statistics
 import typing as t
-from recap_argument_graph_adaptation.model.adaptation import Case, Concept
+
 from recap_argument_graph_adaptation.controller import metrics
 from recap_argument_graph_adaptation.helper import convert
+from recap_argument_graph_adaptation.model.adaptation import Case, Concept
+from recap_argument_graph_adaptation.model.evaluation import Evaluation
 
 log = logging.getLogger(__name__)
 
@@ -32,7 +33,6 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
         computed_adaptation = computed_adaptations[original_concept]
         scores.append(_compute_score(benchmark_adaptation, computed_adaptation))
 
-    # TODO: Check if penalty here is correct. Maybe add a new one for other cases.
     # Here, a penalty is applied, because we assume that ignoring a specified adaptation is the worst case.
     for original_concept in only_benchmark:
         benchmark_adaptation = benchmark_adaptations[original_concept]

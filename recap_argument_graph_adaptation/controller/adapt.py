@@ -1,14 +1,12 @@
+import itertools
 import logging
 import re
-
-
-from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 import typing as t
-import itertools
 
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 
-from ..model import graph, adaptation
+from ..model import adaptation, graph
 from ..model.adaptation import Concept
 from ..model.config import config
 from ..model.database import Database
@@ -16,33 +14,25 @@ from ..model.database import Database
 log = logging.getLogger(__name__)
 
 
-# TODO: Massively improve performance of this step
 def argument_graph(
     graph: ag.Graph,
     rules: t.Collection[adaptation.Rule],
     adapted_concepts: t.Mapping[Concept, Concept],
 ) -> None:
-    # pr = load.proof_reader()
     substitutions = {
         concept.name: adapted_concept.name
         for concept, adapted_concept in adapted_concepts.items()
     }
-
     for rule in rules:
         substitutions[rule.source.name] = rule.target.name
 
-    for node in graph.inodes:
-        node.text = _replace(node.text, substitutions)
-        # node.text = pr.proofread(node.text)
-
-
-def _replace(input_text: str, substitutions: t.Mapping[str, str]) -> str:
-    """Perform multiple replacements in a single run."""
-
     substrings = sorted(substitutions.keys(), key=len, reverse=True)
-    regex = re.compile("|".join(map(re.escape, substrings)))  # type: ignore
 
-    return regex.sub(lambda match: substitutions[match.group(0)], input_text)
+    for node in graph.inodes:
+        for substring in substrings:
+            node.text = node.plain_text.replace(substring, substitutions[substring])
+
+        # node.text = pr.proofread(node.text)
 
 
 def synsets(
@@ -180,7 +170,7 @@ def _adapt_shortest_path(
     current_paths = []
 
     # We have to convert the target to a path object here.
-    # TODO: Make the node selection more robust.
+    # TODO: Maybe make the node selection more robust.
     rule = next(iter(rules), None)
 
     if rule:
