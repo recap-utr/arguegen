@@ -130,7 +130,7 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
 
 def resolve(code: str) -> t.Tuple[str, graph.POS]:
-    parts = code.split(".")
+    parts = code.rsplit(".", 2)
     name = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
 

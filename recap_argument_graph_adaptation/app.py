@@ -84,12 +84,12 @@ def run():
     )
     raw_results = []
 
+    log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
+
     if processes == 1 or len(run_args) == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
-        log.info("Run without multiprocessing.")
         raw_results = [_multiprocessing_run(run_arg) for run_arg in run_args]
     else:
-        log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
         with multiprocessing.Pool(
             processes
         ) as pool:  # , initializer=init_child, initargs=(lock,)
@@ -166,7 +166,7 @@ class RunArgs:
 
 
 def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
-    total_runs = args.current_case * args.current_params
+    total_runs = (args.current_case + 1) * (args.current_params + 1)
     log.debug(
         f"Starting run {args.current_case + args.current_params + 1}/{total_runs}."
     )

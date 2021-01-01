@@ -1,36 +1,44 @@
 import threading
 import typing as t
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from queue import Queue
 
 from fastapi import FastAPI
 from nltk.corpus import wordnet as wn
-from nltk.corpus.reader.wordnet import Synset
 from pydantic import BaseModel
 
 lock = threading.Lock()
 app = FastAPI()
 wn.ensure_loaded()
 
-pos_mapping = {}
+
+@dataclass
+class Synset:
+    code: str
+    name: str
+    pos: str
 
 
-def _synset(code: str) -> Synset:
-    with lock:
-        return wn.synset(code)
+definition: t.Dict[str, str] = {}
+examples: t.Dict[str, t.List[str]] = {}
+hypernyms: t.Dict[str, t.List[str]] = {}
+lemmas: t.Dict[str, t.List[Synset]] = defaultdict(list)
+
+for synset in wn.all_synsets():
+    code = synset.name()
+    name, pos, _ = code.rsplit(".", 2)
+
+    definition[code] = synset.definition()
+    examples[code] = synset.examples()
+    hypernyms[code] = [hypernym.name() for hypernym in synset.hypernyms()]
+
+    for lemma in synset.lemmas():
+        lemmas[lemma.name()].append(Synset(code, name, pos))
 
 
-def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
-    name = name.replace(" ", "_")
-
-    with lock:
-        results = wn.synsets(name)
-
-    if pos:
-        if isinstance(pos, str):
-            pos = [pos]
-
-        results = [ss for ss in results if str(ss.pos()) in pos]
-
-    return results
+def _path_similarity(code1: str, code2: str) -> float:
+    pass
 
 
 class SynsetQuery(BaseModel):
@@ -54,37 +62,39 @@ def ready() -> bool:
 
 @app.post("/synset/definition")
 def synset_definition(query: SynsetQuery) -> str:
-    return _synset(query.code).definition() or ""
+    return definition[query.code]
 
 
 @app.post("/synset/examples")
 def synset_examples(query: SynsetQuery) -> t.List[str]:
-    return _synset(query.code).examples() or []
+    return examples[query.code]
 
 
 @app.post("/synset/hypernyms")
 def synset_hypernyms(query: SynsetQuery) -> t.List[str]:
-    synset = _synset(query.code)
-
-    with lock:
-        hypernyms = synset.hypernyms()
-
-    return [h.name() for h in hypernyms if h]
+    return hypernyms[query.code]
 
 
 @app.post("/synset/metrics")
 def synset_metrics(query: SynsetPairQuery) -> t.Dict[str, t.Optional[float]]:
-    s1 = _synset(query.code1)
-    s2 = _synset(query.code2)
-
-    with lock:
-        return {
-            "path_similarity": s1.path_similarity(s2),
-            "wup_similarity": s1.wup_similarity(s2),
-            "path_distance": s1.shortest_path_distance(s2),
-        }
+    return {
+        "path_similarity": s1.path_similarity(s2),
+        "wup_similarity": s1.wup_similarity(s2),
+        "path_distance": s1.shortest_path_distance(s2),
+    }
 
 
 @app.post("/synsets")
 def concept_synsets(query: ConceptQuery) -> t.List[str]:
-    return [str(ss.name()) for ss in _synsets(query.name, query.pos) if ss]
+    name = query.name.replace(" ", "_")
+    pos = query.pos
+
+    results = lemmas[name]
+
+    if pos:
+        if isinstance(pos, str):
+            pos = [pos]
+
+        results = [result for result in results if result.pos in pos]
+
+    return [result.code for result in results]

@@ -9,8 +9,20 @@
 ```sh
 poetry install
 cp config-example.toml config.toml
-poetry run python -m recap_argument_graph_adaptation
+poetry run python -m spacy download en_core_web_lg
+poetry run python -m spacy download en_core_web_sm
+poetry run python -m nltk.downloader popular
 ```
+
+## Running
+
+- Start a spacy server in one terminal session:
+
+  ```poetry run python -m recap_argument_graph_adaptation.uvicorn spacy```
+
+- Run the adaptation in another session:
+
+  ```poetry run python -m recap_argument_graph_adaptation```
 
 ## Folder Structure
 
