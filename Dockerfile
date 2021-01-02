@@ -16,6 +16,6 @@ RUN pip install "poetry==${POETRY_VERSION}" \
 COPY poetry.lock* pyproject.toml ./
 RUN poetry install --no-interaction --no-ansi
 
-RUN python -m nltk.downloader popular \
+RUN python -c "import wn; wn.download('ewn:2020')" \
     && python -m spacy download en_core_web_lg \
     && python -m spacy download en_core_web_sm
