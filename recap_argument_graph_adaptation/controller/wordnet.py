@@ -177,13 +177,13 @@ def contextual_synset(text: str, term: str, pos: graph.POS) -> t.Optional[str]:
     return None
 
 
+# TODO: Remove "path_distance" from the code
 def metrics(
     synsets1: t.Iterable[str], synsets2: t.Iterable[str]
 ) -> t.Dict[str, t.Optional[float]]:
     tmp_results: t.Dict[str, t.List[float]] = {
         "path_similarity": [],
         "wup_similarity": [],
-        "path_distance": [],
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
@@ -208,34 +208,8 @@ def metrics(
 best_metrics = (1, 1, 0)
 
 
-def hypernym_trees(synset: str) -> t.List[t.List[str]]:
-    hypernym_trees = [[synset]]
-    has_hypernyms = [True]
-    final_hypernym_trees = []
-
-    while any(has_hypernyms):
-        has_hypernyms = []
-        new_hypernym_trees = []
-
-        for hypernym_tree in hypernym_trees:
-            new_hypernyms = synset_hypernyms(hypernym_tree[-1])
-
-            if new_hypernyms:
-                has_hypernyms.append(True)
-
-                for new_hypernym in new_hypernyms:
-                    new_hypernym_trees.append([*hypernym_tree, new_hypernym])
-            else:
-                has_hypernyms.append(False)
-                final_hypernym_trees.append(hypernym_tree)
-
-        hypernym_trees = new_hypernym_trees
-
-    return final_hypernym_trees
-
-
 def remove_index(s: str) -> str:
-    parts = s.split(".")[:-1]
+    parts = s.rsplit(".", 2)[:-1]
 
     return ".".join(parts)
 
