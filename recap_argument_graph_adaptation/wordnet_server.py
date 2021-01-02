@@ -1,19 +1,80 @@
-import itertools
 import math
-import threading
 import typing as t
 from collections import defaultdict, deque
 from dataclasses import dataclass
 from operator import itemgetter
-from queue import Queue
 
 from fastapi import FastAPI
 from nltk.corpus import wordnet as wn
+from nltk.corpus.reader.wordnet import WordNetCorpusReader
 from pydantic import BaseModel
 
-lock = threading.Lock()
+# lock = threading.Lock()
 app = FastAPI()
 wn.ensure_loaded()
+
+
+morphy_substitutions = WordNetCorpusReader.MORPHOLOGICAL_SUBSTITUTIONS
+_exception_map = wn._exception_map
+
+
+def _morphy(form: str, pos: str, check_exceptions: bool = True):
+    # from jordanbg:
+    # Given an original string x
+    # 1. Apply rules once to the input to get y1, y2, y3, etc.
+    # 2. Return all that are in the database
+    # 3. If there are no matches, keep applying rules until you either
+    #    find a match or you can't go any further
+    # https://www.nltk.org/_modules/nltk/corpus/reader/wordnet.html
+
+    exceptions = _exception_map[pos]
+    substitutions = morphy_substitutions[pos]
+
+    def apply_rules(forms):
+        return [
+            form[: -len(old)] + new
+            for form in forms
+            for old, new in substitutions
+            if form.endswith(old)
+        ]
+
+    def filter_forms(forms):
+        result = []
+        seen = set()
+
+        for form in forms:
+            if form in lemmas:
+                lemma_pos_tags = [s.pos for s in lemmas[form]]
+
+                if pos in lemma_pos_tags:
+                    if form not in seen:
+                        result.append(form)
+                        seen.add(form)
+
+        return result
+
+    # 0. Check the exception lists
+    if check_exceptions:
+        if form in exceptions:
+            return filter_forms([form] + exceptions[form])
+
+    # 1. Apply rules once to the input to get y1, y2, y3, etc.
+    forms = apply_rules([form])
+
+    # 2. Return all that are in the database (and check the original too)
+    results = filter_forms([form] + forms)
+    if results:
+        return results
+
+    # 3. If there are no matches, keep applying rules until we find a match
+    while forms:
+        forms = apply_rules(forms)
+        results = filter_forms(forms)
+        if results:
+            return results
+
+    # Return an empty list if we can't find anything
+    return []
 
 
 @dataclass
@@ -418,8 +479,8 @@ class ConceptQuery(BaseModel):
 
 
 @app.get("/")
-def ready() -> bool:
-    return True
+def ready() -> str:
+    return ""
 
 
 @app.post("/synset/definition")
@@ -453,17 +514,44 @@ def synset_metrics(query: SynsetPairQuery) -> t.Dict[str, t.Optional[float]]:
     }
 
 
-@app.post("/synsets")
-def concept_synsets(query: ConceptQuery) -> t.List[str]:
-    name = query.name.replace(" ", "_")
-    pos = query.pos
-
-    results = lemmas[name]
+def concept_synsets(name, pos=None) -> t.List[str]:
+    name = name.lower().replace(" ", "_")
+    pos_tags = []
 
     if pos:
         if isinstance(pos, str):
-            pos = [pos]
+            pos_tags.append(pos)
+        else:
+            pos_tags.extend(pos)
 
-        results = [result for result in results if result.pos in pos]
+    synsets = []
 
-    return [result.code for result in results]
+    for pos in pos_tags:
+        for form in _morphy(name, pos):
+            for synset in lemmas[form]:
+                if synset.pos == pos:
+                    synsets.append(synset)
+
+    return [synset.code for synset in synsets]
+
+
+# @app.post("/synsets")
+# def concept_synsets(query: ConceptQuery) -> t.List[str]:
+#     name = query.name.lower().replace(" ", "_")
+#     pos_tags = []
+
+#     if query.pos:
+#         if isinstance(query.pos, str):
+#             pos_tags.append(query.pos)
+#         else:
+#             pos_tags.extend(query.pos)
+
+#     synsets = []
+
+#     for pos in pos_tags:
+#         for form in _morphy(name, pos):
+#             for synset in lemmas[form]:
+#                 if synset.pos == pos:
+#                     synsets.append(synset)
+
+#     return [synset.code for synset in synsets]

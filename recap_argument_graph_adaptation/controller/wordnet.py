@@ -102,7 +102,6 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
     # results: t.Dict[str, t.Optional[float]] = {
     #     "path_similarity": None,
     #     "wup_similarity": None,
-    #     "path_distance": None,
     # }
 
     # with lock:
@@ -113,11 +112,6 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
 
     #     try:
     #         results["wup_similarity"] = s1.wup_similarity(s2)
-    #     except Exception:
-    #         pass
-
-    #     try:
-    #         results["path_distance"] = s1.shortest_path_distance(s2)
     #     except Exception:
     #         pass
 
@@ -207,7 +201,6 @@ def contextual_synset(text: str, term: str, pos: graph.POS) -> t.Optional[str]:
     return None
 
 
-# TODO: Remove "path_distance" from the code
 def metrics(
     synsets1: t.Iterable[str], synsets2: t.Iterable[str]
 ) -> t.Dict[str, t.Optional[float]]:

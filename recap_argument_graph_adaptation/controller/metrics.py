@@ -1,25 +1,23 @@
 from __future__ import annotations
 
 import logging
-
-import numpy as np
-from recap_argument_graph_adaptation.model.adaptation import Concept
 import typing as t
 
+import numpy as np
 from recap_argument_graph_adaptation.controller import spacy, wordnet
 from recap_argument_graph_adaptation.model import graph
+from recap_argument_graph_adaptation.model.adaptation import Concept
 from recap_argument_graph_adaptation.model.database import Database
 
 log = logging.getLogger(__name__)
 
 
-best_concept_metrics = (1, 0, 1, 1, 0)
+best_concept_metrics = (1, 0, 1, 1)
 
 
 def update_concept_metrics(
     concept: Concept, related_concepts: t.Union[Concept, t.Mapping[Concept, float]]
 ) -> t.Tuple[
-    t.Optional[float],
     t.Optional[float],
     t.Optional[float],
     t.Optional[float],
@@ -36,7 +34,6 @@ def init_concept_metrics(
     synsets: t.Iterable[str],
     related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
 ) -> t.Tuple[
-    t.Optional[float],
     t.Optional[float],
     t.Optional[float],
     t.Optional[float],
@@ -62,7 +59,6 @@ def init_concept_metrics(
                 db.distance(nodes, related_concept.nodes),
                 wn_metrics["path_similarity"],
                 wn_metrics["wup_similarity"],
-                wn_metrics["path_distance"],
             )
         ):
             if metric:

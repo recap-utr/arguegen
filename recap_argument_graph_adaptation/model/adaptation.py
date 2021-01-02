@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import typing as t
 from dataclasses import dataclass
-import numpy as np
 
+import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import config
@@ -24,7 +24,6 @@ class Concept:
     conceptnet_path_distance: t.Optional[float] = None
     wordnet_path_similarity: t.Optional[float] = None
     wordnet_wup_similarity: t.Optional[float] = None
-    wordnet_path_distance: t.Optional[float] = None
 
     @property
     def best_node(self) -> graph.Node:
@@ -61,7 +60,6 @@ class Concept:
             "conceptnet_path_distance": _dist2sim(self.conceptnet_path_distance),
             "wordnet_path_similarity": self.wordnet_path_similarity,
             "wordnet_wup_similarity": self.wordnet_wup_similarity,
-            "wordnet_path_distance": _dist2sim(self.wordnet_path_distance),
         }
 
         result = 0

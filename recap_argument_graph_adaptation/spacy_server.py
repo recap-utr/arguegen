@@ -128,5 +128,5 @@ def keywords(query: KeywordQuery) -> t.List[t.Tuple[str, str, str, float]]:
 
 
 @app.get("/")
-def ready() -> bool:
-    return True
+def ready() -> str:
+    return ""
