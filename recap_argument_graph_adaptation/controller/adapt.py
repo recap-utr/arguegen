@@ -117,7 +117,7 @@ def paths(
             vector = spacy.vector(name)
             end_nodes = tuple([result.end_node])
             pos = result.end_node.pos
-            synsets = wordnet.synsets(name, pos)
+            synsets = wordnet.concept_synsets(name, pos)
             related_concepts = {}
 
             for rule in rules:
@@ -135,7 +135,7 @@ def paths(
                 vector,
                 pos,
                 end_nodes,
-                synsets,
+                tuple(synsets),
                 None,
                 *metrics.init_concept_metrics(
                     vector, end_nodes, synsets, related_concepts

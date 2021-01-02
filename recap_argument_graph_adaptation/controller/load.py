@@ -84,5 +84,5 @@ def _parse_rule_concept(rule: str) -> adaptation.Concept:
         )
 
     return adaptation.Concept(
-        name, vector, pos, nodes, synsets, None, *metrics.best_concept_metrics
+        name, vector, pos, nodes, tuple(synsets), None, *metrics.best_concept_metrics
     )

@@ -1,55 +1,128 @@
 from __future__ import annotations
 
 import itertools
-import multiprocessing
+import json
 import typing as t
+from collections import defaultdict
+from pathlib import Path
 
-import requests
-from nltk.corpus import wordnet as wn
-from nltk.corpus.reader import Synset
+import nltk.corpus.reader.wordnet
+import wn
+import wn.similarity
+from nltk.corpus.reader import WordNetCorpusReader
 from recap_argument_graph_adaptation.controller import spacy
 
 from ..model import graph
 from ..model.config import Config
 
 config = Config.instance()
-session = requests.Session()
-lock = multiprocessing.Lock()
+
+db = wn.Wordnet(lang=config["nlp"]["lang"], lexicon="pwn:3.1")
 
 
-def _url(parts: t.Iterable[str]) -> str:
-    return "/".join(
-        [
-            f"http://{config['resources']['wordnet']['host']}:{config['resources']['wordnet']['port']}",
-            *parts,
+# TODO: Make serialization automatic or include in git
+with Path("data", "wn_exceptions.json").open() as f:
+    wn_exceptions = json.load(f)
+
+with Path("data", "wn_morphy_substitutions.json").open() as f:
+    wn_morphy_substitutions = json.load(f)
+
+lemmas = defaultdict(list)
+
+for word in db.words():
+    lemmas[word.lemma()].append(word.pos)
+
+
+def _morphy(form: str, pos: str, check_exceptions: bool = True):
+    # from jordanbg:
+    # Given an original string x
+    # 1. Apply rules once to the input to get y1, y2, y3, etc.
+    # 2. Return all that are in the database
+    # 3. If there are no matches, keep applying rules until you either
+    #    find a match or you can't go any further
+    # https://www.nltk.org/_modules/nltk/corpus/reader/wordnet.html
+
+    exceptions = wn_exceptions[pos]
+    substitutions = wn_morphy_substitutions[pos]
+
+    def apply_rules(forms):
+        return [
+            form[: -len(old)] + new
+            for form in forms
+            for old, new in substitutions
+            if form.endswith(old)
         ]
-    )
+
+    def filter_forms(forms):
+        result = []
+        seen = set()
+
+        for form in forms:
+            if lemma_pos_tags := lemmas.get(form):
+                if pos in lemma_pos_tags:
+                    if form not in seen:
+                        result.append(form)
+                        seen.add(form)
+
+        return result
+
+    # 0. Check the exception lists
+    if check_exceptions:
+        if form in exceptions:
+            return filter_forms([form] + exceptions[form])
+
+    # 1. Apply rules once to the input to get y1, y2, y3, etc.
+    forms = apply_rules([form])
+
+    # 2. Return all that are in the database (and check the original too)
+    results = filter_forms([form] + forms)
+    if results:
+        return results
+
+    # 3. If there are no matches, keep applying rules until we find a match
+    while forms:
+        forms = apply_rules(forms)
+        results = filter_forms(forms)
+        if results:
+            return results
+
+    # Return an empty list if we can't find anything
+    return []
 
 
 # WORDNET API
 
 
-def _synset(code: str) -> Synset:
-    with lock:
-        return wn.synset(code)
+def _synset(code: str) -> wn.Synset:
+    return db.synset(code)
 
 
-def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
-    name = name.replace(" ", "_")
+def _synsets(
+    name: str, pos: t.Union[str, None, t.Collection[str]]
+) -> t.List[wn.Synset]:
+    name = name.lower()
+    results = []
+    pos_tags = []
 
-    with lock:
-        results = wn.synsets(name)
+    if not pos:
+        # pos_tags.append(None)
+        pos_tags.extend(["a", "r", "n", "v"])  # ADJ_SAT should not be included
+    elif isinstance(pos, str):
+        pos_tags.append(pos)
+    else:
+        pos_tags.extend(pos)
 
-    if pos:
-        if isinstance(pos, str):
-            pos = [pos]
+    for pos_tag in pos_tags:
+        # results.extend(db.synsets(name, pos_tag))
+        morphy_names = _morphy(name, pos_tag)
 
-        results = [ss for ss in results if str(ss.pos()) in pos]
+        for morphy_name in morphy_names:
+            results.extend(db.synsets(morphy_name, pos_tag))
 
     return results
 
 
-def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[str]:
+def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
     pos_candidates = None
 
     if pos:
@@ -58,87 +131,67 @@ def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[st
         else:
             pos_candidates = [pos]
 
-    return [ss.name() for ss in _synsets(name, pos_candidates) if ss]  # type: ignore
+    return [ss.id for ss in _synsets(name, pos_candidates) if ss]
 
 
 def synset_definition(code: str) -> str:
-    synset = _synset(code)
-
-    with lock:
-        return synset.definition() or ""
+    return _synset(code).definition() or ""
 
 
 def synset_examples(code: str) -> t.List[str]:
-    synset = _synset(code)
-
-    with lock:
-        return synset.examples() or []
+    return _synset(code).examples() or []
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
-    synset = _synset(code)
+    hypernyms = _synset(code).hypernyms()
 
-    with lock:
-        hypernyms = synset.hypernyms()
-
-    return [h.name() for h in hypernyms if h]
+    return [h.id for h in hypernyms if h]
 
 
-def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
+def synset_metrics(code1: str, code2: str) -> t.Dict[str, float]:
     s1 = _synset(code1)
     s2 = _synset(code2)
-    results: t.Dict[str, t.Optional[float]] = {
-        "path_similarity": None,
-        "wup_similarity": None,
+    return {
+        "path_similarity": wn.similarity.path(s1, s2),
+        "wup_similarity": wn.similarity.wup(s1, s2),
     }
 
-    with lock:
-        try:
-            results["path_similarity"] = s1.path_similarity(s2)
-        except Exception:
-            pass
 
-        try:
-            results["wup_similarity"] = s1.wup_similarity(s2)
-        except Exception:
-            pass
+# def hypernym_trees(code: str) -> t.List[t.List[str]]:
+# hypernym_trees = [[code]]
+# has_hypernyms = [True]
+# final_hypernym_trees = []
 
-        return results
+# while any(has_hypernyms):
+#     has_hypernyms = []
+#     new_hypernym_trees = []
 
+#     for hypernym_tree in hypernym_trees:
+#         if new_hypernyms := synset_hypernyms(hypernym_tree[-1]):
+#             has_hypernyms.append(True)
 
-def hypernym_trees(code: str) -> t.List[t.List[str]]:
-    hypernym_trees = [[code]]
-    has_hypernyms = [True]
-    final_hypernym_trees = []
+#             for new_hypernym in new_hypernyms:
+#                 new_hypernym_trees.append([*hypernym_tree, new_hypernym])
+#         else:
+#             has_hypernyms.append(False)
+#             final_hypernym_trees.append(hypernym_tree)
 
-    while any(has_hypernyms):
-        has_hypernyms = []
-        new_hypernym_trees = []
+#     hypernym_trees = new_hypernym_trees
 
-        for hypernym_tree in hypernym_trees:
-            if new_hypernyms := synset_hypernyms(hypernym_tree[-1]):
-                has_hypernyms.append(True)
+# return final_hypernym_trees
 
-                for new_hypernym in new_hypernyms:
-                    new_hypernym_trees.append([*hypernym_tree, new_hypernym])
-            else:
-                has_hypernyms.append(False)
-                final_hypernym_trees.append(hypernym_tree)
-
-        hypernym_trees = new_hypernym_trees
-
-    return final_hypernym_trees
+# return [[synset.id for synset in tree] for tree in _synset(code).hypernym_paths()]
 
 
 # DERIVED FUNCTIONS
 
-
+# TODO: Multiple lemmas are returned, make selection more robust.
 def resolve(code: str) -> t.Tuple[str, graph.POS]:
-    parts = code.rsplit(".", 2)
-    name = parts[0].replace("_", " ")
-    pos = graph.wn_pos_mapping[parts[1]]
+    synset = _synset(code)
+    lemma = synset.lemmas()[0]
+    pos = graph.wn_pos_mapping[synset.pos]
 
-    return (name, pos)
+    return (lemma, pos)
 
 
 def contextual_synsets(text: str, term: str, pos: graph.POS) -> t.Tuple[str, ...]:
@@ -208,28 +261,25 @@ def metrics(
     return results
 
 
-best_metrics = (1, 1, 0)
-
-
-def remove_index(s: str) -> str:
-    parts = s.rsplit(".", 2)[:-1]
-
-    return ".".join(parts)
-
-
-def hypernyms(s: str) -> t.Set[str]:
+def hypernyms(code: str) -> t.Set[str]:
     result = set()
-    trees = hypernym_trees(s)
+
+    trees = _synset(code).hypernym_paths()
 
     for tree in trees:
         # The first synset is the original one, the last always entity
         tree = tree[1:-1]
         # Some synsets are not relevant for generalization
         tree = filter(
-            lambda s: remove_index(s) not in config["wordnet"]["hypernym_filter"],
+            lambda s: all(
+                [
+                    lemma not in config["wordnet"]["hypernym_filter"]
+                    for lemma in s.lemmas()
+                ]
+            ),
             tree,
         )
 
-        result.update(tree)
+        result.update([s.id for s in tree])
 
     return result
