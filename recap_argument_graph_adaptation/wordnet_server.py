@@ -437,6 +437,11 @@ def synset_hypernyms(query: SynsetQuery) -> t.List[str]:
     return hypernyms[query.code]
 
 
+@app.post("/synset/hypernyms/trees")
+def synset_hypernym_trees(query: SynsetQuery) -> t.List[t.List[str]]:
+    return hypernym_trees[query.code]
+
+
 @app.post("/synset/metrics")
 def synset_metrics(query: SynsetPairQuery) -> t.Dict[str, t.Optional[float]]:
     s1 = query.code1

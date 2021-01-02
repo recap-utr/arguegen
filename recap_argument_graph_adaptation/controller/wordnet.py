@@ -29,24 +29,24 @@ def _url(parts: t.Iterable[str]) -> str:
 # WORDNET API
 
 
-def _synset(code: str) -> Synset:
-    with lock:
-        return wn.synset(code)
+# def _synset(code: str) -> Synset:
+#     with lock:
+#         return wn.synset(code)
 
 
-def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
-    name = name.replace(" ", "_")
+# def _synsets(name: str, pos: t.Union[str, None, t.Collection[str]]) -> t.List[Synset]:
+#     name = name.replace(" ", "_")
 
-    with lock:
-        results = wn.synsets(name)
+#     with lock:
+#         results = wn.synsets(name)
 
-    if pos:
-        if isinstance(pos, str):
-            pos = [pos]
+#     if pos:
+#         if isinstance(pos, str):
+#             pos = [pos]
 
-        results = [ss for ss in results if str(ss.pos()) in pos]
+#         results = [ss for ss in results if str(ss.pos()) in pos]
 
-    return results
+#     return results
 
 
 def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[str]:
@@ -58,72 +58,102 @@ def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.Tuple[st
         else:
             pos_candidates = [pos]
 
-    return [ss.name() for ss in _synsets(name, pos_candidates) if ss]  # type: ignore
+    # return [ss.name() for ss in _synsets(name, pos_candidates) if ss]  # type: ignore
 
-    # return tuple(
-    #     session.post(_url(["synsets"]), json={"name": name, "pos": pos_candidates}).json()
-    # )
+    return tuple(
+        session.post(
+            _url(["synsets"]), json={"name": name, "pos": pos_candidates}
+        ).json()
+    )
 
 
 def synset_definition(code: str) -> str:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        return synset.definition() or ""
+    # with lock:
+    #     return synset.definition() or ""
 
-    # return session.post(_url(["synset", "definition"]), json={"code": code}).text
+    return session.post(_url(["synset", "definition"]), json={"code": code}).text
 
 
 def synset_examples(code: str) -> t.List[str]:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        return synset.examples() or []
+    # with lock:
+    #     return synset.examples() or []
 
-    # return session.post(_url(["synset", "examples"]), json={"code": code}).json()
+    return session.post(_url(["synset", "examples"]), json={"code": code}).json()
 
 
 def synset_hypernyms(code: str) -> t.List[str]:
-    synset = _synset(code)
+    # synset = _synset(code)
 
-    with lock:
-        hypernyms = synset.hypernyms()
+    # with lock:
+    #     hypernyms = synset.hypernyms()
 
-    return [h.name() for h in hypernyms if h]
+    # return [h.name() for h in hypernyms if h]
 
-    # return session.post(_url(["synset", "hypernyms"]), json={"code": code}).json()
+    return session.post(_url(["synset", "hypernyms"]), json={"code": code}).json()
 
 
 def synset_metrics(code1: str, code2: str) -> t.Dict[str, t.Optional[float]]:
-    s1 = _synset(code1)
-    s2 = _synset(code2)
-    results: t.Dict[str, t.Optional[float]] = {
-        "path_similarity": None,
-        "wup_similarity": None,
-        "path_distance": None,
-    }
+    # s1 = _synset(code1)
+    # s2 = _synset(code2)
+    # results: t.Dict[str, t.Optional[float]] = {
+    #     "path_similarity": None,
+    #     "wup_similarity": None,
+    #     "path_distance": None,
+    # }
 
-    with lock:
-        try:
-            results["path_similarity"] = s1.path_similarity(s2)
-        except Exception:
-            pass
+    # with lock:
+    #     try:
+    #         results["path_similarity"] = s1.path_similarity(s2)
+    #     except Exception:
+    #         pass
 
-        try:
-            results["wup_similarity"] = s1.wup_similarity(s2)
-        except Exception:
-            pass
+    #     try:
+    #         results["wup_similarity"] = s1.wup_similarity(s2)
+    #     except Exception:
+    #         pass
 
-        try:
-            results["path_distance"] = s1.shortest_path_distance(s2)
-        except Exception:
-            pass
+    #     try:
+    #         results["path_distance"] = s1.shortest_path_distance(s2)
+    #     except Exception:
+    #         pass
 
-        return results
+    #     return results
 
-    # return session.post(
-    #     _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
-    # ).json()
+    return session.post(
+        _url(["synset", "metrics"]), json={"code1": code1, "code2": code2}
+    ).json()
+
+
+def hypernym_trees(code: str) -> t.List[t.List[str]]:
+    # hypernym_trees = [[code]]
+    # has_hypernyms = [True]
+    # final_hypernym_trees = []
+
+    # while any(has_hypernyms):
+    #     has_hypernyms = []
+    #     new_hypernym_trees = []
+
+    #     for hypernym_tree in hypernym_trees:
+    #         if new_hypernyms := synset_hypernyms(hypernym_tree[-1]):
+    #             has_hypernyms.append(True)
+
+    #             for new_hypernym in new_hypernyms:
+    #                 new_hypernym_trees.append([*hypernym_tree, new_hypernym])
+    #         else:
+    #             has_hypernyms.append(False)
+    #             final_hypernym_trees.append(hypernym_tree)
+
+    #     hypernym_trees = new_hypernym_trees
+
+    # return final_hypernym_trees
+
+    return session.post(
+        _url(["synset", "hypernyms", "trees"]), json={"code": code}
+    ).json()
 
 
 # DERIVED FUNCTIONS
