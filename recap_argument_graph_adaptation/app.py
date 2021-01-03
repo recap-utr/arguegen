@@ -70,11 +70,24 @@ def run():
         param_grid = [{key: values[0] for key, values in config["tuning"].items()}]
 
     # lock = multiprocessing.Lock()
+    total_params = len(param_grid)
+    total_cases = len(cases)
+    total_runs = total_params * total_cases
 
     run_args = [
-        RunArgs(i_params, params, i_case, case, out_path)
-        for (i_params, params), (i_case, case) in itertools.product(
-            enumerate(param_grid), enumerate(cases)
+        RunArgs(
+            i,
+            total_runs,
+            i_params,
+            total_params,
+            params,
+            i_case,
+            total_cases,
+            case,
+            out_path,
+        )
+        for i, ((i_params, params), (i_case, case)) in enumerate(
+            itertools.product(enumerate(param_grid), enumerate(cases))
         )
     ]
 
@@ -159,22 +172,22 @@ def run():
 
 @dataclass()
 class RunArgs:
+    current_run: int
+    total_runs: int
     current_params: int
+    total_params: int
     params: t.Mapping[str, t.Any]
     current_case: int
+    total_cases: int
     case: adaptation.Case
     out_path: Path
 
 
 def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
-    total_runs = (args.current_case + 1) * (args.current_params + 1)
-    log.debug(
-        f"Starting run {args.current_case + args.current_params + 1}/{total_runs}."
-    )
+    log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
-    config["_tuning_runs"] = total_runs
-    wordnet.db = wn.Wordnet(lang=config["nlp"]["lang"])
+    config["_tuning_runs"] = args.total_runs
     spacy.session = requests.Session()
     # wordnet.lock = lock
 
