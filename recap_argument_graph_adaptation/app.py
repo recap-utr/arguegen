@@ -11,7 +11,6 @@ from pathlib import Path
 import pendulum
 import requests
 import typer
-import wn
 from sklearn.model_selection import ParameterGrid
 
 from recap_argument_graph_adaptation.controller import evaluate, spacy, wordnet
@@ -189,6 +188,7 @@ def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
     config["_tuning"] = args.params
     config["_tuning_runs"] = args.total_runs
     spacy.session = requests.Session()
+    wordnet.wn = wordnet.init_reader()
     # wordnet.lock = lock
 
     log.debug("Starting adaptation pipeline.")

@@ -7,7 +7,6 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
-
 # from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
@@ -20,11 +19,14 @@ from ..model.config import Config
 config = Config.instance()
 
 
-wn = LazyCorpusLoader(
-    "wordnet",
-    WordNetCorpusReader,
-    LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
-)
+def init_reader():
+    return LazyCorpusLoader(
+        "wordnet",
+        WordNetCorpusReader,
+        LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
+    )
+
+wn = init_reader()
 
 
 def _synset(code: str) -> Synset:

@@ -31,21 +31,21 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
 
     for keywords, node_vector in zip(graph_keywords, node_vectors):
         for k in keywords:
-            pos_tag = spacy_pos_mapping[k.pos_tag]
-            vector = spacy.vector(k.term)
-            nodes = db.nodes(k.term, pos_tag) or db.nodes(k.lemma, pos_tag)
+            pos_tag = spacy_pos_mapping[k["pos_tag"]]
+            vector = spacy.vector(k["term"])
+            nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
             synsets = wordnet.contextual_synsets(
-                node_vector, k.term, pos_tag
-            ) or wordnet.contextual_synsets(node_vector, k.lemma, pos_tag)
+                node_vector, k["term"], pos_tag
+            ) or wordnet.contextual_synsets(node_vector, k["lemma"], pos_tag)
 
             if nodes or synsets:
                 candidate = Concept(
-                    k.term,
+                    k["term"],
                     vector,
                     pos_tag,
                     nodes,
                     synsets,
-                    k.weight,
+                    k["weight"],
                     *metrics.init_concept_metrics(
                         vector, nodes, synsets, related_concepts
                     ),

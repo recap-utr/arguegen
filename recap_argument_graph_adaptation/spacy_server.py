@@ -91,24 +91,24 @@ class VectorQuery(BaseModel):
 
 @app.post("/vector")
 def vector(query: VectorQuery) -> t.List[float]:
-    with nlp.disable_pipes(vector_disabled_pipes):
-        return nlp(query.text).vector.tolist()
+    # with nlp.disable_pipes(vector_disabled_pipes):
+    return nlp(query.text).vector.tolist()
 
 
 class VectorsQuery(BaseModel):
-    texts: t.Iterable[str]
+    texts: t.List[str]
 
 
 @app.post("/vectors")
 def vectors(query: VectorsQuery) -> t.List[t.List[float]]:
-    docs = nlp.pipe(query.texts, disable=vector_disabled_pipes)
+    docs = nlp.pipe(query.texts)  # disable=vector_disabled_pipes
 
     return [doc.vector.tolist() for doc in docs]  # type: ignore
 
 
 class KeywordQuery(BaseModel):
-    texts: t.Iterable[str]
-    pos_tags: t.Iterable[str]
+    texts: t.List[str]
+    pos_tags: t.List[str]
 
 
 class KeywordResponse(BaseModel):
@@ -120,7 +120,7 @@ class KeywordResponse(BaseModel):
 
 @app.post("/keywords", response_model=t.List[t.List[KeywordResponse]])
 def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
-    docs = nlp.pipe(query.texts, disable=vector_disabled_pipes)
+    docs = nlp.pipe(query.texts)
     response = []
 
     for doc in docs:
@@ -130,14 +130,12 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
             term_keywords = extractor(doc, include_pos=pos_tag, normalize=None)
             lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
 
-            doc_keywords.extend(
-                (
+            for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords):
+                doc_keywords.append(
                     KeywordResponse(
                         term=term, lemma=lemma, pos_tag=pos_tag, weight=weight
                     )
-                    for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords)
                 )
-            )
 
         response.append(doc_keywords)
 

@@ -11,7 +11,7 @@ poetry install
 cp config-example.toml config.toml
 poetry run python -m spacy download en_core_web_lg
 poetry run python -m spacy download en_core_web_sm
-poetry run python -m wn download ewn:2020 pwn:3.1
+poetry run python -m nltk.downloader popular
 ```
 
 ## Running
