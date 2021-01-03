@@ -104,6 +104,13 @@ def vector(text: str) -> np.ndarray:
     return _vector_cache[text]
 
 
+# This function does not use the cache!
+def vectors(texts: t.Iterable[str]) -> t.List[np.ndarray]:
+    raw_results = session.post(_url("vectors"), json={"texts": texts}).json()
+
+    return [np.array(result) for result in raw_results]
+
+
 def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -> float:
     if isinstance(obj1, str):
         obj1 = vector(obj1)

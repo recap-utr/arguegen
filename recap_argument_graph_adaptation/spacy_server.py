@@ -81,7 +81,7 @@ class TransformerModel(object):
 app = FastAPI()
 nlp = spacy_nlp()
 extractor = ke.yake
-vector_disabled_pipes = ["tagger", "parser", "ner", "textcat"]
+vector_disabled_pipes = ["tagger"]
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
 
@@ -93,6 +93,17 @@ class VectorQuery(BaseModel):
 def vector(query: VectorQuery) -> t.List[float]:
     with nlp.disable_pipes(vector_disabled_pipes):
         return nlp(query.text).vector.tolist()
+
+
+class VectorsQuery(BaseModel):
+    texts: t.Iterable[str]
+
+
+@app.post("/vectors")
+def vectors(query: VectorsQuery) -> t.List[t.List[float]]:
+    docs = nlp.pipe(query.texts, disable=vector_disabled_pipes)
+
+    return [doc.vector.tolist() for doc in docs]  # type: ignore
 
 
 class KeywordQuery(BaseModel):
