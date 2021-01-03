@@ -81,6 +81,7 @@ class TransformerModel(object):
 app = FastAPI()
 nlp = spacy_nlp()
 extractor = ke.yake
+vector_disabled_pipes = ["tagger", "parser", "ner", "textcat"]
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
 
@@ -90,41 +91,46 @@ class VectorQuery(BaseModel):
 
 @app.post("/vector")
 def vector(query: VectorQuery) -> t.List[float]:
-    return nlp(query.text).vector.tolist()
-
-
-class SimilarityQuery(BaseModel):
-    text1: str
-    text2: str
-
-
-@app.post("/similarity")
-def similarity(query: SimilarityQuery) -> float:
-    return float(nlp(query.text1).similarity(nlp(query.text2)))
+    with nlp.disable_pipes(vector_disabled_pipes):
+        return nlp(query.text).vector.tolist()
 
 
 class KeywordQuery(BaseModel):
-    text: str
+    texts: t.Iterable[str]
     pos_tags: t.Iterable[str]
 
 
-@app.post("/keywords")
-def keywords(query: KeywordQuery) -> t.List[t.Tuple[str, str, str, float]]:
-    doc = nlp(query.text)
-    results = []
+class KeywordResponse(BaseModel):
+    term: str
+    lemma: str
+    pos_tag: str
+    weight: float
 
-    for pos_tag in query.pos_tags:
-        term_keywords = extractor(doc, include_pos=pos_tag, normalize=None)
-        lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
 
-        results.extend(
-            (
-                (term, lemma, pos_tag, weight)
-                for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords)
+@app.post("/keywords", response_model=t.List[t.List[KeywordResponse]])
+def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
+    docs = nlp.pipe(query.texts, disable=vector_disabled_pipes)
+    response = []
+
+    for doc in docs:
+        doc_keywords = []
+
+        for pos_tag in query.pos_tags:
+            term_keywords = extractor(doc, include_pos=pos_tag, normalize=None)
+            lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
+
+            doc_keywords.extend(
+                (
+                    KeywordResponse(
+                        term=term, lemma=lemma, pos_tag=pos_tag, weight=weight
+                    )
+                    for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords)
+                )
             )
-        )
 
-    return results
+        response.append(doc_keywords)
+
+    return response
 
 
 @app.get("/")

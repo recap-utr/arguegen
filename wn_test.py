@@ -18,9 +18,9 @@ wn.ensure_loaded()
 print(
     sum(
         timeit.repeat(
-            "s = wn.synsets('dog')[0].name(); wn.synset(s).definition()",
-            setup="from nltk.corpus import wordnet as wn; wn.ensure_loaded()",
-            number=1000,
+            "nlp('dog').vector",
+            setup="""import spacy; nlp = spacy.load('en_core_web_lg');""",
+            number=1,
         )
     )
 )
@@ -28,49 +28,69 @@ print(
 print(
     sum(
         timeit.repeat(
-            "s = wn.synsets('dog')[0]; s.definition()",
-            setup="from nltk.corpus import wordnet as wn; wn.ensure_loaded()",
-            number=1000,
+            "list(nlp.pipe(['dog'], disable=['tagger', 'parser', 'ner', 'textcat']))[0].vector",
+            setup="""import spacy; nlp = spacy.load('en_core_web_lg');""",
+            number=1,
         )
     )
 )
 
-print(
-    sum(
-        timeit.repeat(
-            "s = db.synsets('dog')[0].id; db.synset(s).definition()",
-            setup="import wn; db = wn.Wordnet(lang='en', lexicon='pwn:3.1')",
-            number=1000,
-        )
-    )
-)
+# print(
+#     sum(
+#         timeit.repeat(
+#             "s = wn.synsets('dog')[0].name(); wn.synset(s).definition()",
+#             setup="from nltk.corpus import wordnet as wn; wn.ensure_loaded()",
+#             number=1000,
+#         )
+#     )
+# )
 
-print(
-    sum(
-        timeit.repeat(
-            "s = db.synsets('dog')[0]; s.definition()",
-            setup="import wn; db = wn.Wordnet(lang='en', lexicon='pwn:3.1')",
-            number=1000,
-        )
-    )
-)
+# print(
+#     sum(
+#         timeit.repeat(
+#             "s = wn.synsets('dog')[0]; s.definition()",
+#             setup="from nltk.corpus import wordnet as wn; wn.ensure_loaded()",
+#             number=1000,
+#         )
+#     )
+# )
 
-print(
-    sum(
-        timeit.repeat(
-            "code = wordnet.concept_synsets('dog', None)[0]; wordnet.synset_definition(code)",
-            "from recap_argument_graph_adaptation.controller import wordnet",
-            number=1000,
-        )
-    )
-)
+# print(
+#     sum(
+#         timeit.repeat(
+#             "s = db.synsets('dog')[0].id; db.synset(s).definition()",
+#             setup="import wn; db = wn.Wordnet(lang='en', lexicon='pwn:3.1')",
+#             number=1000,
+#         )
+#     )
+# )
 
-print(
-    sum(
-        timeit.repeat(
-            "s = wordnet._synsets('dog', None)[0]; s.definition()",
-            "from recap_argument_graph_adaptation.controller import wordnet",
-            number=1000,
-        )
-    )
-)
+# print(
+#     sum(
+#         timeit.repeat(
+#             "s = db.synsets('dog')[0]; s.definition()",
+#             setup="import wn; db = wn.Wordnet(lang='en', lexicon='pwn:3.1')",
+#             number=1000,
+#         )
+#     )
+# )
+
+# print(
+#     sum(
+#         timeit.repeat(
+#             "code = wordnet.concept_synsets('dog', None)[0]; wordnet.synset_definition(code)",
+#             "from recap_argument_graph_adaptation.controller import wordnet",
+#             number=1000,
+#         )
+#     )
+# )
+
+# print(
+#     sum(
+#         timeit.repeat(
+#             "s = wordnet._synsets('dog', None)[0]; s.definition()",
+#             "from recap_argument_graph_adaptation.controller import wordnet",
+#             number=1000,
+#         )
+#     )
+# )

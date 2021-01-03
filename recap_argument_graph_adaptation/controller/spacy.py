@@ -2,23 +2,11 @@ import typing as t
 
 import numpy as np
 import requests
+from pydantic import BaseModel
 from recap_argument_graph_adaptation.model.config import config
 from scipy.spatial import distance
 
 # from sentence_transformers import SentenceTransformer
-
-spacy_cache = {}
-proof_reader_cache = {}
-spacy_models = {
-    "de-spacy": "de_core_news_lg",
-    "de-transformers": "de_core_news_sm",
-    "en-spacy": "en_core_web_lg",
-    "en-transformers": "en_core_web_sm",
-}
-transformer_models = {
-    "de": "distiluse-base-multilingual-cased",
-    "en": "roberta-large-nli-stsb-mean-tokens",
-}
 
 _base_url = f"http://{config['resources']['spacy']['host']}:{config['resources']['spacy']['port']}"
 session = requests.Session()
@@ -27,6 +15,19 @@ session = requests.Session()
 def _url(*parts: str) -> str:
     return "/".join([_base_url, *parts])
 
+
+# spacy_cache = {}
+# proof_reader_cache = {}
+# spacy_models = {
+#     "de-spacy": "de_core_news_lg",
+#     "de-transformers": "de_core_news_sm",
+#     "en-spacy": "en_core_web_lg",
+#     "en-transformers": "en_core_web_sm",
+# }
+# transformer_models = {
+#     "de": "distiluse-base-multilingual-cased",
+#     "en": "roberta-large-nli-stsb-mean-tokens",
+# }
 
 # def _nlp() -> Language:
 #     lang = config["nlp"]["lang"]
@@ -89,18 +90,21 @@ def _url(*parts: str) -> str:
 #         return 0.0
 
 
+_vector_cache = {}
+
+
 def vector(text: str) -> np.ndarray:
     # return _nlp(text).vector
-    return np.array(session.post(_url("vector"), json={"text": text}).json())
+
+    if text not in _vector_cache:
+        _vector_cache[text] = np.array(
+            session.post(_url("vector"), json={"text": text}).json()
+        )
+
+    return _vector_cache[text]
 
 
 def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -> float:
-    if isinstance(obj1, str) and isinstance(obj2, str):
-        # return _nlp(obj1).similarity(_nlp(obj2))
-        return float(
-            session.post(_url("similarity"), json={"text1": obj1, "text2": obj2}).text
-        )
-
     if isinstance(obj1, str):
         obj1 = vector(obj1)
 
@@ -113,9 +117,16 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
     return 0.0
 
 
+class KeywordResponse(BaseModel):
+    term: str
+    lemma: str
+    pos_tag: str
+    weight: float
+
+
 def keywords(
-    text: str, pos_tags: t.Iterable[str]
-) -> t.List[t.Tuple[str, str, str, float]]:
+    texts: t.Iterable[str], pos_tags: t.Iterable[str]
+) -> t.List[t.List[KeywordResponse]]:
     # if not pos_tags:
     #     pos_tags = []
 
@@ -131,7 +142,7 @@ def keywords(
 
     keywords = session.post(
         _url("keywords"),
-        json={"text": text, "pos_tags": pos_tags},
+        json={"texts": texts, "pos_tags": pos_tags},
     ).json()
 
     return keywords

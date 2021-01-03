@@ -1,18 +1,14 @@
 import logging
-
-from recap_argument_graph_adaptation.controller import metrics, spacy
 import typing as t
 
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller import metrics, spacy
 
+from ..model import adaptation
 from ..model.adaptation import Concept, Rule
 from ..model.config import config
 from ..model.database import Database
-from ..model import adaptation
-from ..model.graph import (
-    Path,
-    spacy_pos_mapping
-)
+from ..model.graph import Path, spacy_pos_mapping
 from . import wordnet
 
 log = logging.getLogger(__name__)
@@ -28,25 +24,27 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
     concepts: t.Set[Concept] = set()
     db = Database()
 
-    for node in graph.inodes:
-        keywords = spacy.keywords(node.plain_text, spacy_pos_tags)
+    graph_keywords = spacy.keywords(
+        [node.plain_text for node in graph.inodes], spacy_pos_tags
+    )
 
-        for (term, lemma, _pos_tag, weight) in keywords:
-            pos_tag = spacy_pos_mapping[_pos_tag]
-            vector = spacy.vector(term)
-            nodes = db.nodes(term, pos_tag) or db.nodes(lemma, pos_tag)
+    for keywords, node in zip(graph_keywords, graph.inodes):
+        for k in keywords:
+            pos_tag = spacy_pos_mapping[k.pos_tag]
+            vector = spacy.vector(k.term)
+            nodes = db.nodes(k.term, pos_tag) or db.nodes(k.lemma, pos_tag)
             synsets = wordnet.contextual_synsets(
-                node.plain_text, term, pos_tag
-            ) or wordnet.contextual_synsets(node.plain_text, lemma, pos_tag)
+                node.plain_text, k.term, pos_tag
+            ) or wordnet.contextual_synsets(node.plain_text, k.lemma, pos_tag)
 
             if nodes or synsets:
                 candidate = Concept(
-                    term,
+                    k.term,
                     vector,
                     pos_tag,
                     nodes,
                     synsets,
-                    weight,
+                    k.weight,
                     *metrics.init_concept_metrics(
                         vector, nodes, synsets, related_concepts
                     ),
