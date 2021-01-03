@@ -47,7 +47,11 @@ def _synsets(name: str, pos: t.Union[None, str, t.Collection[str]]) -> t.List[Sy
     return results
 
 
-def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[Synset]:
+def _synset_name(synset: Synset) -> str:
+    return synset.name() or ""
+
+
+def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
     if not pos:
         pos_tags = None
     elif isinstance(pos, graph.POS):
@@ -55,26 +59,25 @@ def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[Syn
     else:
         pos_tags = [pos]
 
-    return [ss for ss in _synsets(name, pos_tags) if ss]
+    return [_synset_name(ss) for ss in _synsets(name, pos_tags) if ss]
 
 
-def synset_definition(synset: Synset) -> str:
-    return synset.definition() or ""
+def synset_definition(code: str) -> str:
+    return _synset(code).definition() or ""
 
 
-def synset_examples(synset: Synset) -> t.List[str]:
-    return synset.examples() or []
+def synset_examples(code: str) -> t.List[str]:
+    return _synset(code).examples() or []
 
 
-def synset_name(synset: Synset) -> str:
-    return synset.name() or ""
+def synset_hypernyms(code: str) -> t.List[str]:
+    return [_synset_name(hyp) for hyp in _synset(code).hypernyms()] or []
 
 
-def synset_hypernyms(synset: Synset) -> t.List[Synset]:
-    return synset.hypernyms() or []
+def synset_metrics(code1: str, code2: str) -> t.Dict[str, float]:
+    synset1 = _synset(code1)
+    synset2 = _synset(code2)
 
-
-def synset_metrics(synset1: Synset, synset2: Synset) -> t.Dict[str, float]:
     return {
         "path_similarity": synset1.path_similarity(synset2) or 0.0,
         "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
@@ -83,10 +86,9 @@ def synset_metrics(synset1: Synset, synset2: Synset) -> t.Dict[str, float]:
 
 # DERIVED FUNCTIONS
 
-# TODO: Multiple lemmas are returned, make selection more robust.
-def resolve(synset: Synset) -> t.Tuple[str, graph.POS]:
-    name = synset_name(synset)
-    parts = name.rsplit(".", 2)
+
+def resolve(code: str) -> t.Tuple[str, graph.POS]:
+    parts = code.rsplit(".", 2)
     lemma = parts[0]
     pos = graph.wn_pos_mapping[parts[1]]
 
@@ -95,7 +97,7 @@ def resolve(synset: Synset) -> t.Tuple[str, graph.POS]:
 
 def contextual_synsets(
     text_vector: np.ndarray, term: str, pos: graph.POS
-) -> t.Tuple[Synset, ...]:
+) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = concept_synsets(term, pos)
     synset_definitions = [synset_definition(synset) for synset in synsets]
@@ -126,7 +128,7 @@ def contextual_synsets(
 
 def contextual_synset(
     text_vector: np.ndarray, term: str, pos: graph.POS
-) -> t.Optional[Synset]:
+) -> t.Optional[str]:
     synsets = contextual_synsets(text_vector, term, pos)
 
     if len(synsets) > 0:
@@ -136,14 +138,14 @@ def contextual_synset(
 
 
 def metrics(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+    codes1: t.Iterable[str], codes2: t.Iterable[str]
 ) -> t.Dict[str, t.Optional[float]]:
     tmp_results: t.Dict[str, t.List[float]] = {
         "path_similarity": [],
         "wup_similarity": [],
     }
 
-    for s1, s2 in itertools.product(synsets1, synsets2):
+    for s1, s2 in itertools.product(codes1, codes2):
         retrieved_metrics = synset_metrics(s1, s2)
 
         for key, value in retrieved_metrics.items():
@@ -162,8 +164,8 @@ def metrics(
     return results
 
 
-def hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
-    hypernym_trees = [[synset]]
+def hypernym_trees(code: str) -> t.List[t.List[str]]:
+    hypernym_trees = [[code]]
     has_hypernyms = [True]
     final_hypernym_trees = []
 
@@ -192,17 +194,16 @@ def remove_index(s: str) -> str:
     return ".".join(parts)
 
 
-def hypernyms(synset: Synset) -> t.Set[Synset]:
+def hypernyms(code: str) -> t.Set[str]:
     result = set()
-    trees = hypernym_trees(synset)
+    trees = hypernym_trees(code)
 
     for tree in trees:
         # The first synset is the original one, the last always entity
         tree = tree[1:-1]
         # Some synsets are not relevant for generalization
         tree = filter(
-            lambda s: remove_index(synset_name(synset))
-            not in config["wordnet"]["hypernym_filter"],
+            lambda s: remove_index(s) not in config["wordnet"]["hypernym_filter"],
             tree,
         )
 
