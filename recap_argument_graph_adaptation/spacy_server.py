@@ -82,6 +82,7 @@ app = FastAPI()
 nlp = spacy_nlp()
 extractor = ke.yake
 vector_disabled_pipes = ["tagger"]
+_vector_cache = {}
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 
 
@@ -91,8 +92,11 @@ class VectorQuery(BaseModel):
 
 @app.post("/vector")
 def vector(query: VectorQuery) -> t.List[float]:
-    # with nlp.disable_pipes(vector_disabled_pipes):
-    return nlp(query.text).vector.tolist()
+    if query.text not in _vector_cache:
+        # with nlp.disable_pipes(vector_disabled_pipes):
+        _vector_cache[query.text] = nlp(query.text).vector.tolist()
+
+    return _vector_cache[query.text]
 
 
 class VectorsQuery(BaseModel):
