@@ -118,7 +118,7 @@ def run():
 
     if config["adaptation"]["export_grid_stats"]:
         log.info("Exporting grid stats.")
-        wordnet.lock = None
+        # wordnet.lock = None
 
         raw_results = [entry for entry in raw_results if entry is not None]
         case_results = defaultdict(list)
@@ -128,26 +128,27 @@ def run():
             case_results[case].append((score, i))
             param_results[i].append(score)
 
-        case_max_results = {
-            case: sorted(scores, key=lambda x: x[0], reverse=True)[:3]
-            for case, scores in case_results.items()
-        }
         best_case_results = {}
 
-        for case, scores in case_max_results.items():
-            current_path = _nested_path(
-                out_path / case, len(param_grid), param_grid[i]
-            ).resolve()
-            best_case_results[case] = [
-                {
-                    "max_score": score,
-                    "case.json": _file_path(current_path / "case.json"),
-                    "case.pdf": _file_path(current_path / "case.pdf"),
-                    "stats.json": _file_path(current_path / "stats.json"),
-                    "config": param_grid[i],
-                }
-                for score, i in scores
-            ]
+        for case, scores in case_results.items():
+            scores.sort(key=lambda x: x[0], reverse=True)
+            _results = []
+
+            for score, i in scores:
+                current_path = _nested_path(
+                    out_path / case, len(param_grid), param_grid[i]
+                ).resolve()
+                _results.append(
+                    {
+                        "max_score": score,
+                        "case.json": _file_path(current_path / "case.json"),
+                        "case.pdf": _file_path(current_path / "case.pdf"),
+                        "stats.json": _file_path(current_path / "stats.json"),
+                        "config": param_grid[i],
+                    }
+                )
+
+            best_case_results[case] = _results
 
         mean_param_results = sorted(
             [
