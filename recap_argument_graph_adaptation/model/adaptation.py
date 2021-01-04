@@ -89,13 +89,7 @@ class Concept:
     def from_concept(
         cls,
         source: Concept,
-        metrics: t.Tuple[
-            t.Optional[float],
-            t.Optional[float],
-            t.Optional[float],
-            t.Optional[float],
-            t.Optional[float],
-        ],
+        metrics: t.Tuple[t.Optional[float], ...],
     ) -> Concept:
         return Concept(
             source.name,

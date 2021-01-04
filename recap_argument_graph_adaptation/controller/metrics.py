@@ -17,12 +17,7 @@ best_concept_metrics = (1, 0, 1, 1)
 
 def update_concept_metrics(
     concept: Concept, related_concepts: t.Union[Concept, t.Mapping[Concept, float]]
-) -> t.Tuple[
-    t.Optional[float],
-    t.Optional[float],
-    t.Optional[float],
-    t.Optional[float],
-]:
+) -> t.Tuple[t.Optional[float], ...]:
     return init_concept_metrics(
         concept.vector, concept.nodes, concept.synsets, related_concepts
     )
@@ -33,12 +28,7 @@ def init_concept_metrics(
     nodes: t.Sequence[graph.Node],
     synsets: t.Iterable[str],
     related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
-) -> t.Tuple[
-    t.Optional[float],
-    t.Optional[float],
-    t.Optional[float],
-    t.Optional[float],
-]:
+) -> t.Tuple[t.Optional[float], ...]:
     db = Database()
 
     if isinstance(related_concepts, Concept):

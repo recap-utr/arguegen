@@ -129,22 +129,25 @@ def run():
             param_results[i].append(score)
 
         case_max_results = {
-            case: max(scores, key=lambda x: x[0])
+            case: sorted(scores, key=lambda x: x[0], reverse=True)[:3]
             for case, scores in case_results.items()
         }
         best_case_results = {}
 
-        for case, (score, i) in case_max_results.items():
+        for case, scores in case_max_results.items():
             current_path = _nested_path(
                 out_path / case, len(param_grid), param_grid[i]
             ).resolve()
-            best_case_results[case] = {
-                "max_score": score,
-                "case.json": _file_path(current_path / "case.json"),
-                "case.pdf": _file_path(current_path / "case.pdf"),
-                "stats.json": _file_path(current_path / "stats.json"),
-                "config": param_grid[i],
-            }
+            best_case_results[case] = [
+                {
+                    "max_score": score,
+                    "case.json": _file_path(current_path / "case.json"),
+                    "case.pdf": _file_path(current_path / "case.pdf"),
+                    "stats.json": _file_path(current_path / "stats.json"),
+                    "config": param_grid[i],
+                }
+                for score, i in scores
+            ]
 
         mean_param_results = sorted(
             [
