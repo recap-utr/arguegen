@@ -7,6 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 import numpy as np
+
 # from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
@@ -25,6 +26,7 @@ def init_reader():
         WordNetCorpusReader,
         LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
     )
+
 
 wn = init_reader()
 
@@ -117,9 +119,11 @@ def contextual_synsets(
     # If true, only include the synsets with higher similarity.
     # Otherwise, include only the best one.
     if best_synset_tuple := next(iter(synset_tuples), None):
-        if best_synset_tuple[1] > config.tuning("hypernym", "min_similarity"):
+        min_similarity = config.tuning("hypernym", "min_similarity")
+
+        if best_synset_tuple[1] > min_similarity:
             synset_tuples = filter(
-                lambda x: x[1] > config.tuning("hypernym", "min_similarity"),
+                lambda x: x[1] > min_similarity,
                 synset_tuples,
             )
         else:
