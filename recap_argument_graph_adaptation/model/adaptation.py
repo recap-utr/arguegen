@@ -117,9 +117,6 @@ class Rule:
         return f"({self.source})->({self.target})"
 
 
-rules_limit = config.tuning("rules")["adaptation_limit"]
-
-
 @dataclass(frozen=True)
 class Case:
     name: str
@@ -132,9 +129,10 @@ class Case:
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:
-        current_limit = len(self._rules) if rules_limit == 0 else rules_limit
+        rules_limit = config.tuning("rules")["adaptation_limit"]
+        slice = len(self._rules) if rules_limit == 0 else rules_limit
 
-        return self._rules[:current_limit]
+        return self._rules[:slice]
 
     @property
     def benchmark_rules(self) -> t.Tuple[Rule, ...]:

@@ -45,6 +45,7 @@ def spacy_nlp() -> Language:
 
     return spacy_cache[model_name]  # type: ignore
 
+
 if config["nlp"]["embeddings"] == "transformers":
     from sentence_transformers import SentenceTransformer
 
@@ -118,14 +119,20 @@ class KeywordQuery(BaseModel):
 
 class KeywordResponse(BaseModel):
     term: str
+    vector: t.List[float]
     lemma: str
     pos_tag: str
     weight: float
 
 
-@app.post("/keywords", response_model=t.List[t.List[KeywordResponse]])
-def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
-    docs = nlp.pipe(query.texts)
+class KeywordsResponse(BaseModel):
+    keywords: t.List[KeywordResponse]
+    vector: t.List[float]
+
+
+@app.post("/keywords", response_model=t.List[KeywordsResponse])
+def keywords(query: KeywordQuery) -> t.List[KeywordsResponse]:
+    docs: t.Iterable[t.Any] = nlp.pipe(query.texts)
     response = []
 
     for doc in docs:
@@ -138,11 +145,17 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
             for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords):
                 doc_keywords.append(
                     KeywordResponse(
-                        term=term, lemma=lemma, pos_tag=pos_tag, weight=weight
+                        term=term,
+                        vector=nlp(term).vector.tolist(),
+                        lemma=lemma,
+                        pos_tag=pos_tag,
+                        weight=weight,
                     )
                 )
 
-        response.append(doc_keywords)
+        response.append(
+            KeywordsResponse(keywords=doc_keywords, vector=doc.vector.tolist())
+        )
 
     return response
 

@@ -126,7 +126,7 @@ def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -
 
 def keywords(
     texts: t.Iterable[str], pos_tags: t.Iterable[str]
-) -> t.List[t.List[t.Mapping[str, t.Any]]]:
+) -> t.List[t.Dict[str, t.Any]]:
     # if not pos_tags:
     #     pos_tags = []
 
@@ -140,9 +140,15 @@ def keywords(
 
     # return terms
 
-    keywords = session.post(
+    response = session.post(
         _url("keywords"),
         json={"texts": texts, "pos_tags": pos_tags},
     ).json()
 
-    return keywords
+    for doc in response:
+        doc["vector"] = np.array(doc["vector"])
+
+        for keyword in doc["keywords"]:
+            keyword["vector"] = np.array(keyword["vector"])
+
+    return response

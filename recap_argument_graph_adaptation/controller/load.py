@@ -1,4 +1,5 @@
 import csv
+import logging
 import typing as t
 from pathlib import Path
 
@@ -7,6 +8,8 @@ from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
 from recap_argument_graph_adaptation.model import adaptation, graph
 from recap_argument_graph_adaptation.model.config import config
 from recap_argument_graph_adaptation.model.database import Database
+
+log = logging.getLogger(__name__)
 
 
 def cases() -> t.List[adaptation.Case]:
@@ -23,7 +26,11 @@ def cases() -> t.List[adaptation.Case]:
     return result
 
 
+# TODO: Output case and benchmark rules for verification purposes.
+
+
 def _case(path: Path) -> adaptation.Case:
+    name = path.name
     graph = ag.Graph.open(path / "graph.json")
     rules = _parse_rules(path / "rules.csv")
     query = _parse_txt(path / "query.txt")
@@ -34,7 +41,7 @@ def _case(path: Path) -> adaptation.Case:
         )
 
     return adaptation.Case(
-        path.name,
+        name,
         query,
         graph,
         rules,

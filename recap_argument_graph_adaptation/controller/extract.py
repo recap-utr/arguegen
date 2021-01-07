@@ -24,15 +24,17 @@ def keywords(graph: ag.Graph, rules: t.Collection[Rule]) -> t.Set[Concept]:
     concepts: t.Set[Concept] = set()
     db = Database()
 
-    graph_keywords = spacy.keywords(
+    keywords_response = spacy.keywords(
         [node.plain_text for node in graph.inodes], spacy_pos_tags
     )
-    node_vectors = spacy.vectors([node.plain_text for node in graph.inodes])
 
-    for keywords, node_vector in zip(graph_keywords, node_vectors):
+    for doc in keywords_response:
+        keywords = doc["keywords"]
+        node_vector = doc["vector"]
+
         for k in keywords:
             pos_tag = spacy_pos_mapping[k["pos_tag"]]
-            vector = spacy.vector(k["term"])
+            vector = k["vector"]
             nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
             synsets = wordnet.contextual_synsets(
                 node_vector, k["term"], pos_tag
