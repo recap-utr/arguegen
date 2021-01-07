@@ -117,79 +117,25 @@ class Rule:
         return f"({self.source})->({self.target})"
 
 
+rules_limit = config.tuning("rules")["adaptation_limit"]
+
+
 @dataclass(frozen=True)
 class Case:
     name: str
     query: str
     graph: ag.Graph
-    rules: t.Tuple[Rule, ...]
-    benchmark_graph: ag.Graph
-    benchmark_rules: t.Tuple[Rule, ...]
+    _rules: t.Tuple[Rule, ...]
 
     def __str__(self) -> str:
         return self.name
 
-    # @classmethod
-    # def from_plain_case(
-    #     cls,
-    #     source: PlainCase,
-    #     rules: t.Tuple[Rule, ...],
-    #     benchmark_rules: t.Tuple[Rule, ...],
-    # ) -> Case:
-    #     return cls(
-    #         source.name,
-    #         source.query,
-    #         source.graph,
-    #         rules,
-    #         source.benchmark_graph,
-    #         benchmark_rules,
-    #     )
+    @property
+    def rules(self) -> t.Tuple[Rule, ...]:
+        current_limit = len(self._rules) if rules_limit == 0 else rules_limit
 
+        return self._rules[:current_limit]
 
-# @dataclass(frozen=True)
-# class PlainConcept:
-#     name: str
-#     pos: graph.POS
-#     nodes: t.Tuple[graph.Node, ...]
-#     synsets: t.Tuple[str, ...]
-#     keyword_weight: t.Optional[float]
-#     metrics: t.Tuple[float, ...]
-
-#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Concept:
-#         return Concept(
-#             nlp_func(self.name),
-#             self.pos,
-#             self.nodes,
-#             self.synsets,
-#             self.keyword_weight,
-#             *self.metrics,
-#         )
-
-
-# @dataclass(frozen=True)
-# class PlainRule:
-#     source: PlainConcept
-#     target: PlainConcept
-
-#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Rule:
-#         return Rule(self.source.nlp(nlp_func), self.target.nlp(nlp_func))
-
-
-# @dataclass(frozen=True)
-# class PlainCase:
-#     name: str
-#     query: str
-#     graph: ag.Graph
-#     rules: t.Tuple[PlainRule, ...]
-#     benchmark_graph: ag.Graph
-#     benchmark_rules: t.Tuple[PlainRule, ...]
-
-#     def nlp(self, nlp_func: t.Callable[[str], Doc]) -> Case:
-#         return Case(
-#             self.name,
-#             self.query,
-#             self.graph,
-#             tuple((rule.nlp(nlp_func) for rule in self.rules)),
-#             self.benchmark_graph,
-#             tuple((rule.nlp(nlp_func) for rule in self.benchmark_rules)),
-#         )
+    @property
+    def benchmark_rules(self) -> t.Tuple[Rule, ...]:
+        return self._rules

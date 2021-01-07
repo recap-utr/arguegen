@@ -24,28 +24,26 @@ def cases() -> t.List[adaptation.Case]:
 
 
 def _case(path: Path) -> adaptation.Case:
-    input_graph = ag.Graph.open(path / "case-graph.json")
-    input_rules = _parse_rules(path / "case-rules.csv")
+    graph = ag.Graph.open(path / "graph.json")
+    rules = _parse_rules(path / "rules.csv")
+    query = _parse_txt(path / "query.txt")
 
-    benchmark_graph = ag.Graph.open(path / "benchmark-graph.json")
-    benchmark_rules = _parse_rules(path / "benchmark-rules.csv")
-
-    if not (input_graph and input_rules and benchmark_graph and benchmark_rules):
+    if not (graph and rules and query):
         raise RuntimeError(
-            "Not all required assets ('case-graph.json', 'case-rules.csv', 'benchmark-graph.json', 'benchmark-rules.csv') were found"
+            "Not all required assets ('graph.json', 'rules.csv', 'query.txt') were found"
         )
-
-    with (path / "query.txt").open() as file:
-        query = file.read()
 
     return adaptation.Case(
         path.name,
         query,
-        input_graph,
-        input_rules,
-        benchmark_graph,
-        benchmark_rules,
+        graph,
+        rules,
     )
+
+
+def _parse_txt(path: Path) -> str:
+    with path.open() as f:
+        return f.read()
 
 
 def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:

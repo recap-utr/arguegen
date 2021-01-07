@@ -1,4 +1,4 @@
-version = "3.0"
+version = "3.1"
 
 
 # PRIVATE
@@ -36,6 +36,9 @@ knowledge_graph = "wordnet"
 
 
 [tuning]
+# How many of the given benchmark rules should be used as an input to the adaptation process.
+rules_adaptation_limit = [1]
+
 # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 hypernym_min_similarity = [0.25, 0.5, 0.75]
 
