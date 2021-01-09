@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pendulum
+import recap_argument_graph as ag
 import requests
 import typer
 from sklearn.model_selection import ParameterGrid
@@ -52,9 +53,7 @@ def _filter_mapping(
     }
 
 
-# TODO: Somewhere in the code, a list (or similar) is modified accidentally.
-# This error propagates to all runs, making the results inconsistent and wrong.
-# It needs to be checked where this error happens!
+# TODO: Add computation time to grid and single stats
 # https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
 
 
@@ -253,6 +252,7 @@ def _perform_adaptation(
     reference_paths = {}
     adapted_paths = {}
     adapted_synsets = {}
+    adapted_graph = None
 
     log.debug("Extracting keywords.")
     concepts = extract.keywords(case.graph, case.rules)
@@ -266,7 +266,7 @@ def _perform_adaptation(
 
     if config["adaptation"]["export_graph"]:
         log.debug("Exporting graph.")
-        adapt.argument_graph(case.graph, case.rules, adapted_concepts)
+        adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
     log.debug("Evaluating adaptations.")
     eval_results = evaluate.case(case, adapted_concepts)
@@ -287,19 +287,19 @@ def _perform_adaptation(
         "results": adaptation_results,
         "config": dict(config),
     }
-    _write_output(case, stats_export, nested_out_path)
+    _write_output(adapted_graph, stats_export, nested_out_path)
 
     return eval_results
 
 
 def _write_output(
-    case: adaptation.Case, stats: t.Mapping[str, t.Any], path: Path
+    adapted_graph: t.Optional[ag.Graph], stats: t.Mapping[str, t.Any], path: Path
 ) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
-    if config["adaptation"]["export_graph"]:
-        case.graph.save(path / "case.json")
-        case.graph.render(path / "case.pdf")
+    if config["adaptation"]["export_graph"] and adapted_graph:
+        adapted_graph.save(path / "case.json")
+        adapted_graph.render(path / "case.pdf")
 
     if config["adaptation"]["export_single_stats"]:
         with (path / "stats.json").open("w") as file:

@@ -15,10 +15,10 @@ log = logging.getLogger(__name__)
 
 
 def argument_graph(
-    graph: ag.Graph,
+    original_graph: ag.Graph,
     rules: t.Collection[adaptation.Rule],
     adapted_concepts: t.Mapping[Concept, Concept],
-) -> None:
+) -> ag.Graph:
     substitutions = {
         concept.name: adapted_concept.name
         for concept, adapted_concept in adapted_concepts.items()
@@ -27,12 +27,15 @@ def argument_graph(
         substitutions[rule.source.name] = rule.target.name
 
     substrings = sorted(substitutions.keys(), key=len, reverse=True)
+    adapted_graph = original_graph.copy()
 
-    for node in graph.inodes:
+    for node in adapted_graph.inodes:
         for substring in substrings:
             node.text = node.plain_text.replace(substring, substitutions[substring])
 
         # node.text = pr.proofread(node.text)
+
+    return adapted_graph
 
 
 def synsets(
