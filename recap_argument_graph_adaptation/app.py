@@ -2,6 +2,7 @@ import itertools
 import json
 import logging
 import multiprocessing
+import shutil
 import statistics
 import typing as t
 from collections import defaultdict
@@ -14,6 +15,7 @@ import typer
 from sklearn.model_selection import ParameterGrid
 
 from recap_argument_graph_adaptation.controller import evaluate, spacy, wordnet
+from recap_argument_graph_adaptation.helper import convert
 from recap_argument_graph_adaptation.model.evaluation import Evaluation
 
 from .controller import adapt, export, extract, load
@@ -95,13 +97,13 @@ def run():
         if config["resources"]["processes"] == 0
         else int(config["resources"]["processes"])
     )
-    raw_results = []
+    results = []
 
     log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
 
     if processes == 1 or len(run_args) == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
-        raw_results = [_multiprocessing_run(run_arg) for run_arg in run_args]
+        results = [_multiprocessing_run(run_arg) for run_arg in run_args]
     else:
         with multiprocessing.Pool(
             processes
@@ -113,64 +115,85 @@ def run():
                 show_pos=True,
                 show_eta=True,
             ) as iterator:
-                for raw_result in iterator:
-                    raw_results.append(raw_result)
+                for result in iterator:
+                    results.append(result)
 
-    if config["adaptation"]["export_grid_stats"]:
-        log.info("Exporting grid stats.")
-        # wordnet.lock = None
+        if config["adaptation"]["export_grid_stats"]:
+            _grid_stats(results, param_grid, out_path)
 
-        raw_results = [entry for entry in raw_results if entry is not None]
-        case_results = defaultdict(list)
-        param_results = [[] for _ in range(len(param_grid))]
+    # wordnet.lock = None
+    log.info("Finished.")
 
-        for case, i, score in raw_results:
-            case_results[case].append((score, i))
-            param_results[i].append(score)
 
-        best_case_results = {}
+def _grid_stats(
+    results: t.Iterable[t.Tuple[str, int, Evaluation]],
+    param_grid: t.Sequence[t.Mapping[str, t.Any]],
+    out_path: Path,
+) -> None:
+    log.info("Exporting grid stats.")
 
-        for case, scores in case_results.items():
-            scores.sort(key=lambda x: x[0], reverse=True)
-            _results = []
+    results = [entry for entry in results if entry is not None]
+    case_results = defaultdict(list)
+    param_results = [[] for _ in range(len(param_grid))]
 
-            for score, i in scores:
-                current_path = _nested_path(
-                    out_path / case, len(param_grid), param_grid[i]
-                ).resolve()
-                _results.append(
-                    {
-                        "max_score": score,
+    for case, i, eval in results:
+        case_results[case].append((eval, i))
+        param_results[i].append(eval.score)
+
+    best_case_results = {}
+
+    for case, eval_results in case_results.items():
+        eval_results.sort(key=lambda x: x[0].score, reverse=True)
+        _results = []
+
+        for eval, i in eval_results:
+            current_path = _nested_path(
+                out_path / case, len(param_grid), param_grid[i]
+            ).resolve()
+
+            # Move the best results to the root folder for that case.
+            if len(_results) == 0:
+                for file in ("case.json", "case.pdf", "stats.json"):
+                    try:
+                        shutil.copy(
+                            current_path / file, out_path / case / f"best_{file}"
+                        )
+                    except Exception:
+                        pass
+
+            _results.append(
+                {
+                    "evaluation": eval.to_dict(compact=True),
+                    "files": {
                         "case.json": _file_path(current_path / "case.json"),
                         "case.pdf": _file_path(current_path / "case.pdf"),
                         "stats.json": _file_path(current_path / "stats.json"),
-                        "config": param_grid[i],
-                    }
-                )
+                    },
+                    "config": param_grid[i],
+                }
+            )
 
-            best_case_results[case] = _results
+        best_case_results[case] = _results
 
-        mean_param_results = sorted(
-            [
-                {"mean_score": statistics.mean(scores), "config": param_grid[i]}
-                for i, scores in enumerate(param_results)
-                if scores
-            ],
-            key=lambda x: x["mean_score"],
-            reverse=True,
-        )
+    mean_param_results = sorted(
+        [
+            {"mean_score": statistics.mean(scores), "config": param_grid[i]}
+            for i, scores in enumerate(param_results)
+            if scores
+        ],
+        key=lambda x: x["mean_score"],
+        reverse=True,
+    )
 
-        grid_stats_path = out_path / "grid_stats.json"
-        grid_stats = {
-            "param_results": mean_param_results,
-            "case_results": best_case_results,
-        }
+    grid_stats_path = out_path / "grid_stats.json"
+    grid_stats = {
+        "param_results": mean_param_results,
+        "case_results": best_case_results,
+    }
 
-        grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
-        with grid_stats_path.open("w") as file:
-            _json_dump(grid_stats, file)
-
-    log.info("Finished.")
+    grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
+    with grid_stats_path.open("w") as file:
+        _json_dump(grid_stats, file)
 
 
 @dataclass()
@@ -186,7 +209,7 @@ class RunArgs:
     out_path: Path
 
 
-def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
+def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, Evaluation]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
@@ -200,7 +223,7 @@ def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, float]:
 
     # log.info(f"Finished with run {args.i + 1}/{args.total_runs}.")
 
-    return (str(args.case), args.current_params, eval_result.score)
+    return (str(args.case), args.current_params, eval_result)
 
 
 def _nested_path(
@@ -249,8 +272,15 @@ def _perform_adaptation(
     adaptation_results = export.statistic(
         concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
     )
+
+    rules_export = {
+        "benchmark_rules": convert.list_str(case.benchmark_rules),
+        "case_rules": convert.list_str(case.rules),
+    }
+
     stats_export = {
         "evaluation": eval_results.to_dict(),
+        "rules": rules_export,
         "results": adaptation_results,
         "config": dict(config),
     }

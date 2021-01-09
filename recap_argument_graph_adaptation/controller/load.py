@@ -26,9 +26,6 @@ def cases() -> t.List[adaptation.Case]:
     return result
 
 
-# TODO: Output case and benchmark rules for verification purposes.
-
-
 def _case(path: Path) -> adaptation.Case:
     name = path.name
     graph = ag.Graph.open(path / "graph.json")

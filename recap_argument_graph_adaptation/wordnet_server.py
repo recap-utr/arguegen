@@ -203,7 +203,7 @@ def hypernym_paths(code):
     return paths
 
 
-# TODO: The function max_depth and min_depth could cache/precompute their results.
+# The function max_depth and min_depth could cache/precompute their results.
 def max_depth(code: str):
     """
     :return: The length of the longest hypernym path from this

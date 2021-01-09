@@ -1,8 +1,9 @@
 import logging
 import statistics
 import typing as t
+from dataclasses import dataclass
 
-from recap_argument_graph_adaptation.controller import metrics
+from recap_argument_graph_adaptation.controller import metrics, spacy
 from recap_argument_graph_adaptation.helper import convert
 from recap_argument_graph_adaptation.model.adaptation import Case, Concept
 from recap_argument_graph_adaptation.model.evaluation import Evaluation
@@ -10,10 +11,21 @@ from recap_argument_graph_adaptation.model.evaluation import Evaluation
 log = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class WeightedScore:
+    score: float
+    weight: float
+
+
+# TODO: Add more output to the evaluation file. For instance, the scores could be exported.
 def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluation:
+    case_rules = set(case.rules)
+    benchmark_rules = set(case.benchmark_rules)
+
     computed_adaptations = {**adapted_concepts}
-    computed_adaptations.update({rule.source: rule.target for rule in case.rules})
-    benchmark_adaptations = {rule.source: rule.target for rule in case.benchmark_rules}
+    benchmark_adaptations = {
+        rule.source: rule.target for rule in benchmark_rules if rule not in case_rules
+    }
 
     benchmark_keys = set(benchmark_adaptations)
     computed_keys = set(computed_adaptations)
@@ -26,27 +38,59 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
     log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
     log.debug(f"Only computed adaptations: {convert.list_str(only_computed)}")
 
-    scores = []
+    positive_scores = []
+    negative_scores = []
 
-    for original_concept in benchmark_and_computed:
-        benchmark_adaptation = benchmark_adaptations[original_concept]
-        computed_adaptation = computed_adaptations[original_concept]
-        scores.append(_compute_score(benchmark_adaptation, computed_adaptation))
+    for i, (original_concept, benchmark_adaptation) in enumerate(
+        benchmark_adaptations.items()
+    ):
+        weight = len(benchmark_adaptations) - i + 1
 
-    # Here, a penalty is applied, because we assume that ignoring a specified adaptation is the worst case.
-    for original_concept in only_benchmark:
-        benchmark_adaptation = benchmark_adaptations[original_concept]
-        # scores.append(0.5 * _compute_score(benchmark_adaptation, original_concept))
-        scores.append(0.0)
+        if computed_adaptation := computed_adaptations.get(original_concept):
+            positive_scores.append(
+                WeightedScore(
+                    _compute_score(benchmark_adaptation, computed_adaptation), weight
+                )
+            )
+        else:
+            negative_scores.append(
+                WeightedScore(
+                    _compute_score(benchmark_adaptation, original_concept), weight
+                )
+            )
 
     for original_concept in only_computed:
+        # Here, benchmark_adaptation == original_concept
+        # These scores are 'penalized' due to the fact that they get a lower weight:
+        # All of these concepts *combined* count as much as the least important benchmark rule.
         computed_adaptation = computed_adaptations[original_concept]
-        scores.append(0.5 * _compute_score(original_concept, computed_adaptation))
+        negative_scores.append(
+            WeightedScore(
+                _compute_score(original_concept, computed_adaptation),
+                1.0,
+            )
+        )
 
-    mean = statistics.mean(scores)
-    log.debug(f"Finished with global score of {round(mean, 3)}.")
+    positive_score = 0
+    negative_score = 0
 
-    return Evaluation(mean, benchmark_and_computed, only_benchmark, only_computed)
+    if positive_scores:
+        positive_score = sum(
+            item.score * item.weight for item in positive_scores
+        ) / sum(item.weight for item in positive_scores)
+
+    if negative_scores:
+        negative_score = sum(
+            (1 - item.score) * item.weight for item in negative_scores
+        ) / sum(item.weight for item in negative_scores)
+
+    global_score = positive_score - negative_score
+
+    log.debug(f"Finished with global score of {round(global_score, 3)}.")
+
+    return Evaluation(
+        global_score, benchmark_and_computed, only_benchmark, only_computed
+    )
 
 
 def _compute_score(
@@ -55,9 +99,11 @@ def _compute_score(
     if benchmark_adaptation == computed_adaptation:
         return 1.0
 
-    comparison_metrics = metrics.update_concept_metrics(
-        computed_adaptation, benchmark_adaptation
-    )
-    comparison_concept = Concept.from_concept(computed_adaptation, comparison_metrics)
+    return spacy.similarity(benchmark_adaptation.vector, computed_adaptation.vector)
 
-    return comparison_concept.score
+    # comparison_metrics = metrics.update_concept_metrics(
+    #     computed_adaptation, benchmark_adaptation
+    # )
+    # comparison_concept = Concept.from_concept(computed_adaptation, comparison_metrics)
+
+    # return comparison_concept.score

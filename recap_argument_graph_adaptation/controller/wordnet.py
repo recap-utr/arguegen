@@ -106,12 +106,10 @@ def contextual_synsets(
     synsets = concept_synsets(term, pos)
     synset_definitions = [synset_definition(synset) for synset in synsets]
     synset_vectors = spacy.vectors(synset_definitions)
-
-    synset_tuples = []
-
-    for synset, definition_vector in zip(synsets, synset_vectors):
-        similarity = spacy.similarity(text_vector, definition_vector)
-        synset_tuples.append((synset, similarity))
+    synset_tuples = [
+        (synset, spacy.similarity(text_vector, definition_vector))
+        for synset, definition_vector in zip(synsets, synset_vectors)
+    ]
 
     synset_tuples.sort(key=lambda item: item[1])
 
