@@ -8,6 +8,7 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
+from timeit import default_timer as timer
 
 import pendulum
 import recap_argument_graph as ag
@@ -53,19 +54,12 @@ def _filter_mapping(
     }
 
 
-# TODO: Add computation time to grid and single stats
-
-# TODO: The evaluation does not seem to work properly. Compare these files:
-# file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/grid_stats.json
-# 1) file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/public-transport/adaptation_min_score_0.0/conceptnet_method_between/conceptnet_selector_similarity/extraction_min_score_0.2/hypernym_min_similarity_0.0/rules_adaptation_limit_1/score_semantic_similarity_0.67/score_wordnet_path_similarity_0.33/score_wordnet_wup_similarity_0.0/weight_original_concept_0.5/weight_rule_source_0.25/weight_rule_target_0.25/stats.json
-# 2) file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/public-transport/adaptation_min_score_0.25/conceptnet_method_between/conceptnet_selector_similarity/extraction_min_score_0.2/hypernym_min_similarity_0.67/rules_adaptation_limit_1/score_semantic_similarity_0.67/score_wordnet_path_similarity_0.33/score_wordnet_wup_similarity_0.0/weight_original_concept_0.5/weight_rule_source_0.25/weight_rule_target_0.25/stats.json
-# The secund should be better, but instead the first gets a better score by the system.
-
 # https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
 
 
 def run():
     log.info("Initializing.")
+    start_time = timer()
 
     out_path = Path(config["resources"]["cases"]["output"], _timestamp())
     cases = load.cases()
@@ -127,15 +121,19 @@ def run():
                 for result in iterator:
                     results.append(result)
 
+    end_time = timer()
+    duration = end_time - start_time
+
     if config["adaptation"]["export_grid_stats"] and len(run_args) > 1:
-        _grid_stats(results, param_grid, out_path)
+        _grid_stats(results, duration, param_grid, out_path)
 
     wordnet.lock = None
-    log.info("Finished.")
+    log.info(f"Finished in {duration} sec.")
 
 
 def _grid_stats(
     results: t.Iterable[t.Tuple[str, int, Evaluation]],
+    duration: float,
     param_grid: t.Sequence[t.Mapping[str, t.Any]],
     out_path: Path,
 ) -> None:
@@ -196,6 +194,7 @@ def _grid_stats(
 
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
+        "duration": duration,
         "param_results": mean_param_results,
         "case_results": best_case_results,
     }
@@ -251,6 +250,7 @@ def _perform_adaptation(
     case: adaptation.Case,
     out_path: Path,
 ) -> Evaluation:
+    start_time = timer()
     nested_out_path = _nested_path(
         out_path / case.name, config["_tuning_runs"], config["_tuning"]
     )
@@ -278,6 +278,8 @@ def _perform_adaptation(
     log.debug("Evaluating adaptations.")
     eval_results = evaluate.case(case, adapted_concepts)
 
+    end_time = timer()
+
     log.debug("Exporting statistics.")
     adaptation_results = export.statistic(
         concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
@@ -290,6 +292,7 @@ def _perform_adaptation(
 
     stats_export = {
         "evaluation": eval_results.to_dict(),
+        "time": end_time - start_time,
         "rules": rules_export,
         "results": adaptation_results,
         "config": dict(config),

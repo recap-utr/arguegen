@@ -17,7 +17,6 @@ class WeightedScore:
     weight: float
 
 
-# TODO: Add more output to the evaluation file. For instance, the scores could be exported.
 def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluation:
     case_rules = set(case.rules)
     benchmark_rules = set(case.benchmark_rules)
