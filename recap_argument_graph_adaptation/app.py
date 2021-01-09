@@ -37,9 +37,9 @@ def _file_path(path: Path) -> str:
     return "file://" + str(path)
 
 
+# https://stackoverflow.com/a/50379950/7626878
 def init_child(lock_):
-    global lock
-    lock = lock_
+    wordnet.lock = lock_
 
 
 def _filter_mapping(
@@ -73,7 +73,6 @@ def run():
     if not param_grid:
         param_grid = [{key: values[0] for key, values in config["tuning"].items()}]
 
-    # lock = multiprocessing.Lock()
     total_params = len(param_grid)
     total_cases = len(cases)
     total_runs = total_params * total_cases
@@ -108,11 +107,12 @@ def run():
         logging.getLogger(__package__).setLevel(logging.DEBUG)
         results = [_multiprocessing_run(run_arg) for run_arg in run_args]
     else:
+        local_lock = multiprocessing.Lock()
         with multiprocessing.Pool(
-            processes
-        ) as pool:  # , initializer=init_child, initargs=(lock,)
+            processes, initializer=init_child, initargs=(local_lock,)
+        ) as pool:
             with typer.progressbar(
-                pool.imap(_multiprocessing_run, run_args, chunksize=2),
+                pool.imap(_multiprocessing_run, run_args),
                 length=len(run_args),
                 show_percent=True,
                 show_pos=True,
@@ -127,7 +127,6 @@ def run():
     if config["adaptation"]["export_grid_stats"] and len(run_args) > 1:
         _grid_stats(results, duration, param_grid, out_path)
 
-    wordnet.lock = None
     log.info(f"Finished in {duration} sec.")
 
 
@@ -223,13 +222,9 @@ def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, Evaluation]:
     config["_tuning"] = args.params
     config["_tuning_runs"] = args.total_runs
     spacy.session = requests.Session()
-    # wordnet.wn = wordnet.init_reader()
-    # wordnet.lock = lock
 
     log.debug("Starting adaptation pipeline.")
     eval_result = _perform_adaptation(args.case, args.out_path)
-
-    # log.info(f"Finished with run {args.i + 1}/{args.total_runs}.")
 
     return (str(args.case), args.current_params, eval_result)
 

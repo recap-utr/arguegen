@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import itertools
 import json
+import multiprocessing
 import typing as t
 from collections import defaultdict
-from multiprocessing import Lock
+from multiprocessing import synchronize
 from pathlib import Path
 
 import numpy as np
@@ -18,7 +19,17 @@ from ..model import graph
 from ..model.config import Config
 
 config = Config.instance()
-lock = Lock()
+
+
+class EmptyLock:
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+lock: t.Union[synchronize.Lock, EmptyLock] = EmptyLock()
 
 
 # def init_reader():
