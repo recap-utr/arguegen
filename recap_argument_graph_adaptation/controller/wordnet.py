@@ -4,11 +4,11 @@ import itertools
 import json
 import typing as t
 from collections import defaultdict
+from multiprocessing import Lock
 from pathlib import Path
 
 import numpy as np
-
-# from nltk.corpus import wordnet as wn
+from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
@@ -18,21 +18,23 @@ from ..model import graph
 from ..model.config import Config
 
 config = Config.instance()
+lock = Lock()
 
 
-def init_reader():
-    return LazyCorpusLoader(
-        "wordnet",
-        WordNetCorpusReader,
-        LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
-    )
+# def init_reader():
+#     return LazyCorpusLoader(
+#         "wordnet",
+#         WordNetCorpusReader,
+#         LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
+#     )
 
 
-wn = init_reader()
+# wn = init_reader()
 
 
 def _synset(code: str) -> Synset:
-    return wn.synset(code)
+    with lock:
+        return wn.synset(code)
 
 
 def _synsets(name: str, pos: t.Union[None, str, t.Collection[str]]) -> t.List[Synset]:
@@ -46,7 +48,10 @@ def _synsets(name: str, pos: t.Union[None, str, t.Collection[str]]) -> t.List[Sy
         pos_tags.extend(pos)
 
     for pos_tag in pos_tags:
-        results.extend(wn.synsets(name, pos_tag))
+        with lock:
+            new_synsets = wn.synsets(name, pos_tag)
+
+        results.extend(new_synsets)
 
     return results
 

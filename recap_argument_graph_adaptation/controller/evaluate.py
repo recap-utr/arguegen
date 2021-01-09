@@ -86,7 +86,7 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
 
     global_score = positive_score - negative_score
 
-    log.debug(f"Finished with global score of {round(global_score, 3)}.")
+    log.debug(f"Finished with global score of {global_score}.")
 
     return Evaluation(
         global_score, benchmark_and_computed, only_benchmark, only_computed

@@ -52,6 +52,9 @@ def _filter_mapping(
     }
 
 
+# TODO: Somewhere in the code, a list (or similar) is modified accidentally.
+# This error propagates to all runs, making the results inconsistent and wrong.
+# It needs to be checked where this error happens!
 # https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
 
 
@@ -118,10 +121,10 @@ def run():
                 for result in iterator:
                     results.append(result)
 
-        if config["adaptation"]["export_grid_stats"]:
-            _grid_stats(results, param_grid, out_path)
+    if config["adaptation"]["export_grid_stats"] and len(run_args) > 1:
+        _grid_stats(results, param_grid, out_path)
 
-    # wordnet.lock = None
+    wordnet.lock = None
     log.info("Finished.")
 
 
@@ -215,7 +218,7 @@ def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, Evaluation]:
     config["_tuning"] = args.params
     config["_tuning_runs"] = args.total_runs
     spacy.session = requests.Session()
-    wordnet.wn = wordnet.init_reader()
+    # wordnet.wn = wordnet.init_reader()
     # wordnet.lock = lock
 
     log.debug("Starting adaptation pipeline.")
