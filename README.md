@@ -1,9 +1,5 @@
 # ReCAP Argument Graph Adaptation
 
-## Limitations
-
-- On Windows-based systems, multiprocessing cannot be used currently. Set the config option `processes` to 1!
-
 ## Installation
 
 ```sh
