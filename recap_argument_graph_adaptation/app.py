@@ -112,7 +112,7 @@ def run():
             processes
         ) as pool:  # , initializer=init_child, initargs=(lock,)
             with typer.progressbar(
-                pool.imap(_multiprocessing_run, run_args),
+                pool.imap(_multiprocessing_run, run_args, chunksize=2),
                 length=len(run_args),
                 show_percent=True,
                 show_pos=True,
