@@ -26,16 +26,23 @@ def argument_graph(
     for rule in rules:
         substitutions[rule.source.name] = rule.target.name
 
-    substrings = sorted(substitutions.keys(), key=len, reverse=True)
     adapted_graph = original_graph.copy()
 
     for node in adapted_graph.inodes:
-        for substring in substrings:
-            node.text = node.plain_text.replace(substring, substitutions[substring])
-
+        node.text = _replace(node.plain_text, substitutions)
         # node.text = pr.proofread(node.text)
 
     return adapted_graph
+
+
+def _replace(text: str, substitutions: t.Mapping[str, str]):
+    substrings = sorted(substitutions.keys(), key=len, reverse=True)
+
+    for substring in substrings:
+        pattern = re.compile(substring, re.IGNORECASE)
+        orig = pattern.sub(substitutions[substring], text)
+
+    return text
 
 
 def synsets(

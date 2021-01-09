@@ -54,6 +54,13 @@ def _filter_mapping(
 
 
 # TODO: Add computation time to grid and single stats
+
+# TODO: The evaluation does not seem to work properly. Compare these files:
+# file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/grid_stats.json
+# 1) file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/public-transport/adaptation_min_score_0.0/conceptnet_method_between/conceptnet_selector_similarity/extraction_min_score_0.2/hypernym_min_similarity_0.0/rules_adaptation_limit_1/score_semantic_similarity_0.67/score_wordnet_path_similarity_0.33/score_wordnet_wup_similarity_0.0/weight_original_concept_0.5/weight_rule_source_0.25/weight_rule_target_0.25/stats.json
+# 2) file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-09-21-53-18/public-transport/adaptation_min_score_0.25/conceptnet_method_between/conceptnet_selector_similarity/extraction_min_score_0.2/hypernym_min_similarity_0.67/rules_adaptation_limit_1/score_semantic_similarity_0.67/score_wordnet_path_similarity_0.33/score_wordnet_wup_similarity_0.0/weight_original_concept_0.5/weight_rule_source_0.25/weight_rule_target_0.25/stats.json
+# The secund should be better, but instead the first gets a better score by the system.
+
 # https://stackoverflow.com/questions/53321925/use-nltk-corpus-multithreaded
 
 

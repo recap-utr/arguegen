@@ -98,7 +98,7 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, float]:
 
 def resolve(code: str) -> t.Tuple[str, graph.POS]:
     parts = code.rsplit(".", 2)
-    lemma = parts[0]
+    lemma = parts[0].replace("_", " ")
     pos = graph.wn_pos_mapping[parts[1]]
 
     return (lemma, pos)
