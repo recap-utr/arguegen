@@ -39,10 +39,6 @@ def _file_path(path: Path) -> str:
 
 # TODO: Refactor files/code structure
 
-# file:///Users/mlenz/Developer/ReCAP/Argument-Graph-Adaptation/data/output/2021-01-10-10-37-57/tuition-fees/adaptation_min_score_0.5/conceptnet_method_between/conceptnet_selector_similarity/extraction_min_score_0.2/hypernym_min_similarity_0.67/rules_adaptation_limit_1/score_semantic_similarity_0.67/score_wordnet_path_similarity_0.33/score_wordnet_wup_similarity_0.0/weight_original_concept_0.75/weight_rule_source_0.0/weight_rule_target_0.25/stats.json
-# TODO: Sometimes, the same keyword is extracted multiple times
-# TODO: Sometimes, the adapted concept is identical to the original concept
-
 # https://stackoverflow.com/a/50379950/7626878
 def init_child(lock_):
     wordnet.lock = lock_

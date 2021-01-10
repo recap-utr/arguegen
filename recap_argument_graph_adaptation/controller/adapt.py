@@ -90,7 +90,9 @@ def synsets(
                 adaptation_candidates.add(candidate)
 
         adapted_synsets[original_concept] = adaptation_candidates
-        adapted_concept = _filter_concepts(adaptation_candidates, rules)
+        adapted_concept = _filter_concepts(
+            adaptation_candidates, original_concept, rules
+        )
 
         if adapted_concept:
             adapted_concepts[original_concept] = adapted_concept
@@ -154,7 +156,9 @@ def paths(
 
             adaptation_candidates.add(candidate)
 
-        adapted_concept = _filter_concepts(adaptation_candidates, rules)
+        adapted_concept = _filter_concepts(
+            adaptation_candidates, original_concept, rules
+        )
 
         if adapted_concept:
             # In this step, the concept is correctly capitalized.
@@ -217,10 +221,14 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(
-    concepts: t.Set[Concept], rules: t.Collection[adaptation.Rule]
+    concepts: t.Set[Concept],
+    original_concept: Concept,
+    rules: t.Collection[adaptation.Rule],
 ) -> t.Optional[Concept]:
     # Remove the original adaptation source from the candidates
-    filtered_concepts = concepts.difference([rule.source for rule in rules])
+    # TODO: Check if original_concept should be excluded
+    filter_expr = [rule.source for rule in rules] + [original_concept]
+    filtered_concepts = concepts.difference(filter_expr)
     filtered_concepts = Concept.only_relevant(
         filtered_concepts, config.tuning("adaptation", "min_score")
     )
