@@ -52,11 +52,7 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
                 )
             )
         else:
-            negative_scores.append(
-                WeightedScore(
-                    _compute_score(benchmark_adaptation, original_concept), weight
-                )
-            )
+            negative_scores.append(WeightedScore(0.0, weight))
 
     for original_concept in only_computed:
         # Here, benchmark_adaptation == original_concept
@@ -66,7 +62,7 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
         negative_scores.append(
             WeightedScore(
                 _compute_score(original_concept, computed_adaptation),
-                1.0,
+                1 / len(benchmark_rules),
             )
         )
 
