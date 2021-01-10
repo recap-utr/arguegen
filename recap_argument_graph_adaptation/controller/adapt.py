@@ -113,12 +113,10 @@ def paths(
     adapted_paths = {}
 
     for original_concept, all_shortest_paths in reference_paths.items():
-
-        params = [
-            (shortest_path, original_concept, rules)
-            for shortest_path in all_shortest_paths
+        adaptation_results = [
+            _adapt_shortest_path(shortest_path, original_concept, rule)
+            for shortest_path, rule in itertools.product(all_shortest_paths, rules)
         ]
-        adaptation_results = [_adapt_shortest_path(*param) for param in params]
 
         adaptation_results = list(itertools.chain(*adaptation_results))
         adapted_paths[original_concept] = adaptation_results
@@ -177,45 +175,34 @@ def paths(
 def _adapt_shortest_path(
     shortest_path: graph.Path,
     concept: Concept,
-    rules: t.Collection[adaptation.Rule],
+    rule: adaptation.Rule,
 ) -> t.List[graph.Path]:
     db = Database()
     method = config.tuning("conceptnet", "method")
     current_paths = []
 
     # We have to convert the target to a path object here.
-    # TODO: Maybe make the node selection more robust.
-    rule = next(iter(rules), None)
+    start_node = rule.target.best_node if method == "within" else concept.best_node
+    current_paths.append(graph.Path.from_node(start_node))  # Start with only one node.
 
-    if rule:
-        start_node = rule.target.best_node if method == "within" else concept.best_node
-        current_paths.append(
-            graph.Path.from_node(start_node)
-        )  # Start with only one node.
+    for rel in shortest_path.relationships:
+        next_paths = []
 
-        for rel in shortest_path.relationships:
-            next_paths = []
+        for current_path in current_paths:
+            path_candidates = db.expand_nodes([current_path.end_node], [rel.type])
 
-            for current_path in current_paths:
-                path_candidates = db.expand_nodes([current_path.end_node], [rel.type])
+            if config["conceptnet"]["relation"]["relax_types"] and not path_candidates:
+                path_candidates = db.expand_nodes([current_path.end_node])
 
-                if (
-                    config["conceptnet"]["relation"]["relax_types"]
-                    and not path_candidates
-                ):
-                    path_candidates = db.expand_nodes([current_path.end_node])
+            if path_candidates:
+                path_candidates = _filter_paths(
+                    path_candidates, shortest_path, start_node
+                )
 
-                if path_candidates:
-                    path_candidates = _filter_paths(
-                        path_candidates, shortest_path, start_node
-                    )
+                for path_candidate in path_candidates:
+                    next_paths.append(graph.Path.merge(current_path, path_candidate))
 
-                    for path_candidate in path_candidates:
-                        next_paths.append(
-                            graph.Path.merge(current_path, path_candidate)
-                        )
-
-            current_paths = next_paths
+        current_paths = next_paths
 
     return current_paths
 
@@ -226,7 +213,6 @@ def _filter_concepts(
     rules: t.Collection[adaptation.Rule],
 ) -> t.Optional[Concept]:
     # Remove the original adaptation source from the candidates
-    # TODO: Check if original_concept should be excluded
     filter_expr = [rule.source for rule in rules] + [original_concept]
     filtered_concepts = concepts.difference(filter_expr)
     filtered_concepts = Concept.only_relevant(

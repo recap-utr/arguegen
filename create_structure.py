@@ -21,7 +21,6 @@ def main(parent_folders: t.List[Path]):
                 nested_folder.mkdir()
 
                 shutil.move(str(case), str(nested_folder / "graph.json"))
-                # TODO: Write exemplary query and rule files.
 
                 if case_graph.exists():
                     shutil.move(str(case_graph), str(nested_folder / "graph.pdf"))
