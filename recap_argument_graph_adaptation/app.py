@@ -132,6 +132,22 @@ def run():
     log.info(f"Finished in {duration} sec.")
 
 
+def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
+    paths = {}
+    filenames = []
+
+    if config["adaptation"]["export_graph"]:
+        filenames.extend(("case.json", "case.pdf"))
+
+    if config["adaptation"]["export_single_stats"]:
+        filenames.append("stats.json")
+
+        for filename in filenames:
+            paths[filename] = _file_path(parent_folder / filename)
+
+    return paths
+
+
 def _grid_stats(
     results: t.Iterable[t.Tuple[str, int, Evaluation]],
     duration: float,
@@ -172,23 +188,43 @@ def _grid_stats(
             _results.append(
                 {
                     "evaluation": eval.to_dict(compact=True),
-                    "files": {
-                        "case.json": _file_path(current_path / "case.json"),
-                        "case.pdf": _file_path(current_path / "case.pdf"),
-                        "stats.json": _file_path(current_path / "stats.json"),
-                    },
+                    "files": _output_file_paths(current_path),
                     "config": param_grid[i],
                 }
             )
 
         best_case_results[case] = _results
 
-    mean_param_results = sorted(
-        [
-            {"mean_score": statistics.mean(scores), "config": param_grid[i]}
-            for i, scores in enumerate(param_results)
-            if scores
-        ],
+    mean_param_results = []
+
+    for i, scores in enumerate(param_results):
+        if scores:
+            current_cases = {}
+
+            for case, eval_results in case_results.items():
+                eval_result = next(filter(lambda x: x[1] == i, eval_results), None)
+                current_path = _nested_path(
+                    out_path / case, len(param_grid), param_grid[i]
+                ).resolve()
+                case_eval_output = None
+
+                if eval_result:
+                    case_eval_output = eval_result[0].to_dict(compact=True)
+
+                current_cases[case] = {
+                    "evaluation": case_eval_output,
+                    "files": _output_file_paths(current_path),
+                }
+
+            mean_param_results.append(
+                {
+                    "mean_score": statistics.mean(scores),
+                    "config": param_grid[i],
+                    "cases": current_cases,
+                }
+            )
+
+    mean_param_results.sort(
         key=lambda x: x["mean_score"],
         reverse=True,
     )
