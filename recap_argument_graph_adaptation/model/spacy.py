@@ -2,7 +2,6 @@ import typing as t
 
 import numpy as np
 import requests
-from pydantic import BaseModel
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 
@@ -34,9 +33,19 @@ def vector(text: str) -> np.ndarray:
 
 # This function does not use the cache!
 def vectors(texts: t.Iterable[str]) -> t.List[np.ndarray]:
-    raw_results = session.post(_url("vectors"), json={"texts": texts}).json()
+    unknown_texts = []
 
-    return [np.array(result) for result in raw_results]
+    for text in texts:
+        if text not in _vector_cache:
+            unknown_texts.append(text)
+
+    if unknown_texts:
+        vectors = session.post(_url("vectors"), json={"texts": unknown_texts}).json()
+
+        for text, vector in zip(unknown_texts, vectors):
+            _vector_cache[text] = np.array(vector)
+
+    return [_vector_cache[text] for text in texts]
 
 
 def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -> float:

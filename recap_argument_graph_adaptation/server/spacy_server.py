@@ -4,11 +4,10 @@ import numpy as np
 import spacy
 from fastapi import FastAPI
 from pydantic import BaseModel
+from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from spacy.language import Language
 from textacy import ke
-
-from .model.config import Config
 
 config = Config.instance()
 
@@ -107,9 +106,22 @@ class VectorsQuery(BaseModel):
 
 @app.post("/vectors")
 def vectors(query: VectorsQuery) -> t.List[t.List[float]]:
-    docs = nlp.pipe(query.texts)  # disable=vector_disabled_pipes
+    # docs = nlp.pipe(query.texts)  # disable=vector_disabled_pipes
+    # return [doc.vector.tolist() for doc in docs]  # type: ignore
 
-    return [doc.vector.tolist() for doc in docs]  # type: ignore
+    unknown_texts = []
+
+    for text in query.texts:
+        if text not in _vector_cache:
+            unknown_texts.append(text)
+
+    if unknown_texts:
+        docs = nlp.pipe(unknown_texts)
+
+        for text, doc in zip(unknown_texts, docs):
+            _vector_cache[text] = doc.vector.tolist()  # type: ignore
+
+    return [_vector_cache[text] for text in query.texts]
 
 
 class KeywordQuery(BaseModel):
