@@ -69,10 +69,10 @@ def synsets(
             )
 
         for synset in original_concept.synsets:
-            hypernyms = wordnet.hypernyms(synset)
+            hypernyms = synset.all_hypernyms
 
             for hypernym in hypernyms:
-                name, pos = wordnet.resolve(hypernym)
+                name, pos = hypernym.resolved
                 vector = spacy.vector(name)
                 nodes = tuple()
                 synsets = (hypernym,)
@@ -150,7 +150,7 @@ def paths(
                 vector,
                 pos,
                 end_nodes,
-                tuple(synsets),
+                synsets,
                 None,
                 *measure.init_concept_metrics(
                     vector, end_nodes, synsets, related_concepts

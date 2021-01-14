@@ -8,7 +8,7 @@ from enum import Enum
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import conceptnet as cn
+from recap_argument_graph_adaptation.model import conceptnet, wordnet
 from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)
@@ -20,8 +20,8 @@ class Concept:
     name: str
     vector: np.ndarray
     pos: POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
-    nodes: t.Tuple[cn.Node, ...]
-    synsets: t.Tuple[str, ...]
+    nodes: t.Tuple[conceptnet.Node, ...]
+    synsets: t.Tuple[wordnet.Synset, ...]
     keyword_weight: t.Optional[float]
     semantic_similarity: t.Optional[float] = None
     conceptnet_path_distance: t.Optional[float] = None
@@ -29,7 +29,7 @@ class Concept:
     wordnet_wup_similarity: t.Optional[float] = None
 
     @property
-    def best_node(self) -> cn.Node:
+    def best_node(self) -> conceptnet.Node:
         return self.nodes[0]
 
     def __str__(self):
@@ -84,7 +84,7 @@ class Concept:
         return {
             "concept": str(self),
             "nodes": [str(node) for node in self.nodes],
-            "synsets": self.synsets,
+            "synsets": [str(synset) for synset in self.synsets],
             "score": self.score,
         }
 

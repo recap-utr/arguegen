@@ -24,7 +24,7 @@ def update_concept_metrics(
 def init_concept_metrics(
     vector: np.ndarray,
     nodes: t.Sequence[conceptnet.Node],
-    synsets: t.Iterable[str],
+    synsets: t.Iterable[wordnet.Synset],
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
 ) -> t.Tuple[t.Optional[float], ...]:
     db = conceptnet.Database()

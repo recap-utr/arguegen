@@ -1,5 +1,5 @@
 import logging
-import multiprocessing
+import multiprocessing as mp
 import typing as t
 from pathlib import Path
 from timeit import default_timer as timer
@@ -21,14 +21,9 @@ log = logging.getLogger(__name__)
 
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
-    wordnet.lock = lock_
+    # wordnet.lock = lock_
+    pass
 
-
-processes = (
-    multiprocessing.cpu_count() - 1
-    if config["resources"]["processes"] == 0
-    else int(config["resources"]["processes"])
-)
 
 # TODO: Check if conceptnet is still functional.
 
@@ -36,6 +31,11 @@ processes = (
 def run():
     log.info("Initializing.")
     start_time = timer()
+    processes = (
+        mp.cpu_count() - 1
+        if config["resources"]["processes"] == 0
+        else int(config["resources"]["processes"])
+    )
 
     out_path = Path(
         config["resources"]["cases"]["output"],
@@ -52,8 +52,8 @@ def run():
         logging.getLogger(__package__).setLevel(logging.DEBUG)
         results = [_parametrized_run(run_arg) for run_arg in run_args]
     else:
-        local_lock = multiprocessing.Lock()
-        with multiprocessing.Pool(
+        local_lock = mp.Lock()
+        with mp.Pool(
             processes, initializer=_init_child_process, initargs=(local_lock,)
         ) as pool:
             with typer.progressbar(

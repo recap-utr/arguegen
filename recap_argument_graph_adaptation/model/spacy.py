@@ -21,14 +21,14 @@ _vector_cache = {}
 
 
 def vector(text: str) -> np.ndarray:
-    # return _nlp(text).vector
-
     if text not in _vector_cache:
         _vector_cache[text] = np.array(
             session.post(_url("vector"), json={"text": text}).json()
         )
 
     return _vector_cache[text]
+
+    # return np.array(session.post(_url("vector"), json={"text": text}).json())
 
 
 # This function does not use the cache!
@@ -46,6 +46,11 @@ def vectors(texts: t.Iterable[str]) -> t.List[np.ndarray]:
             _vector_cache[text] = np.array(vector)
 
     return [_vector_cache[text] for text in texts]
+
+    # return [
+    #     np.array(vector)
+    #     for vector in session.post(_url("vectors"), json={"texts": texts}).json()
+    # ]
 
 
 def similarity(obj1: t.Union[str, np.ndarray], obj2: t.Union[str, np.ndarray]) -> float:

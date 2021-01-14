@@ -6,8 +6,7 @@ from enum import Enum
 
 import neo4j
 import neo4j.data
-from recap_argument_graph_adaptation.model import _conceptnet as helper
-from recap_argument_graph_adaptation.model import casebase as cb
+from recap_argument_graph_adaptation.model import casebase, conceptnet_helper
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -27,13 +26,13 @@ class Source(Enum):
 class Node:
     id: int
     name: str
-    pos: cb.POS
+    pos: casebase.POS
     language: Language
     uri: str
     source: Source
 
     def __str__(self):
-        if self.pos != cb.POS.OTHER:
+        if self.pos != casebase.POS.OTHER:
             return f"{self.name}/{self.pos.value}"
 
         return self.name
@@ -44,7 +43,7 @@ class Node:
             id=obj.id,
             name=obj["name"],  # type: ignore
             language=Language(obj["language"]),  # type: ignore
-            pos=cb.POS(obj["pos"]),
+            pos=casebase.POS(obj["pos"]),
             uri=obj["uri"],  # type: ignore
             source=Source(obj["source"]),  # type: ignore
         )
@@ -164,7 +163,7 @@ class Database:
     def _nodes_along_paths(
         tx: neo4j.Session,
         name: str,
-        pos: cb.POS,
+        pos: casebase.POS,
         lang: str,
         relation_types: t.Iterable[str],
         max_relations: int = 100,
@@ -182,13 +181,13 @@ class Database:
 
         pos_tags = [pos]
 
-        if pos != cb.POS.OTHER:
-            pos_tags.append(cb.POS.OTHER)  # type: ignore
+        if pos != casebase.POS.OTHER:
+            pos_tags.append(casebase.POS.OTHER)  # type: ignore
 
         for pos_tag in pos_tags:
             record = tx.run(
                 query,
-                name=helper.concept_name(name, lang),
+                name=conceptnet_helper.concept_name(name, lang),
                 pos=pos_tag.value,
                 lang=lang,
             ).single()
@@ -219,7 +218,7 @@ class Database:
 
         return tuple(nodes)
 
-    def nodes(self, name: str, pos: cb.POS) -> t.Tuple[Node, ...]:
+    def nodes(self, name: str, pos: casebase.POS) -> t.Tuple[Node, ...]:
         if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(self._nodes, name, pos, self.lang)
@@ -230,7 +229,7 @@ class Database:
     def _nodes(
         tx: neo4j.Session,
         name: str,
-        pos: cb.POS,
+        pos: casebase.POS,
         lang: str,
     ) -> t.Tuple[Node, ...]:
         nodes = []
@@ -248,14 +247,14 @@ class Database:
     def _node(
         tx: neo4j.Session,
         name: str,
-        pos: cb.POS,
+        pos: casebase.POS,
         lang: str,
     ) -> t.Optional[Node]:
         query = "MATCH (n:Concept {name: $name, pos: $pos, language: $lang}) RETURN n"
 
         record = tx.run(
             query,
-            name=helper.concept_name(name, lang),
+            name=conceptnet_helper.concept_name(name, lang),
             pos=pos.value,
             lang=lang,
         ).single()
@@ -267,7 +266,7 @@ class Database:
 
     # GENERALIZATION
 
-    def generalizations(self, name: str, pos: cb.POS) -> t.Tuple[Node, ...]:
+    def generalizations(self, name: str, pos: casebase.POS) -> t.Tuple[Node, ...]:
         if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(
@@ -280,7 +279,7 @@ class Database:
     def _generalizations(
         tx: neo4j.Session,
         name: str,
-        pos: cb.POS,
+        pos: casebase.POS,
         lang: str,
     ) -> t.Tuple[Node, ...]:
         relation_types = config["conceptnet"]["relation"]["generalization_types"] + [

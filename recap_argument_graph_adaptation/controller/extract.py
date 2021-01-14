@@ -34,9 +34,11 @@ def keywords(
             pos_tag = casebase.spacy_pos_mapping[k["pos_tag"]]
             vector = k["vector"]
             nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
-            synsets = wordnet.contextual_synsets(
+            synsets = wordnet.concept_synsets_contextualized(
                 node_vector, k["term"], pos_tag
-            ) or wordnet.contextual_synsets(node_vector, k["lemma"], pos_tag)
+            ) or wordnet.concept_synsets_contextualized(
+                node_vector, k["lemma"], pos_tag
+            )
 
             if nodes or synsets:
                 candidate = casebase.Concept(
