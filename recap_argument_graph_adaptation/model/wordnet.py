@@ -13,10 +13,9 @@ from nltk.corpus import wordnet as wn
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
-from recap_argument_graph_adaptation.controller import spacy
-
-from ..model import graph
-from ..model.config import Config
+from recap_argument_graph_adaptation.model import casebase as cb
+from recap_argument_graph_adaptation.model import spacy
+from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
 
@@ -30,17 +29,6 @@ class EmptyLock:
 
 
 lock: t.Union[synchronize.Lock, EmptyLock] = EmptyLock()
-
-
-# def init_reader():
-#     return LazyCorpusLoader(
-#         "wordnet",
-#         WordNetCorpusReader,
-#         LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
-#     )
-
-
-# wn = init_reader()
 
 
 def _synset(code: str) -> Synset:
@@ -71,11 +59,11 @@ def _synset_name(synset: Synset) -> str:
     return synset.name() or ""
 
 
-def concept_synsets(name: str, pos: t.Union[None, str, graph.POS]) -> t.List[str]:
+def concept_synsets(name: str, pos: t.Union[None, str, cb.POS]) -> t.List[str]:
     if not pos:
         pos_tags = None
-    elif isinstance(pos, graph.POS):
-        pos_tags = graph.wn_pos(pos)
+    elif isinstance(pos, cb.POS):
+        pos_tags = cb.wn_pos(pos)
     else:
         pos_tags = [pos]
 
@@ -107,16 +95,16 @@ def synset_metrics(code1: str, code2: str) -> t.Dict[str, float]:
 # DERIVED FUNCTIONS
 
 
-def resolve(code: str) -> t.Tuple[str, graph.POS]:
+def resolve(code: str) -> t.Tuple[str, cb.POS]:
     parts = code.rsplit(".", 2)
     lemma = parts[0].replace("_", " ")
-    pos = graph.wn_pos_mapping[parts[1]]
+    pos = cb.wn_pos_mapping[parts[1]]
 
     return (lemma, pos)
 
 
 def contextual_synsets(
-    text_vector: np.ndarray, term: str, pos: graph.POS
+    text_vector: np.ndarray, term: str, pos: cb.POS
 ) -> t.Tuple[str, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = concept_synsets(term, pos)
@@ -147,7 +135,7 @@ def contextual_synsets(
 
 
 def contextual_synset(
-    text_vector: np.ndarray, term: str, pos: graph.POS
+    text_vector: np.ndarray, term: str, pos: cb.POS
 ) -> t.Optional[str]:
     synsets = contextual_synsets(text_vector, term, pos)
 

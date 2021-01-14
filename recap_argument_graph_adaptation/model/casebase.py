@@ -3,21 +3,24 @@ from __future__ import annotations
 import logging
 import typing as t
 from dataclasses import dataclass
+from enum import Enum
 
 import numpy as np
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.model import graph
-from recap_argument_graph_adaptation.model.config import config
+from recap_argument_graph_adaptation.controller import convert
+from recap_argument_graph_adaptation.model import conceptnet as cn
+from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)
+config = Config.instance()
 
 
 @dataclass(frozen=True)
 class Concept:
     name: str
     vector: np.ndarray
-    pos: graph.POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
-    nodes: t.Tuple[graph.Node, ...]
+    pos: POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
+    nodes: t.Tuple[cn.Node, ...]
     synsets: t.Tuple[str, ...]
     keyword_weight: t.Optional[float]
     semantic_similarity: t.Optional[float] = None
@@ -26,11 +29,11 @@ class Concept:
     wordnet_wup_similarity: t.Optional[float] = None
 
     @property
-    def best_node(self) -> graph.Node:
+    def best_node(self) -> cn.Node:
         return self.nodes[0]
 
     def __str__(self):
-        if self.pos != graph.POS.OTHER:
+        if self.pos != POS.OTHER:
             return f"{self.name}/{self.pos.value}"
 
         return self.name
@@ -137,3 +140,77 @@ class Case:
     @property
     def benchmark_rules(self) -> t.Tuple[Rule, ...]:
         return self._rules
+
+
+@dataclass(frozen=True)
+class Evaluation:
+    score: float
+    benchmark_and_computed: t.Set[Concept]
+    only_benchmark: t.Set[Concept]
+    only_computed: t.Set[Concept]
+
+    def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
+        if compact:
+            return {
+                "score": self.score,
+                "benchmark_and_computed": len(self.benchmark_and_computed),
+                "only_benchmark": len(self.only_benchmark),
+                "only_computed": len(self.only_computed),
+            }
+
+        return {
+            "score": self.score,
+            "benchmark_and_computed": convert.list_str(self.benchmark_and_computed),
+            "only_benchmark": convert.list_str(self.only_benchmark),
+            "only_computed": convert.list_str(self.only_computed),
+        }
+
+    def __lt__(self, other):
+        return self.score < other.score
+
+    def __le__(self, other):
+        return self.score <= other.score
+
+    def __gt__(self, other):
+        return self.score > other.score
+
+    def __ge__(self, other):
+        return self.score >= other.score
+
+
+class POS(Enum):
+    NOUN = "noun"
+    VERB = "verb"
+    ADJECTIVE = "adjective"
+    ADVERB = "adverb"
+    OTHER = "other"
+
+
+spacy_pos_mapping = {
+    "NOUN": POS.NOUN,
+    "PROPN": POS.NOUN,
+    "VERB": POS.VERB,
+    "ADJ": POS.ADJECTIVE,
+    "ADV": POS.ADVERB,
+}
+
+wn_pos_mapping = {
+    "n": POS.NOUN,
+    "v": POS.VERB,
+    "a": POS.ADJECTIVE,
+    "r": POS.ADVERB,
+    "s": POS.ADJECTIVE,
+}
+
+
+def wn_pos(pos: POS) -> t.List[str]:
+    if pos == POS.NOUN:
+        return ["n"]
+    elif pos == POS.VERB:
+        return ["v"]
+    elif pos == POS.ADJECTIVE:
+        return ["a", "s"]
+    elif pos == POS.ADVERB:
+        return ["r"]
+
+    return []

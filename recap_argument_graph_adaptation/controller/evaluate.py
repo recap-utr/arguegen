@@ -3,10 +3,8 @@ import statistics
 import typing as t
 from dataclasses import dataclass
 
-from recap_argument_graph_adaptation.controller import metrics, spacy
-from recap_argument_graph_adaptation.helper import convert
-from recap_argument_graph_adaptation.model.adaptation import Case, Concept
-from recap_argument_graph_adaptation.model.evaluation import Evaluation
+from recap_argument_graph_adaptation.controller import convert
+from recap_argument_graph_adaptation.model import casebase, spacy
 
 log = logging.getLogger(__name__)
 
@@ -17,7 +15,9 @@ class WeightedScore:
     weight: float
 
 
-def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluation:
+def case(
+    case: casebase.Case, adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept]
+) -> casebase.Evaluation:
     case_rules = set(case.rules)
     benchmark_rules = set(case.benchmark_rules)
 
@@ -83,13 +83,13 @@ def case(case: Case, adapted_concepts: t.Mapping[Concept, Concept]) -> Evaluatio
 
     log.debug(f"Finished with global score of {global_score}.")
 
-    return Evaluation(
+    return casebase.Evaluation(
         global_score, benchmark_and_computed, only_benchmark, only_computed
     )
 
 
 def _compute_score(
-    benchmark_adaptation: Concept, computed_adaptation: Concept
+    benchmark_adaptation: casebase.Concept, computed_adaptation: casebase.Concept
 ) -> float:
     if benchmark_adaptation == computed_adaptation:
         return 1.0
@@ -99,6 +99,6 @@ def _compute_score(
     # comparison_metrics = metrics.update_concept_metrics(
     #     computed_adaptation, benchmark_adaptation
     # )
-    # comparison_concept = Concept.from_concept(computed_adaptation, comparison_metrics)
+    # comparison_concept = casebase.Concept.from_concept(computed_adaptation, comparison_metrics)
 
     # return comparison_concept.score

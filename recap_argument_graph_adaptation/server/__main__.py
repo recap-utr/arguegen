@@ -1,7 +1,6 @@
 import multiprocessing
 
 import typer
-
 import uvicorn
 from recap_argument_graph_adaptation.model.config import Config
 
@@ -25,7 +24,7 @@ default_args = {
 @app.command(help="Start a spacy server.")
 def spacy():
     uvicorn.run(
-        "recap_argument_graph_adaptation.spacy_server:app",
+        "recap_argument_graph_adaptation.server.spacy_server:app",
         **{
             "host": config["resources"]["spacy"]["host"],
             "port": config["resources"]["spacy"]["port"],
@@ -38,7 +37,7 @@ def spacy():
 @app.command(help="Start a WordNet server.")
 def wordnet():
     uvicorn.run(
-        "recap_argument_graph_adaptation.wordnet_server:app",
+        "recap_argument_graph_adaptation.server.wordnet_server:app",
         **{
             "host": config["resources"]["wordnet"]["host"],
             "port": config["resources"]["wordnet"]["port"],

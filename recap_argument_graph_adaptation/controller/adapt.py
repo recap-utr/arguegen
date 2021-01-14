@@ -4,20 +4,19 @@ import re
 import typing as t
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
+from recap_argument_graph_adaptation.controller import measure
+from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model.config import Config
 
-from ..model import adaptation, graph
-from ..model.adaptation import Concept
-from ..model.config import config
-from ..model.database import Database
+config = Config.instance()
 
 log = logging.getLogger(__name__)
 
 
 def argument_graph(
     original_graph: ag.Graph,
-    rules: t.Collection[adaptation.Rule],
-    adapted_concepts: t.Mapping[Concept, Concept],
+    rules: t.Collection[casebase.Rule],
+    adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> ag.Graph:
     substitutions = {
         concept.name: adapted_concept.name
@@ -46,8 +45,11 @@ def _replace(text: str, substitutions: t.Mapping[str, str]):
 
 
 def synsets(
-    concepts: t.Iterable[Concept], rules: t.Collection[adaptation.Rule]
-) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.Set[Concept]]]:
+    concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
+) -> t.Tuple[
+    t.Dict[casebase.Concept, casebase.Concept],
+    t.Dict[casebase.Concept, t.Set[casebase.Concept]],
+]:
     adapted_synsets = {}
     adapted_concepts = {}
     related_concept_weight = config.tuning("weight")
@@ -75,14 +77,14 @@ def synsets(
                 nodes = tuple()
                 synsets = (hypernym,)
 
-                candidate = Concept(
+                candidate = casebase.Concept(
                     name,
                     vector,
                     pos,
                     nodes,
                     synsets,
                     None,
-                    *metrics.init_concept_metrics(
+                    *measure.init_concept_metrics(
                         vector, nodes, synsets, related_concepts
                     ),
                 )
@@ -105,9 +107,12 @@ def synsets(
 
 
 def paths(
-    reference_paths: t.Mapping[Concept, t.Sequence[graph.Path]],
-    rules: t.Collection[adaptation.Rule],
-) -> t.Tuple[t.Dict[Concept, Concept], t.Dict[Concept, t.List[graph.Path]]]:
+    reference_paths: t.Mapping[casebase.Concept, t.Sequence[conceptnet.Path]],
+    rules: t.Collection[casebase.Rule],
+) -> t.Tuple[
+    t.Dict[casebase.Concept, casebase.Concept],
+    t.Dict[casebase.Concept, t.List[conceptnet.Path]],
+]:
     related_concept_weight = config.tuning("weight")
     adapted_concepts = {}
     adapted_paths = {}
@@ -140,14 +145,14 @@ def paths(
                     }
                 )
 
-            candidate = Concept(
+            candidate = casebase.Concept(
                 name,
                 vector,
                 pos,
                 end_nodes,
                 tuple(synsets),
                 None,
-                *metrics.init_concept_metrics(
+                *measure.init_concept_metrics(
                     vector, end_nodes, synsets, related_concepts
                 ),
             )
@@ -173,17 +178,19 @@ def paths(
 
 
 def _adapt_shortest_path(
-    shortest_path: graph.Path,
-    concept: Concept,
-    rule: adaptation.Rule,
-) -> t.List[graph.Path]:
-    db = Database()
+    shortest_path: conceptnet.Path,
+    concept: casebase.Concept,
+    rule: casebase.Rule,
+) -> t.List[conceptnet.Path]:
+    db = conceptnet.Database()
     method = config.tuning("conceptnet", "method")
     current_paths = []
 
     # We have to convert the target to a path object here.
     start_node = rule.target.best_node if method == "within" else concept.best_node
-    current_paths.append(graph.Path.from_node(start_node))  # Start with only one node.
+    current_paths.append(
+        conceptnet.Path.from_node(start_node)
+    )  # Start with only one node.
 
     for rel in shortest_path.relationships:
         next_paths = []
@@ -200,7 +207,9 @@ def _adapt_shortest_path(
                 )
 
                 for path_candidate in path_candidates:
-                    next_paths.append(graph.Path.merge(current_path, path_candidate))
+                    next_paths.append(
+                        conceptnet.Path.merge(current_path, path_candidate)
+                    )
 
         current_paths = next_paths
 
@@ -208,14 +217,14 @@ def _adapt_shortest_path(
 
 
 def _filter_concepts(
-    concepts: t.Set[Concept],
-    original_concept: Concept,
-    rules: t.Collection[adaptation.Rule],
-) -> t.Optional[Concept]:
+    concepts: t.Set[casebase.Concept],
+    original_concept: casebase.Concept,
+    rules: t.Collection[casebase.Rule],
+) -> t.Optional[casebase.Concept]:
     # Remove the original adaptation source from the candidates
     filter_expr = [rule.source for rule in rules] + [original_concept]
     filtered_concepts = concepts.difference(filter_expr)
-    filtered_concepts = Concept.only_relevant(
+    filtered_concepts = casebase.Concept.only_relevant(
         filtered_concepts, config.tuning("adaptation", "min_score")
     )
 
@@ -232,10 +241,10 @@ def _filter_concepts(
 
 
 def _filter_paths(
-    candidate_paths: t.Sequence[graph.Path],
-    reference_path: graph.Path,
-    start_node: graph.Node,
-) -> t.List[graph.Path]:
+    candidate_paths: t.Sequence[conceptnet.Path],
+    reference_path: conceptnet.Path,
+    start_node: conceptnet.Node,
+) -> t.List[conceptnet.Path]:
     selector = config.tuning("conceptnet", "selector")
     candidate_values = {}
 

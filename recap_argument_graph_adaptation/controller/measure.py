@@ -4,10 +4,7 @@ import logging
 import typing as t
 
 import numpy as np
-from recap_argument_graph_adaptation.controller import spacy, wordnet
-from recap_argument_graph_adaptation.model import graph
-from recap_argument_graph_adaptation.model.adaptation import Concept
-from recap_argument_graph_adaptation.model.database import Database
+from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
 
 log = logging.getLogger(__name__)
 
@@ -16,7 +13,8 @@ best_concept_metrics = (1, 0, 1, 1)
 
 
 def update_concept_metrics(
-    concept: Concept, related_concepts: t.Union[Concept, t.Mapping[Concept, float]]
+    concept: casebase.Concept,
+    related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
 ) -> t.Tuple[t.Optional[float], ...]:
     return init_concept_metrics(
         concept.vector, concept.nodes, concept.synsets, related_concepts
@@ -25,13 +23,13 @@ def update_concept_metrics(
 
 def init_concept_metrics(
     vector: np.ndarray,
-    nodes: t.Sequence[graph.Node],
+    nodes: t.Sequence[conceptnet.Node],
     synsets: t.Iterable[str],
-    related_concepts: t.Union[Concept, t.Mapping[Concept, float]],
+    related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
 ) -> t.Tuple[t.Optional[float], ...]:
-    db = Database()
+    db = conceptnet.Database()
 
-    if isinstance(related_concepts, Concept):
+    if isinstance(related_concepts, casebase.Concept):
         related_concepts = {related_concepts: 1.0}
 
     if sum(related_concepts.values()) != 1:

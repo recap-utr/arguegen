@@ -16,13 +16,12 @@ import requests
 import typer
 from sklearn.model_selection import ParameterGrid
 
-from recap_argument_graph_adaptation.controller import evaluate, spacy, wordnet
-from recap_argument_graph_adaptation.helper import convert
-from recap_argument_graph_adaptation.model.evaluation import Evaluation
+from .controller import adapt, convert, evaluate, export, extract, load
+from .model import casebase as cb
+from .model import spacy, wordnet
+from .model.config import Config
 
-from .controller import adapt, export, extract, load
-from .model import adaptation
-from .model.config import config
+config = Config.instance()
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
@@ -149,7 +148,7 @@ def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
 
 
 def _grid_stats(
-    results: t.Iterable[t.Tuple[str, int, Evaluation]],
+    results: t.Iterable[t.Tuple[str, int, cb.Evaluation]],
     duration: float,
     param_grid: t.Sequence[t.Mapping[str, t.Any]],
     out_path: Path,
@@ -250,11 +249,11 @@ class RunArgs:
     params: t.Mapping[str, t.Any]
     current_case: int
     total_cases: int
-    case: adaptation.Case
+    case: cb.Case
     out_path: Path
 
 
-def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, Evaluation]:
+def _multiprocessing_run(args: RunArgs) -> t.Tuple[str, int, cb.Evaluation]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
@@ -280,9 +279,9 @@ def _nested_path(
 
 
 def _perform_adaptation(
-    case: adaptation.Case,
+    case: cb.Case,
     out_path: Path,
-) -> Evaluation:
+) -> cb.Evaluation:
     start_time = timer()
     nested_out_path = _nested_path(
         out_path / case.name, config["_tuning_runs"], config["_tuning"]

@@ -4,15 +4,15 @@ import typing as t
 from pathlib import Path
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import metrics, spacy, wordnet
-from recap_argument_graph_adaptation.model import adaptation, graph
-from recap_argument_graph_adaptation.model.config import config
-from recap_argument_graph_adaptation.model.database import Database
+from recap_argument_graph_adaptation.controller import measure
+from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model.config import Config
 
+config = Config.instance()
 log = logging.getLogger(__name__)
 
 
-def cases() -> t.List[adaptation.Case]:
+def cases() -> t.List[casebase.Case]:
     input_path = Path(config["resources"]["cases"]["input"])
     result = []
 
@@ -26,7 +26,7 @@ def cases() -> t.List[adaptation.Case]:
     return result
 
 
-def _case(path: Path) -> adaptation.Case:
+def _case(path: Path) -> casebase.Case:
     name = path.name
     graph = ag.Graph.open(path / "graph.json")
     rules = _parse_rules(path / "rules.csv")
@@ -37,7 +37,7 @@ def _case(path: Path) -> adaptation.Case:
             "Not all required assets ('graph.json', 'rules.csv', 'query.txt') were found"
         )
 
-    return adaptation.Case(
+    return casebase.Case(
         name,
         query,
         graph,
@@ -50,7 +50,7 @@ def _parse_txt(path: Path) -> str:
         return f.read()
 
 
-def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
+def _parse_rules(path: Path) -> t.Tuple[casebase.Rule]:
     rules = []
 
     with path.open() as file:
@@ -60,21 +60,21 @@ def _parse_rules(path: Path) -> t.Tuple[adaptation.Rule]:
             source = _parse_rule_concept(row[0])
             target = _parse_rule_concept(row[1])
 
-            rules.append(adaptation.Rule(source, target))
+            rules.append(casebase.Rule(source, target))
 
     return tuple(rules)
 
 
-def _parse_rule_concept(rule: str) -> adaptation.Concept:
+def _parse_rule_concept(rule: str) -> casebase.Concept:
     rule_parts = rule.split("/")
     name = rule_parts[0]
     vector = spacy.vector(name)
-    pos = graph.POS.OTHER
+    pos = casebase.POS.OTHER
 
     if len(rule_parts) > 1:
-        pos = graph.POS(rule_parts[1])
+        pos = casebase.POS(rule_parts[1])
 
-    db = Database()
+    db = conceptnet.Database()
     nodes = db.nodes(name, pos)
     synsets = wordnet.concept_synsets(name, pos)
 
@@ -85,6 +85,6 @@ def _parse_rule_concept(rule: str) -> adaptation.Concept:
             f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
         )
 
-    return adaptation.Concept(
-        name, vector, pos, nodes, tuple(synsets), None, *metrics.best_concept_metrics
+    return casebase.Concept(
+        name, vector, pos, nodes, tuple(synsets), None, *measure.best_concept_metrics
     )

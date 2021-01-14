@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import collections
-from pathlib import Path
 import typing as t
-from packaging import version
+from pathlib import Path
 
 import tomlkit as toml
+from packaging import version
 
 
 class Config(collections.MutableMapping):
@@ -90,6 +90,3 @@ class Config(collections.MutableMapping):
             }
 
         return store
-
-
-config = Config.instance()
