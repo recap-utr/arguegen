@@ -3,7 +3,8 @@ import typing as t
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import measure
-from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model import (casebase, conceptnet, spacy,
+                                                   wordnet)
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -34,10 +35,15 @@ def keywords(
             pos_tag = casebase.spacy_pos_mapping[k["pos_tag"]]
             vector = k["vector"]
             nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
-            synsets = wordnet.concept_synsets_contextualized(
-                node_vector, k["term"], pos_tag
-            ) or wordnet.concept_synsets_contextualized(
-                node_vector, k["lemma"], pos_tag
+            # synsets = wordnet.concept_synsets_contextualized(
+            #     k["term"], pos_tag, node_vector
+            # ) or wordnet.concept_synsets_contextualized(
+            #     k["lemma"], pos_tag, node_vector
+            # )
+            synsets = wordnet.concept_synsets(
+                k["term"], pos_tag
+            ) or wordnet.concept_synsets(
+                k["lemma"], pos_tag
             )
 
             if nodes or synsets:

@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
     # wordnet.lock = lock_
-    pass
+    wordnet.wn = wordnet.init_reader()
 
 
 # TODO: Check if conceptnet is still functional.

@@ -6,12 +6,27 @@ from dataclasses import dataclass
 from multiprocessing import synchronize
 
 import numpy as np
-from nltk.corpus import wordnet as wn
+from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset as NltkSynset
+from nltk.corpus.reader.wordnet import WordNetCorpusReader
+from nltk.corpus.util import LazyCorpusLoader
 from recap_argument_graph_adaptation.model import casebase, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
+# from nltk.corpus import wordnet as wn
+
 config = Config.instance()
+
+
+def init_reader():
+    return LazyCorpusLoader(
+        "wordnet",
+        WordNetCorpusReader,
+        LazyCorpusLoader("omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"),
+    )
+
+
+wn = init_reader()
 
 
 class EmptyLock:
@@ -57,7 +72,10 @@ class Synset:
 
     @property
     def direct_hypernyms(self) -> t.Set[Synset]:
-        return {Synset.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()} or set()
+        nltk_synset = self.to_nltk()
+
+        with lock:
+            return {Synset.from_nltk(hyp) for hyp in nltk_synset.hypernyms()} or set()
 
     @property
     def all_hypernyms(self) -> t.Set[Synset]:
@@ -82,10 +100,11 @@ class Synset:
         synset1 = self.to_nltk()
         synset2 = other.to_nltk()
 
-        return {
-            "path_similarity": synset1.path_similarity(synset2) or 0.0,
-            "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
-        }
+        with lock:
+            return {
+                "path_similarity": synset1.path_similarity(synset2) or 0.0,
+                "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
+            }
 
 
 def _synsets(
@@ -123,7 +142,9 @@ def concept_synsets(
 
 
 def concept_synsets_contextualized(
-    text_vector: np.ndarray, name: str, pos: t.Union[None, str, casebase.POS]
+    name: str,
+    pos: t.Union[None, str, casebase.POS],
+    text_vector: np.ndarray,
 ) -> t.Tuple[Synset, ...]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = concept_synsets(name, pos)
@@ -154,9 +175,11 @@ def concept_synsets_contextualized(
 
 
 def concept_synset_contextualized(
-    text_vector: np.ndarray, name: str, pos: t.Union[None, str, casebase.POS]
+    name: str,
+    pos: t.Union[None, str, casebase.POS],
+    text_vector: np.ndarray,
 ) -> t.Optional[Synset]:
-    synsets = concept_synsets_contextualized(text_vector, name, pos)
+    synsets = concept_synsets_contextualized(name, pos, text_vector)
 
     if len(synsets) > 0:
         return synsets[0]
