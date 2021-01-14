@@ -1,15 +1,69 @@
 import csv
+import itertools
 import logging
 import typing as t
+from dataclasses import dataclass
 from pathlib import Path
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import measure
 from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
 from recap_argument_graph_adaptation.model.config import Config
+from sklearn.model_selection import ParameterGrid
 
 config = Config.instance()
 log = logging.getLogger(__name__)
+
+
+@dataclass()
+class RunArgs:
+    current_run: int
+    total_runs: int
+    current_params: int
+    total_params: int
+    params: t.Mapping[str, t.Any]
+    current_case: int
+    total_cases: int
+    case: cb.Case
+    out_path: Path
+
+
+def parameter_grid() -> t.List[t.Dict[str, t.Any]]:
+    param_grid = [
+        params
+        for params in ParameterGrid(dict(config["tuning"]))
+        if round(sum(Config.filter_mapping(params, "weight").values()), 2) == 1
+        and round(sum(Config.filter_mapping(params, "score").values()), 2) == 1
+    ]
+    if not param_grid:
+        param_grid = [{key: values[0] for key, values in config["tuning"].items()}]
+
+    return param_grid
+
+
+def run_arguments(
+    param_grid: t.Collection[t.Mapping[str, t.Any]], cases: t.Collection[casebase.Case]
+):
+    total_params = len(param_grid)
+    total_cases = len(cases)
+    total_runs = total_params * total_cases
+
+    return [
+        RunArgs(
+            i,
+            total_runs,
+            i_params,
+            total_params,
+            params,
+            i_case,
+            total_cases,
+            case,
+            out_path,
+        )
+        for i, ((i_params, params), (i_case, case)) in enumerate(
+            itertools.product(enumerate(param_grid), enumerate(cases))
+        )
+    ]
 
 
 def cases() -> t.List[casebase.Case]:

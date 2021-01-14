@@ -75,18 +75,24 @@ class Config(collections.MutableMapping):
     def tuning(
         self, prefix: t.Optional[str] = None, name: t.Optional[str] = None
     ) -> t.Any:
-        store = self._store["_tuning"]
+        return Config.filter_mapping(self._store["_tuning"], prefix, name)
 
+    @staticmethod
+    def filter_mapping(
+        mapping: t.Mapping[str, t.Any],
+        prefix: t.Optional[str] = None,
+        name: t.Optional[str] = None,
+    ) -> t.Any:
         if prefix:
             prefix = f"{prefix}_"
 
             if name:
-                return store[prefix + name]
+                return mapping[prefix + name]
 
             return {
                 key[len(prefix) :]: value
-                for key, value in store.items()
+                for key, value in mapping.items()
                 if key.startswith(prefix)
             }
 
-        return store
+        return mapping
