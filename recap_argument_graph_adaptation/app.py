@@ -73,6 +73,7 @@ def run():
         export.grid_stats(results, duration, param_grid, out_path)
 
     log.info(f"Finished in {duration} sec.")
+    log.info(f"Average duration per run: {duration / len(run_args)}")
 
 
 def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluation]:

@@ -29,15 +29,15 @@ def init_reader():
 wn = init_reader()
 
 
-class EmptyLock:
-    def __enter__(self):
-        pass
+# class EmptyLock:
+#     def __enter__(self):
+#         pass
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         pass
 
 
-lock: t.Union[synchronize.Lock, EmptyLock] = EmptyLock()
+# lock: t.Union[synchronize.Lock, EmptyLock] = EmptyLock()
 
 
 @dataclass(frozen=True)
@@ -51,8 +51,8 @@ class Synset:
         return cls(s.name() or "", s.definition() or "", tuple(s.examples()) or tuple())
 
     def to_nltk(self) -> NltkSynset:
-        with lock:
-            return wn.synset(self.code)
+        # with lock:
+        return wn.synset(self.code)
 
     def __str__(self) -> str:
         return self.code
@@ -74,8 +74,8 @@ class Synset:
     def direct_hypernyms(self) -> t.Set[Synset]:
         nltk_synset = self.to_nltk()
 
-        with lock:
-            return {Synset.from_nltk(hyp) for hyp in nltk_synset.hypernyms()} or set()
+        # with lock:
+        return {Synset.from_nltk(hyp) for hyp in nltk_synset.hypernyms()} or set()
 
     @property
     def all_hypernyms(self) -> t.Set[Synset]:
@@ -100,11 +100,11 @@ class Synset:
         synset1 = self.to_nltk()
         synset2 = other.to_nltk()
 
-        with lock:
-            return {
-                "path_similarity": synset1.path_similarity(synset2) or 0.0,
-                "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
-            }
+        # with lock:
+        return {
+            "path_similarity": synset1.path_similarity(synset2) or 0.0,
+            "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
+        }
 
 
 def _synsets(
@@ -120,8 +120,8 @@ def _synsets(
         pos_tags.extend(pos)
 
     for pos_tag in pos_tags:
-        with lock:
-            new_synsets = wn.synsets(name, pos_tag)
+        # with lock:
+        new_synsets = wn.synsets(name, pos_tag)
 
         results.extend(new_synsets)
 
