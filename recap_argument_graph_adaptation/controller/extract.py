@@ -35,16 +35,14 @@ def keywords(
             pos_tag = casebase.spacy_pos_mapping[k["pos_tag"]]
             vector = k["vector"]
             nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
-            # synsets = wordnet.concept_synsets_contextualized(
-            #     k["term"], pos_tag, node_vector
-            # ) or wordnet.concept_synsets_contextualized(
-            #     k["lemma"], pos_tag, node_vector
-            # )
-            synsets = wordnet.concept_synsets(
-                k["term"], pos_tag
-            ) or wordnet.concept_synsets(
-                k["lemma"], pos_tag
+            synsets = wordnet.concept_synsets_contextualized(
+                k["term"], pos_tag, node_vector
+            ) or wordnet.concept_synsets_contextualized(
+                k["lemma"], pos_tag, node_vector
             )
+            # synsets = wordnet.concept_synsets(
+            #     k["term"], pos_tag
+            # ) or wordnet.concept_synsets(k["lemma"], pos_tag)
 
             if nodes or synsets:
                 candidate = casebase.Concept(
@@ -85,14 +83,18 @@ def paths(
             paths = []
 
             for rule in rules:
-                if candidates := db.all_shortest_paths(
-                    rule.source.nodes, concept.nodes
-                ):
+                if (
+                    candidates := db.all_shortest_paths(
+                        rule.source.nodes, concept.nodes
+                    )
+                ) is not None:
                     paths.extend(candidates)
+                    log.debug(
+                        f"Found {len(candidates)} reference path(s) for ({rule.source})->({concept})."
+                    )
 
             if paths:
                 result[concept] = paths
-                log.debug(f"Found {len(paths)} reference path(s) for '{concept}'.")
 
     elif method == "between":
         paths = []
@@ -103,7 +105,9 @@ def paths(
             ):
                 paths.extend(candidates)
 
-            log.debug(f"Found {len(paths)} reference path(s) for '{rule.target}'.")
+            log.debug(
+                f"Found {len(paths)} reference path(s) for ({rule.source})->({rule.target})."
+            )
 
         if paths:
             for concept in concepts:
