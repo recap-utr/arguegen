@@ -1,8 +1,12 @@
+import json
 import logging
+import shutil
+import statistics
 import typing as t
 from collections import defaultdict
 from pathlib import Path
 
+import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import casebase, conceptnet
 from recap_argument_graph_adaptation.model.config import Config
@@ -22,14 +26,13 @@ def statistic(
 
     for concept in concepts:
         key = f"({concept})->({adapted_concepts.get(concept)})"
-        adapted_synsets_str = (
-            {
+        adapted_synsets_str = None
+
+        if adapted_synsets_for_concept := adapted_synsets.get(concept):
+            adapted_synsets_str = {
                 str(item): item.score
-                for item in sorted(adapted_synsets.get(concept), key=lambda x: x.score)
+                for item in sorted(adapted_synsets_for_concept, key=lambda x: x.score)
             }
-            if adapted_synsets
-            else None
-        )
 
         out[key] = {
             **concept.to_dict(),
@@ -97,7 +100,7 @@ def grid_stats(
 
             for case, eval_results in case_results.items():
                 eval_result = next(filter(lambda x: x[1] == i, eval_results), None)
-                current_path = _nested_path(
+                current_path = nested_path(
                     out_path / case, len(param_grid), param_grid[i]
                 ).resolve()
                 case_eval_output = None

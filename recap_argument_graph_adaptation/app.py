@@ -16,8 +16,7 @@ import requests
 import typer
 
 from .controller import adapt, convert, evaluate, export, extract, load
-from .model import casebase as cb
-from .model import spacy, wordnet
+from .model import casebase, spacy, wordnet
 from .model.config import Config
 
 config = Config.instance()
@@ -49,7 +48,7 @@ def run():
     )
     cases = load.cases()
     param_grid = load.parameter_grid()
-    run_args = load.run_arguments(param_grid, cases)
+    run_args = load.run_arguments(param_grid, cases, out_path)
 
     log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
     results = []
@@ -81,7 +80,7 @@ def run():
     log.info(f"Finished in {duration} sec.")
 
 
-def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, cb.Evaluation]:
+def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluation]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params

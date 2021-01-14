@@ -24,7 +24,7 @@ class RunArgs:
     params: t.Mapping[str, t.Any]
     current_case: int
     total_cases: int
-    case: cb.Case
+    case: casebase.Case
     out_path: Path
 
 
@@ -42,7 +42,9 @@ def parameter_grid() -> t.List[t.Dict[str, t.Any]]:
 
 
 def run_arguments(
-    param_grid: t.Collection[t.Mapping[str, t.Any]], cases: t.Collection[casebase.Case]
+    param_grid: t.Collection[t.Mapping[str, t.Any]],
+    cases: t.Collection[casebase.Case],
+    out_path: Path,
 ):
     total_params = len(param_grid)
     total_cases = len(cases)
