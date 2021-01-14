@@ -1,17 +1,10 @@
-import itertools
-import json
 import logging
 import multiprocessing
-import shutil
-import statistics
 import typing as t
-from collections import defaultdict
-from dataclasses import dataclass
 from pathlib import Path
 from timeit import default_timer as timer
 
 import pendulum
-import recap_argument_graph as ag
 import requests
 import typer
 
@@ -36,6 +29,8 @@ processes = (
     if config["resources"]["processes"] == 0
     else int(config["resources"]["processes"])
 )
+
+# TODO: Check if conceptnet is still functional.
 
 
 def run():

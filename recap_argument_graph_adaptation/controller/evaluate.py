@@ -1,5 +1,4 @@
 import logging
-import statistics
 import typing as t
 from dataclasses import dataclass
 

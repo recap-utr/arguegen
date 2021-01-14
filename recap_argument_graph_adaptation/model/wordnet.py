@@ -1,18 +1,12 @@
 from __future__ import annotations
 
 import itertools
-import json
-import multiprocessing
 import typing as t
-from collections import defaultdict
 from multiprocessing import synchronize
-from pathlib import Path
 
 import numpy as np
 from nltk.corpus import wordnet as wn
-from nltk.corpus.reader.api import CorpusReader
-from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
-from nltk.corpus.util import LazyCorpusLoader
+from nltk.corpus.reader.wordnet import Synset
 from recap_argument_graph_adaptation.model import casebase as cb
 from recap_argument_graph_adaptation.model import spacy
 from recap_argument_graph_adaptation.model.config import Config
