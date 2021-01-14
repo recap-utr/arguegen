@@ -14,7 +14,7 @@ poetry run python -m nltk.downloader popular
 
 - Start a spacy server in one terminal session:
 
-  ```poetry run python -m recap_argument_graph_adaptation.uvicorn spacy```
+  ```./spacy.sh```
 
 - Run the adaptation in another session:
 
@@ -29,11 +29,9 @@ Within the folder `data`, there are two folders: `input` and `output`.
 For each case that should be adapted, create a folder with an arbitrary name in `input`.
 Then, place the following files in that folder:
 
--   `benchmark.csv`
--   `benchmark.json`
--   `case.csv`
--   `case.json`
--   `query.txt`
+-   `graph.json`: Argument graph that should be adapted.
+-   `query.txt`: Query for the imaginary retrieval.
+-   `rules.csv`: Adaptation rules for all concepts in `graph.json` in the form `source:pos,target:pos`.
 
 ## Output Folder
 
