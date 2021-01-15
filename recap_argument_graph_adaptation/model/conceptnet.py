@@ -105,6 +105,9 @@ class Path:
 
         return out
 
+    def __len__(self) -> int:
+        return len(self.relationships)
+
     @classmethod
     def from_neo4j(cls, obj: neo4j.data.Path) -> Path:
         return cls(

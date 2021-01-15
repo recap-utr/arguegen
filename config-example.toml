@@ -72,6 +72,7 @@ embeddings = "spacy" # transformers, spacy
 
 [wordnet]
 hypernym_filter = [
+    "entity.n",
     "abstraction.n",
     "artifact.n",
     "causal_agent.n",

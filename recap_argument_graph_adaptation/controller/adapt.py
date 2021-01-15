@@ -69,9 +69,9 @@ def synsets(
             )
 
         for synset in original_concept.synsets:
-            hypernyms = synset.all_hypernyms
+            hypernym_distances = synset.hypernym_distances()
 
-            for hypernym in hypernyms:
+            for hypernym, hyp_distance in hypernym_distances.items():
                 name, pos = hypernym.resolved
                 vector = spacy.vector(name)
                 nodes = tuple()
@@ -85,7 +85,7 @@ def synsets(
                     synsets,
                     None,
                     *measure.init_concept_metrics(
-                        vector, nodes, synsets, related_concepts
+                        vector, nodes, synsets, hyp_distance, related_concepts
                     ),
                 )
 
@@ -128,6 +128,7 @@ def paths(
         adaptation_candidates = set()
 
         for result in adaptation_results:
+            hyp_distance = len(result)
             name = result.end_node.processed_name
             vector = spacy.vector(name)
             end_nodes = tuple([result.end_node])
@@ -153,7 +154,7 @@ def paths(
                 synsets,
                 None,
                 *measure.init_concept_metrics(
-                    vector, end_nodes, synsets, related_concepts
+                    vector, end_nodes, synsets, hyp_distance, related_concepts
                 ),
             )
 

@@ -24,7 +24,8 @@ class Concept:
     synsets: t.Tuple[wordnet.Synset, ...]
     keyword_weight: t.Optional[float]
     semantic_similarity: t.Optional[float] = None
-    conceptnet_path_distance: t.Optional[float] = None
+    hypernym_proximity: t.Optional[float] = None
+    conceptnet_path_similarity: t.Optional[float] = None
     wordnet_path_similarity: t.Optional[float] = None
     wordnet_wup_similarity: t.Optional[float] = None
 
@@ -60,7 +61,8 @@ class Concept:
         metrics = {
             "keyword_weight": self.keyword_weight,
             "semantic_similarity": self.semantic_similarity,
-            "conceptnet_path_distance": _dist2sim(self.conceptnet_path_distance),
+            "hypernym_proximity": self.hypernym_proximity,
+            "conceptnet_path_similarity": self.conceptnet_path_similarity,
             "wordnet_path_similarity": self.wordnet_path_similarity,
             "wordnet_wup_similarity": self.wordnet_wup_similarity,
         }
@@ -102,13 +104,6 @@ class Concept:
             source.synsets,
             *metrics,
         )
-
-
-def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
-    if distance is not None:
-        return 1 / (1 + distance)
-
-    return None
 
 
 @dataclass(frozen=True)

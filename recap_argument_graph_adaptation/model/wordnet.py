@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import typing as t
+from collections import defaultdict
 from dataclasses import dataclass
 from multiprocessing import synchronize
 
@@ -70,31 +71,30 @@ class Synset:
         parts = self.code.rsplit(".", 2)[:-1]
         return ".".join(parts)
 
-    @property
-    def direct_hypernyms(self) -> t.Set[Synset]:
-        nltk_synset = self.to_nltk()
+    def hypernyms(self) -> t.Set[Synset]:
+        return {Synset.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()} or set()
 
-        # with lock:
-        return {Synset.from_nltk(hyp) for hyp in nltk_synset.hypernyms()} or set()
+    def hypernym_paths(self) -> t.List[t.List[Synset]]:
+        # The last element is the current synset and thus can be removed
+        return [
+            list(reversed([Synset.from_nltk(hyp) for hyp in hyp_path[:-1]]))
+            for hyp_path in self.to_nltk().hypernym_paths()
+        ]
 
-    @property
-    def all_hypernyms(self) -> t.Set[Synset]:
-        result = set()
-        trees = _hypernym_trees(self)
+    def hypernym_distances(self) -> t.Dict[Synset, int]:
+        distances_map = defaultdict(list)
 
-        for tree in trees:
-            # The first synset is the original one, the last always entity
-            tree = tree[1:-1]
-            # Some synsets are not relevant for generalization
-            tree = filter(
-                lambda synset: synset.name_without_index
-                not in config["wordnet"]["hypernym_filter"],
-                tree,
-            )
+        for hyp_, dist in self.to_nltk().hypernym_distances():
+            hyp = Synset.from_nltk(hyp_)
 
-            result.update(tree)
+            if (
+                hyp != self
+                and dist > 0
+                and hyp.name_without_index not in config["wordnet"]["hypernym_filter"]
+            ):
+                distances_map[hyp].append(dist)
 
-        return result
+        return {hyp: max(distances) for hyp, distances in distances_map.items()}
 
     def compare(self, other: Synset) -> t.Dict[str, float]:
         synset1 = self.to_nltk()
@@ -212,27 +212,3 @@ def metrics(
                 results[key] = max(values)
 
     return results
-
-
-def _hypernym_trees(synset: Synset) -> t.List[t.List[Synset]]:
-    trees = [[synset]]
-    has_hypernyms = [True]
-    final_trees = []
-
-    while any(has_hypernyms):
-        has_hypernyms = []
-        new_trees = []
-
-        for tree in trees:
-            if new_hypernyms := tree[-1].direct_hypernyms:
-                has_hypernyms.append(True)
-
-                for new_hypernym in new_hypernyms:
-                    new_trees.append([*tree, new_hypernym])
-            else:
-                has_hypernyms.append(False)
-                final_trees.append(tree)
-
-        trees = new_trees
-
-    return final_trees

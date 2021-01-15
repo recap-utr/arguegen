@@ -142,5 +142,11 @@ def _parse_rule_concept(rule: str) -> casebase.Concept:
         )
 
     return casebase.Concept(
-        name, vector, pos, nodes, tuple(synsets), None, *measure.best_concept_metrics
+        name,
+        vector,
+        pos,
+        nodes,
+        tuple(synsets),
+        None,
+        *[1.0 for _ in range(measure.total_metrics)],
     )

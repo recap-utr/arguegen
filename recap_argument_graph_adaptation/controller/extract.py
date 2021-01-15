@@ -3,8 +3,7 @@ import typing as t
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import measure
-from recap_argument_graph_adaptation.model import (casebase, conceptnet, spacy,
-                                                   wordnet)
+from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -53,7 +52,7 @@ def keywords(
                     synsets,
                     k["weight"],
                     *measure.init_concept_metrics(
-                        vector, nodes, synsets, related_concepts
+                        vector, nodes, synsets, 0, related_concepts
                     ),
                 )
 
