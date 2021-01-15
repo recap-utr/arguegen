@@ -26,8 +26,7 @@ def _init_child_process(lock_):
 
 
 # TODO: Check if conceptnet is still functional.
-
-# TODO: Incorporate the hypernym level into the score. Maybe also for ConceptNet.
+# TODO: Add path-based adaptation for wordnet.
 
 
 def run():
