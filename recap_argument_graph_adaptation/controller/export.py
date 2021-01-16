@@ -8,7 +8,7 @@ from pathlib import Path
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, conceptnet
+from recap_argument_graph_adaptation.model import casebase, graph
 from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)
@@ -17,28 +17,30 @@ config = Config.instance()
 
 def statistic(
     concepts: t.Iterable[casebase.Concept],
-    reference_paths: t.Mapping[casebase.Concept, t.Iterable[conceptnet.Path]],
-    adapted_paths: t.Mapping[casebase.Concept, t.Iterable[conceptnet.Path]],
-    adapted_synsets: t.Mapping[casebase.Concept, t.Iterable[casebase.Concept]],
+    reference_paths: t.Mapping[casebase.Concept, t.Iterable[graph.AbstractPath]],
+    adapted_paths: t.Mapping[casebase.Concept, t.Iterable[graph.AbstractPath]],
+    adapted_concept_candidates: t.Mapping[
+        casebase.Concept, t.Iterable[casebase.Concept]
+    ],
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> t.Dict[str, t.Any]:
     out = {}
 
     for concept in concepts:
         key = f"({concept})->({adapted_concepts.get(concept)})"
-        adapted_synsets_str = None
+        candidates_str = None
 
-        if adapted_synsets_for_concept := adapted_synsets.get(concept):
-            adapted_synsets_str = {
+        if candidates_for_concept := adapted_concept_candidates.get(concept):
+            candidates_str = {
                 str(item): item.score
-                for item in sorted(adapted_synsets_for_concept, key=lambda x: x.score)
+                for item in sorted(candidates_for_concept, key=lambda x: x.score)
             }
 
         out[key] = {
             **concept.to_dict(),
             "reference_paths": convert.list_str(reference_paths.get(concept)),
             "adapted_paths": convert.list_str(adapted_paths.get(concept)),
-            "adapted_synsets": adapted_synsets_str,
+            "adaptation_candidates": candidates_str,
             "adapted_name": convert.xstr(adapted_concepts.get(concept)),
         }
 

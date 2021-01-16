@@ -4,8 +4,7 @@ import re
 import typing as t
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import measure
-from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -44,13 +43,13 @@ def _replace(text: str, substitutions: t.Mapping[str, str]):
     return text
 
 
-def synsets(
+def concepts(
     concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
 ) -> t.Tuple[
     t.Dict[casebase.Concept, casebase.Concept],
     t.Dict[casebase.Concept, t.Set[casebase.Concept]],
 ]:
-    adapted_synsets = {}
+    all_candidates = {}
     adapted_concepts = {}
     related_concept_weight = config.tuning("weight")
 
@@ -68,30 +67,28 @@ def synsets(
                 }
             )
 
-        for synset in original_concept.synsets:
-            hypernym_distances = synset.hypernym_distances()
+        for node in original_concept.nodes:
+            hypernym_distances = node.hypernym_distances()
 
             for hypernym, hyp_distance in hypernym_distances.items():
-                name, pos = hypernym.resolved
+                name = hypernym.processed_name
+                pos = hypernym.pos
                 vector = spacy.vector(name)
-                nodes = tuple()
-                synsets = (hypernym,)
+                nodes = frozenset([hypernym])
 
                 candidate = casebase.Concept(
                     name,
                     vector,
-                    pos,
+                    query.pos(pos),
                     nodes,
-                    synsets,
-                    None,
-                    *measure.init_concept_metrics(
-                        vector, nodes, synsets, hyp_distance, related_concepts
+                    query.concept_metrics(
+                        nodes, vector, None, hyp_distance, related_concepts
                     ),
                 )
 
                 adaptation_candidates.add(candidate)
 
-        adapted_synsets[original_concept] = adaptation_candidates
+        all_candidates[original_concept] = adaptation_candidates
         adapted_concept = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
@@ -103,15 +100,15 @@ def synsets(
         else:
             log.debug(f"No adaptation for ({original_concept}).")
 
-    return adapted_concepts, adapted_synsets
+    return adapted_concepts, all_candidates
 
 
 def paths(
-    reference_paths: t.Mapping[casebase.Concept, t.Sequence[conceptnet.Path]],
+    reference_paths: t.Mapping[casebase.Concept, t.Sequence[graph.AbstractPath]],
     rules: t.Collection[casebase.Rule],
 ) -> t.Tuple[
     t.Dict[casebase.Concept, casebase.Concept],
-    t.Dict[casebase.Concept, t.List[conceptnet.Path]],
+    t.Dict[casebase.Concept, t.List[graph.AbstractPath]],
 ]:
     related_concept_weight = config.tuning("weight")
     adapted_concepts = {}
@@ -131,9 +128,8 @@ def paths(
             hyp_distance = len(result)
             name = result.end_node.processed_name
             vector = spacy.vector(name)
-            end_nodes = tuple([result.end_node])
-            pos = result.end_node.pos
-            synsets = wordnet.concept_synsets(name, pos)
+            end_nodes = frozenset([result.end_node])
+            pos = query.pos(result.end_node.pos)
             related_concepts = {}
 
             for rule in rules:
@@ -151,10 +147,8 @@ def paths(
                 vector,
                 pos,
                 end_nodes,
-                synsets,
-                None,
-                *measure.init_concept_metrics(
-                    vector, end_nodes, synsets, hyp_distance, related_concepts
+                query.concept_metrics(
+                    end_nodes, vector, None, hyp_distance, related_concepts
                 ),
             )
 
@@ -165,10 +159,6 @@ def paths(
         )
 
         if adapted_concept:
-            # In this step, the concept is correctly capitalized.
-            # Not necessary due to later grammatical correction.
-            # adapted_concept = conceptnet.adapt_name(adapted_name, root_concept.name)
-
             adapted_concepts[original_concept] = adapted_concept
             log.debug(f"Adapt ({original_concept})->({adapted_concept}).")
 
@@ -179,40 +169,38 @@ def paths(
 
 
 def _adapt_shortest_path(
-    shortest_path: conceptnet.Path,
+    shortest_path: graph.AbstractPath,
     concept: casebase.Concept,
     rule: casebase.Rule,
-) -> t.List[conceptnet.Path]:
-    db = conceptnet.Database()
+) -> t.List[graph.AbstractPath]:
     method = config.tuning("conceptnet", "method")
     current_paths = []
 
     # We have to convert the target to a path object here.
-    start_node = rule.target.best_node if method == "within" else concept.best_node
-    current_paths.append(
-        conceptnet.Path.from_node(start_node)
-    )  # Start with only one node.
+    start_nodes = rule.target.nodes if method == "within" else concept.nodes
 
-    for rel in shortest_path.relationships:
-        next_paths = []
+    for start_node in start_nodes:
+        current_paths.append(
+            graph.AbstractPath.from_node(start_node)
+        )  # Start with only one node.
 
-        for current_path in current_paths:
-            path_candidates = db.expand_nodes([current_path.end_node], [rel.type])
+        for _ in shortest_path.relationships:
+            next_paths = []
 
-            if config["conceptnet"]["relation"]["relax_types"] and not path_candidates:
-                path_candidates = db.expand_nodes([current_path.end_node])
+            for current_path in current_paths:
+                path_extensions = query.hypernym_paths(current_path.end_node)
 
-            if path_candidates:
-                path_candidates = _filter_paths(
-                    path_candidates, shortest_path, start_node
-                )
-
-                for path_candidate in path_candidates:
-                    next_paths.append(
-                        conceptnet.Path.merge(current_path, path_candidate)
+                if path_extensions:
+                    path_extensions = _filter_paths(
+                        current_path, path_extensions, shortest_path
                     )
 
-        current_paths = next_paths
+                    for path_extension in path_extensions:
+                        next_paths.append(
+                            graph.AbstractPath.merge(current_path, path_extension)
+                        )
+
+            current_paths = next_paths
 
     return current_paths
 
@@ -225,7 +213,7 @@ def _filter_concepts(
     # Remove the original adaptation source from the candidates
     filter_expr = [rule.source for rule in rules] + [original_concept]
     filtered_concepts = concepts.difference(filter_expr)
-    filtered_concepts = casebase.Concept.only_relevant(
+    filtered_concepts = casebase.filter_concepts(
         filtered_concepts, config.tuning("adaptation", "min_score")
     )
 
@@ -241,16 +229,17 @@ def _filter_concepts(
     return None
 
 
+# TODO: Incorporate the hypernym level s.t. adaptations with a similar level of generalization are preferred.
 def _filter_paths(
-    candidate_paths: t.Sequence[conceptnet.Path],
-    reference_path: conceptnet.Path,
-    start_node: conceptnet.Node,
-) -> t.List[conceptnet.Path]:
+    current_path: graph.AbstractPath,
+    path_extensions: t.Iterable[graph.AbstractPath],
+    reference_path: graph.AbstractPath,
+) -> t.List[graph.AbstractPath]:
     selector = config.tuning("conceptnet", "selector")
     candidate_values = {}
 
-    end_index = len(candidate_paths[0].nodes) - 1
-    start_index = end_index - 1
+    start_index = len(current_path.relationships)
+    end_index = start_index + 1
 
     val_reference = _aggregate_features(
         spacy.vector(reference_path.nodes[start_index].processed_name),
@@ -258,15 +247,13 @@ def _filter_paths(
         selector,
     )
 
-    for candidate_path in candidate_paths:
-        candidate = candidate_path.end_node
-
+    for candidate in path_extensions:
         val_adapted = _aggregate_features(
-            spacy.vector(start_node.processed_name),
-            spacy.vector(candidate.processed_name),
+            spacy.vector(current_path.end_node.processed_name),
+            spacy.vector(candidate.end_node.processed_name),
             selector,
         )
-        candidate_values[candidate_path] = _compare_features(
+        candidate_values[candidate] = _compare_features(
             val_reference, val_adapted, selector
         )
 

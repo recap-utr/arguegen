@@ -4,14 +4,12 @@ import itertools
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
-from multiprocessing import synchronize
 
 import numpy as np
 from nltk.corpus.reader.api import CorpusReader
-from nltk.corpus.reader.wordnet import Synset as NltkSynset
-from nltk.corpus.reader.wordnet import WordNetCorpusReader
+from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
-from recap_argument_graph_adaptation.model import casebase, spacy
+from recap_argument_graph_adaptation.model import casebase, graph, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
 # from nltk.corpus import wordnet as wn
@@ -42,50 +40,61 @@ wn = init_reader()
 
 
 @dataclass(frozen=True)
-class Synset:
-    code: str
+class WordnetNode(graph.AbstractNode):
+    index: str
     definition: str
     examples: t.Tuple[str]
 
     @classmethod
-    def from_nltk(cls, s: NltkSynset) -> Synset:
-        return cls(s.name() or "", s.definition() or "", tuple(s.examples()) or tuple())
+    def from_nltk(cls, s: Synset) -> WordnetNode:
+        if code := s.name():
+            name, pos, index = tuple(code.rsplit(".", 2))  # type: ignore
 
-    def to_nltk(self) -> NltkSynset:
+            return cls(
+                name=name,
+                pos=pos,
+                index=index,
+                uri=code,
+                definition=s.definition() or "",
+                examples=tuple(s.examples()) or tuple(),
+            )
+
+        raise RuntimeError("The synset does not have a name!")
+
+    def to_nltk(self) -> Synset:
         # with lock:
-        return wn.synset(self.code)
+        return wn.synset(self.uri)
 
     def __str__(self) -> str:
-        return self.code
-
-    @property
-    def resolved(self) -> t.Tuple[str, casebase.POS]:
-        parts = self.code.rsplit(".", 2)
-        lemma = parts[0].replace("_", " ")
-        pos = casebase.wn_pos_mapping[parts[1]]
-
-        return (lemma, pos)
+        return self.uri
 
     @property
     def name_without_index(self) -> str:
-        parts = self.code.rsplit(".", 2)[:-1]
-        return ".".join(parts)
+        if self.pos:
+            return ".".join((self.name, self.pos))
 
-    def hypernyms(self) -> t.Set[Synset]:
-        return {Synset.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()} or set()
+        return self.name
 
-    def hypernym_paths(self) -> t.List[t.List[Synset]]:
-        # The last element is the current synset and thus can be removed
-        return [
-            list(reversed([Synset.from_nltk(hyp) for hyp in hyp_path[:-1]]))
-            for hyp_path in self.to_nltk().hypernym_paths()
-        ]
+    def hypernyms(self) -> t.FrozenSet[WordnetNode]:
+        return (
+            frozenset(
+                {WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()}
+            )
+            or frozenset()
+        )
 
-    def hypernym_distances(self) -> t.Dict[Synset, int]:
+    # def hypernym_paths(self) -> t.List[t.List[WordnetNode]]:
+    #     # The last element is the current synset and thus can be removed
+    #     return [
+    #         list(reversed([WordnetNode.from_nltk(hyp) for hyp in hyp_path[:-1]]))
+    #         for hyp_path in self.to_nltk().hypernym_paths()
+    #     ]
+
+    def hypernym_distances(self) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
 
         for hyp_, dist in self.to_nltk().hypernym_distances():
-            hyp = Synset.from_nltk(hyp_)
+            hyp = WordnetNode.from_nltk(hyp_)
 
             if (
                 hyp != self
@@ -96,7 +105,7 @@ class Synset:
 
         return {hyp: max(distances) for hyp, distances in distances_map.items()}
 
-    def compare(self, other: Synset) -> t.Dict[str, float]:
+    def metrics(self, other: WordnetNode) -> t.Dict[str, float]:
         synset1 = self.to_nltk()
         synset2 = other.to_nltk()
 
@@ -107,17 +116,50 @@ class Synset:
         }
 
 
-def _synsets(
-    name: str, pos: t.Union[None, str, t.Collection[str]]
-) -> t.List[NltkSynset]:
+@dataclass(frozen=True)
+class WordnetRelationship(graph.AbstractRelationship):
+    # start_node: Node
+    # end_node: Node
+
+    @classmethod
+    def from_nltk(cls, start_synset: Synset, end_synset: Synset) -> WordnetRelationship:
+        return cls(
+            type="Hypernym",
+            start_node=WordnetNode.from_nltk(start_synset),
+            end_node=WordnetNode.from_nltk(end_synset),
+        )
+
+    @classmethod
+    def from_nodes(
+        cls, start_node: WordnetNode, end_node: WordnetNode
+    ) -> WordnetRelationship:
+        return cls(type="Hypernym", start_node=start_node, end_node=end_node)
+
+
+@dataclass(frozen=True)
+class WordnetPath(graph.AbstractPath):
+    # nodes: t.Tuple[Node, ...]
+    # relationships: t.Tuple[Relationship, ...]
+
+    @classmethod
+    def from_nltk(cls, synsets: t.Iterable[Synset]) -> WordnetPath:
+        nodes = tuple((WordnetNode.from_nltk(synset) for synset in synsets))
+        relationships = tuple()
+
+        if len(nodes) > 1:
+            relationships = tuple(
+                (
+                    WordnetRelationship.from_nodes(nodes[i], nodes[i + 1])
+                    for i in range(len(nodes) - 1)
+                )
+            )
+
+        return cls(nodes=nodes, relationships=relationships)
+
+
+def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synset]:
     name = name.replace(" ", "_")
     results = []
-    pos_tags = []
-
-    if not pos or isinstance(pos, str):
-        pos_tags.append(pos)
-    else:
-        pos_tags.extend(pos)
 
     for pos_tag in pos_tags:
         # with lock:
@@ -128,26 +170,26 @@ def _synsets(
     return results
 
 
+def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
+    hyp_sequences = [
+        list(reversed(hyp_path[:-1])) for hyp_path in node.to_nltk().hypernym_paths()
+    ]
+    return frozenset(WordnetPath.from_nltk(hyp_seq) for hyp_seq in hyp_sequences)
+
+
 def concept_synsets(
-    name: str, pos: t.Union[None, str, casebase.POS]
-) -> t.Tuple[Synset]:
-    if not pos:
-        pos_tags = None
-    elif isinstance(pos, casebase.POS):
-        pos_tags = casebase.wn_pos(pos)
-    else:
-        pos_tags = [pos]
-
-    return tuple([Synset.from_nltk(ss) for ss in _synsets(name, pos_tags) if ss])
-
-
-def concept_synsets_contextualized(
     name: str,
-    pos: t.Union[None, str, casebase.POS],
-    text_vector: np.ndarray,
-) -> t.Tuple[Synset, ...]:
+    pos: t.Optional[casebase.POS],
+    text_vector: t.Optional[np.ndarray],
+) -> t.FrozenSet[WordnetNode]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    synsets = concept_synsets(name, pos)
+    synsets = frozenset(
+        {WordnetNode.from_nltk(ss) for ss in _synsets(name, casebase.pos2wn(pos)) if ss}
+    )
+
+    if text_vector is None:
+        return synsets
+
     synset_definitions = [synset.definition for synset in synsets]
     synset_vectors = spacy.vectors(synset_definitions)
     synset_tuples = [
@@ -171,24 +213,11 @@ def concept_synsets_contextualized(
         else:
             synset_tuples = (best_synset_tuple,)
 
-    return tuple([synset for synset, _ in synset_tuples])
-
-
-def concept_synset_contextualized(
-    name: str,
-    pos: t.Union[None, str, casebase.POS],
-    text_vector: np.ndarray,
-) -> t.Optional[Synset]:
-    synsets = concept_synsets_contextualized(name, pos, text_vector)
-
-    if len(synsets) > 0:
-        return synsets[0]
-
-    return None
+    return frozenset({synset for synset, _ in synset_tuples})
 
 
 def metrics(
-    synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
+    synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
 ) -> t.Dict[str, t.Optional[float]]:
     tmp_results: t.Dict[str, t.List[float]] = {
         "path_similarity": [],
@@ -196,9 +225,7 @@ def metrics(
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
-        retrieved_metrics = s1.compare(s2)
-
-        for key, value in retrieved_metrics.items():
+        for key, value in s1.metrics(s2).items():
             if value:
                 tmp_results[key].append(value)
 
@@ -206,9 +233,9 @@ def metrics(
 
     for key, values in tmp_results.items():
         if values:
-            if "distance" in key:
-                results[key] = min(values)
-            else:
-                results[key] = max(values)
+            # if "distance" in key:
+            #     results[key] = min(values)
+            # else:
+            results[key] = max(values)
 
     return results

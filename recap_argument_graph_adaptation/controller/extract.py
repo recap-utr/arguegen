@@ -2,8 +2,7 @@ import logging
 import typing as t
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import measure
-from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model import casebase, conceptnet, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -20,7 +19,6 @@ def keywords(
     rule_targets = {rule.target for rule in rules}
 
     concepts: t.Set[casebase.Concept] = set()
-    db = conceptnet.Database()
 
     keywords_response = spacy.keywords(
         [node.plain_text for node in graph.inodes], spacy_pos_tags
@@ -31,35 +29,26 @@ def keywords(
         node_vector = doc["vector"]
 
         for k in keywords:
-            pos_tag = casebase.spacy_pos_mapping[k["pos_tag"]]
-            vector = k["vector"]
-            nodes = db.nodes(k["term"], pos_tag) or db.nodes(k["lemma"], pos_tag)
-            synsets = wordnet.concept_synsets_contextualized(
+            pos_tag = casebase.spacy2pos(k["pos_tag"])
+            nodes = query.concept_nodes(
                 k["term"], pos_tag, node_vector
-            ) or wordnet.concept_synsets_contextualized(
-                k["lemma"], pos_tag, node_vector
-            )
-            # synsets = wordnet.concept_synsets(
-            #     k["term"], pos_tag
-            # ) or wordnet.concept_synsets(k["lemma"], pos_tag)
+            ) or query.concept_nodes(k["lemma"], pos_tag, node_vector)
 
-            if nodes or synsets:
+            if nodes:
                 candidate = casebase.Concept(
                     k["term"],
-                    vector,
+                    k["vector"],
                     pos_tag,
                     nodes,
-                    synsets,
-                    k["weight"],
-                    *measure.init_concept_metrics(
-                        vector, nodes, synsets, 0, related_concepts
+                    query.concept_metrics(
+                        nodes, k["vector"], k["weight"], None, related_concepts
                     ),
                 )
 
                 if candidate not in rule_sources and candidate not in rule_targets:
                     concepts.add(candidate)
 
-    concepts = casebase.Concept.only_relevant(
+    concepts = casebase.filter_concepts(
         concepts, config.tuning("extraction", "min_score")
     )
 
@@ -72,7 +61,7 @@ def keywords(
 
 def paths(
     concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
-) -> t.Dict[casebase.Concept, t.List[conceptnet.Path]]:
+) -> t.Dict[casebase.Concept, t.List[conceptnet.ConceptnetPath]]:
     db = conceptnet.Database()
     result = {}
     method = config.tuning("conceptnet", "method")

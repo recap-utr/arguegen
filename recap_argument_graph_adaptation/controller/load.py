@@ -6,8 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.controller import measure
-from recap_argument_graph_adaptation.model import casebase, conceptnet, spacy, wordnet
+from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
 
@@ -125,20 +124,16 @@ def _parse_rule_concept(rule: str) -> casebase.Concept:
     rule_parts = rule.split("/")
     name = rule_parts[0]
     vector = spacy.vector(name)
-    pos = casebase.POS.OTHER
+    pos = None
 
     if len(rule_parts) > 1:
         pos = casebase.POS(rule_parts[1])
 
-    db = conceptnet.Database()
-    nodes = db.nodes(name, pos)
-    synsets = wordnet.concept_synsets(name, pos)
+    nodes = query.concept_nodes(name, pos)
 
-    if config["adaptation"]["knowledge_graph"] == "conceptnet" and not nodes:
-        raise ValueError(f"The rule concept '{name}' cannot be found in ConceptNet.")
-    elif config["adaptation"]["knowledge_graph"] == "wordnet" and not synsets:
+    if not nodes:
         raise ValueError(
-            f"The rule concept '{name}/{pos.value}' cannot be found in WordNet."
+            f"The rule concept '{name}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(
@@ -146,7 +141,5 @@ def _parse_rule_concept(rule: str) -> casebase.Concept:
         vector,
         pos,
         nodes,
-        tuple(synsets),
-        None,
-        *[1.0 for _ in range(measure.total_metrics)],
+        {key: 1.0 for key in casebase.metric_keys},
     )

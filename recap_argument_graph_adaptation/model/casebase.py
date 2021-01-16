@@ -2,39 +2,44 @@ from __future__ import annotations
 
 import logging
 import typing as t
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import conceptnet, wordnet
+from recap_argument_graph_adaptation.model import graph
 from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)
 config = Config.instance()
+
+metric_keys = {
+    "keyword_weight",
+    "semantic_similarity",
+    "hypernym_proximity",
+    "path_similarity",
+    "wup_similarity",
+}
+empty_metrics = lambda: {key: None for key in metric_keys}
 
 
 @dataclass(frozen=True)
 class Concept:
     name: str
     vector: np.ndarray
-    pos: POS  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
-    nodes: t.Tuple[conceptnet.Node, ...]
-    synsets: t.Tuple[wordnet.Synset, ...]
-    keyword_weight: t.Optional[float]
-    semantic_similarity: t.Optional[float] = None
-    hypernym_proximity: t.Optional[float] = None
-    conceptnet_path_similarity: t.Optional[float] = None
-    wordnet_path_similarity: t.Optional[float] = None
-    wordnet_wup_similarity: t.Optional[float] = None
+    pos: t.Optional[
+        POS
+    ]  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
+    nodes: t.FrozenSet[graph.AbstractNode]
+    metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
 
-    @property
-    def best_node(self) -> conceptnet.Node:
-        return self.nodes[0]
+    # @property
+    # def best_node(self) -> graph.Node:
+    #     return self.nodes[0]
 
     def __str__(self):
-        if self.pos != POS.OTHER:
+        if self.pos:
             return f"{self.name}/{self.pos.value}"
 
         return self.name
@@ -46,32 +51,16 @@ class Concept:
         return hash((self.name, self.pos))
 
     @staticmethod
-    def only_relevant(
-        concepts: t.Iterable[Concept],
-        min_score: float,
-    ) -> t.Set[Concept]:
-        return {concept for concept in concepts if concept.score > min_score}
-
-    @staticmethod
     def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
         return list(sorted(concepts, key=lambda concept: concept.score))
 
     @property
     def score(self) -> float:
-        metrics = {
-            "keyword_weight": self.keyword_weight,
-            "semantic_similarity": self.semantic_similarity,
-            "hypernym_proximity": self.hypernym_proximity,
-            "conceptnet_path_similarity": self.conceptnet_path_similarity,
-            "wordnet_path_similarity": self.wordnet_path_similarity,
-            "wordnet_wup_similarity": self.wordnet_wup_similarity,
-        }
-
         result = 0
         total_weight = 0
 
         for metric_name, metric_weight in config.tuning("score").items():
-            if (metric := metrics[metric_name]) is not None:
+            if (metric := self.metrics[metric_name]) is not None:
                 result += metric * metric_weight
                 total_weight += metric_weight
 
@@ -86,24 +75,27 @@ class Concept:
         return {
             "concept": str(self),
             "nodes": [str(node) for node in self.nodes],
-            "synsets": [str(synset) for synset in self.synsets],
             "score": self.score,
         }
 
     @classmethod
     def from_concept(
-        cls,
-        source: Concept,
-        metrics: t.Tuple[t.Optional[float], ...],
+        cls, source: Concept, metrics: t.Dict[str, t.Optional[float]]
     ) -> Concept:
-        return Concept(
+        return cls(
             source.name,
             source.vector,
             source.pos,
             source.nodes,
-            source.synsets,
-            *metrics,
+            metrics,
         )
+
+
+def filter_concepts(
+    concepts: t.Iterable[Concept],
+    min_score: float,
+) -> t.Set[Concept]:
+    return {concept for concept in concepts if concept.score > min_score}
 
 
 @dataclass(frozen=True)
@@ -178,27 +170,47 @@ class POS(Enum):
     VERB = "verb"
     ADJECTIVE = "adjective"
     ADVERB = "adverb"
-    OTHER = "other"
 
 
-spacy_pos_mapping = {
-    "NOUN": POS.NOUN,
-    "PROPN": POS.NOUN,
-    "VERB": POS.VERB,
-    "ADJ": POS.ADJECTIVE,
-    "ADV": POS.ADVERB,
-}
+def spacy2pos(pos: t.Optional[str]) -> t.Optional[POS]:
+    if not pos:
+        return None
 
-wn_pos_mapping = {
-    "n": POS.NOUN,
-    "v": POS.VERB,
-    "a": POS.ADJECTIVE,
-    "r": POS.ADVERB,
-    "s": POS.ADJECTIVE,
-}
+    return {
+        "NOUN": POS.NOUN,
+        "PROPN": POS.NOUN,
+        "VERB": POS.VERB,
+        "ADJ": POS.ADJECTIVE,
+        "ADV": POS.ADVERB,
+    }[pos]
 
 
-def wn_pos(pos: POS) -> t.List[str]:
+def wn2pos(pos: t.Optional[str]) -> t.Optional[POS]:
+    if not pos:
+        return None
+
+    return {
+        "n": POS.NOUN,
+        "v": POS.VERB,
+        "a": POS.ADJECTIVE,
+        "r": POS.ADVERB,
+        "s": POS.ADJECTIVE,
+    }.get(pos)
+
+
+def cn2pos(pos: t.Optional[str]) -> t.Optional[POS]:
+    if not pos:
+        return None
+
+    return {
+        "noun": POS.NOUN,
+        "verb": POS.VERB,
+        "adjective": POS.ADJECTIVE,
+        "adverb": POS.ADVERB,
+    }.get(pos)
+
+
+def pos2wn(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
     if pos == POS.NOUN:
         return ["n"]
     elif pos == POS.VERB:
@@ -208,4 +220,4 @@ def wn_pos(pos: POS) -> t.List[str]:
     elif pos == POS.ADVERB:
         return ["r"]
 
-    return []
+    return [None]

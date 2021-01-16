@@ -94,17 +94,21 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     adapted_concepts = {}
     reference_paths = {}
     adapted_paths = {}
-    adapted_synsets = {}
+    adapted_concept_candidates = {}
     adapted_graph = None
 
     log.debug("Extracting keywords.")
     concepts = extract.keywords(case.graph, case.rules)
 
     log.debug("Adapting concepts.")
-    if config["adaptation"]["knowledge_graph"] == "wordnet":
-        adapted_concepts, adapted_synsets = adapt.synsets(concepts, case.rules)
+    adaptation_method = config.tuning("adaptation", "method")
 
-    elif config["adaptation"]["knowledge_graph"] == "conceptnet":
+    if adaptation_method == "direct":
+        adapted_concepts, adapted_concept_candidates = adapt.concepts(
+            concepts, case.rules
+        )
+
+    elif adaptation_method == "bfs":
         reference_paths = extract.paths(concepts, case.rules)
         adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
 
@@ -126,7 +130,11 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
             "case_rules": convert.list_str(case.rules),
         },
         "results": export.statistic(
-            concepts, reference_paths, adapted_paths, adapted_synsets, adapted_concepts
+            concepts,
+            reference_paths,
+            adapted_paths,
+            adapted_concept_candidates,
+            adapted_concepts,
         ),
         "config": dict(config),
     }

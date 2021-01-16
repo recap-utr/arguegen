@@ -1,4 +1,4 @@
-version = "3.1"
+version = "3.2"
 
 
 # PRIVATE
@@ -30,7 +30,7 @@ workers = 1 # Do not edit
 
 [adaptation]
 export_graph = false
-export_single_stats = false
+export_single_stats = true
 export_grid_stats = true
 knowledge_graph = "wordnet"
 
@@ -40,32 +40,37 @@ knowledge_graph = "wordnet"
 rules_adaptation_limit = [1]
 
 # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-synset_min_similarity = [0.25, 0.5, 0.75]
+synset_min_similarity = [0.0, 0.33, 0.67]
 
 # Threshold for extracting/adapting concepts
-extraction_min_score = [0.25, 0.5, 0.75]
-adaptation_min_score = [0.25, 0.5, 0.75]
+extraction_min_score = [0.2]
+adaptation_min_score = [0.0, 0.25, 0.5]
 
 # Of which metrics should the score consist
-score_keyword_weight = [0.25, 0.5, 0.75]
-score_semantic_similarity = [0.25, 0.5, 0.75]
+# score_keyword_weight = [0.0, 0.33, 0.67, 1.0] # removed due to grid search
+score_semantic_similarity = [0.33, 0.67, 1.0]
+score_wordnet_path_similarity = [0.33, 0.67, 1.0]
+score_wordnet_wup_similarity = [0.0, 0.33, 0.67]
 
 # From what concepts should the metrics be derived
-weight_rule_source = [0.25, 0.5, 0.75]
-weight_rule_target = [0.25, 0.5, 0.75]
-weight_original_concept = [0.25, 0.5, 0.75]
+weight_original_concept = [0.5, 0.75, 1.0]
+weight_rule_source = [0.0, 0.25, 0.5]
+weight_rule_target = [0.0, 0.25, 0.5]
+
+# How to perform the adaptation: direct, bfs
+adaptation_method = ["direct"]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
-conceptnet_method = ["between"]
+bfs_method = ["between"]
 
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
-conceptnet_selector = ["similarity"]
+bfs_selector = ["similarity"]
 
 
 [nlp]
-max_distance = 200
+max_distance = 50
 lang = "en"
 embeddings = "spacy" # transformers, spacy
 
@@ -91,7 +96,6 @@ bfs_node_limit = 4
 root_form = true
 
 [conceptnet.relation]
-relax_types = false
 directed = true
 generalization_types = [
     "DerivedFrom",
