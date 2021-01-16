@@ -194,7 +194,7 @@ def hypernyms_as_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
 def all_shortest_paths(
     start_nodes: t.Iterable[WordnetNode], end_nodes: t.Iterable[WordnetNode]
 ) -> t.FrozenSet[WordnetPath]:
-    results = []
+    all_paths = []
 
     for start_node, end_node in itertools.product(start_nodes, end_nodes):
         path_candidates = hypernym_paths(start_node)
@@ -204,9 +204,14 @@ def all_shortest_paths(
                 end_idx = path_candidate.nodes.index(end_node)
                 shortest_path = (start_node,) + path_candidate.nodes[: end_idx + 1]
 
-                results.append(WordnetPath.from_nodes(shortest_path))
+                all_paths.append(WordnetPath.from_nodes(shortest_path))
 
-    return frozenset(results)
+    if all_paths:
+        shortest_length = min(len(path) for path in all_paths)
+
+        return frozenset(path for path in all_paths if len(path) == shortest_length)
+
+    return frozenset()
 
 
 def concept_synsets(

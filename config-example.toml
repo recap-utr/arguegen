@@ -20,11 +20,6 @@ host = "0.0.0.0"
 port = 8765
 workers = 1
 
-[resources.wordnet]
-host = "0.0.0.0"
-port = 8766
-workers = 1 # Do not edit
-
 
 # PUBLIC
 
@@ -33,6 +28,7 @@ export_graph = false
 export_single_stats = true
 export_grid_stats = true
 knowledge_graph = "wordnet"
+bfs_node_limit = 4
 
 
 [tuning]
@@ -49,8 +45,8 @@ adaptation_min_score = [0.0, 0.25, 0.5]
 # Of which metrics should the score consist
 # score_keyword_weight = [0.0, 0.33, 0.67, 1.0] # removed due to grid search
 score_semantic_similarity = [0.33, 0.67, 1.0]
-score_wordnet_path_similarity = [0.33, 0.67, 1.0]
-score_wordnet_wup_similarity = [0.0, 0.33, 0.67]
+score_path_similarity = [0.33, 0.67, 1.0]
+score_wup_similarity = [0.0, 0.33, 0.67]
 
 # From what concepts should the metrics be derived
 weight_original_concept = [0.5, 0.75, 1.0]
@@ -58,7 +54,7 @@ weight_rule_source = [0.0, 0.25, 0.5]
 weight_rule_target = [0.0, 0.25, 0.5]
 
 # How to perform the adaptation: direct, bfs
-adaptation_method = ["direct"]
+adaptation_method = ["bfs"]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
@@ -90,8 +86,6 @@ hypernym_filter = [
 
 
 [conceptnet]
-bfs_node_limit = 4
-
 [conceptnet.node]
 root_form = true
 

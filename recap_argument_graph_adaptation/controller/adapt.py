@@ -2,6 +2,8 @@ import itertools
 import logging
 import re
 import typing as t
+from collections import defaultdict
+from dataclasses import dataclass
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
@@ -109,10 +111,12 @@ def paths(
 ) -> t.Tuple[
     t.Dict[casebase.Concept, casebase.Concept],
     t.Dict[casebase.Concept, t.List[graph.AbstractPath]],
+    t.Dict[casebase.Concept, t.Set[casebase.Concept]],
 ]:
     related_concept_weight = config.tuning("weight")
     adapted_concepts = {}
     adapted_paths = {}
+    all_candidates = {}
 
     for original_concept, all_shortest_paths in reference_paths.items():
         adaptation_results = [
@@ -122,7 +126,7 @@ def paths(
 
         adaptation_results = list(itertools.chain(*adaptation_results))
         adapted_paths[original_concept] = adaptation_results
-        adaptation_candidates = set()
+        _adaptation_candidates = defaultdict(list)
 
         for result in adaptation_results:
             hyp_distance = len(result)
@@ -152,10 +156,29 @@ def paths(
                 ),
             )
 
+            _adaptation_candidates[str(candidate)].append(candidate)
+
+        adaptation_candidates = set()
+        candidate_occurences = {}
+        candidate_length_diff = defaultdict(lambda: float("inf"))
+
+        for candidates in _adaptation_candidates.values():
+            candidate = max(candidates, key=lambda x: x.score)
+
             adaptation_candidates.add(candidate)
+            candidate_occurences[candidate] = len(candidates)
+            candidate_length_diff[candidate] = abs(
+                len(candidate.nodes) - len(all_shortest_paths[0].nodes)
+            )
+
+        all_candidates[original_concept] = adaptation_candidates
 
         adapted_concept = _filter_concepts(
-            adaptation_candidates, original_concept, rules
+            adaptation_candidates,
+            original_concept,
+            rules,
+            candidate_occurences,
+            candidate_length_diff,
         )
 
         if adapted_concept:
@@ -165,53 +188,68 @@ def paths(
         else:
             log.debug(f"No adaptation for ({original_concept}).")
 
-    return adapted_concepts, adapted_paths
+    return adapted_concepts, adapted_paths, all_candidates
 
 
 def _bfs_adaptation(
     shortest_path: graph.AbstractPath,
     concept: casebase.Concept,
     rule: casebase.Rule,
-) -> t.List[graph.AbstractPath]:
+) -> t.Set[graph.AbstractPath]:
     method = config.tuning("bfs", "method")
-    adapted_paths = []
+    adapted_paths = set()
 
     # We have to convert the target to a path object here.
     start_nodes = rule.target.nodes if method == "within" else concept.nodes
 
     for start_node in start_nodes:
-        current_paths = []
-        current_paths.append(
+        current_paths = set()
+
+        current_paths.add(
             graph.AbstractPath.from_node(start_node)
         )  # Start with only one node.
 
         for _ in shortest_path.relationships:
-            next_paths = []
+            next_paths = set()
 
             for current_path in current_paths:
                 path_extensions = query.hypernyms_as_paths(current_path.end_node)
 
+                # Here, paths that are shorter than the reference path are discarded.
                 if path_extensions:
                     path_extensions = _filter_paths(
                         current_path, path_extensions, shortest_path
                     )
 
                     for path_extension in path_extensions:
-                        next_paths.append(
+                        next_paths.add(
                             graph.AbstractPath.merge(current_path, path_extension)
                         )
 
+                # We still want these shorter paths, they can be filtered later
+                else:
+                    adapted_paths.add(current_path)
+
             current_paths = next_paths
 
-        adapted_paths.extend(current_paths)
+        adapted_paths.update(current_paths)
 
     return adapted_paths
+
+
+def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
+    if distance is not None:
+        return 1 / (1 + distance)
+
+    return None
 
 
 def _filter_concepts(
     concepts: t.Set[casebase.Concept],
     original_concept: casebase.Concept,
     rules: t.Collection[casebase.Rule],
+    occurences: t.Optional[t.Mapping[casebase.Concept, int]] = None,
+    length_differences: t.Optional[t.Mapping[casebase.Concept, float]] = None,
 ) -> t.Optional[casebase.Concept]:
     # Remove the original adaptation source from the candidates
     filter_expr = [rule.source for rule in rules] + [original_concept]
@@ -223,7 +261,9 @@ def _filter_concepts(
     if filtered_concepts:
         sorted_concepts = sorted(
             filtered_concepts,
-            key=lambda c: c.score,
+            key=lambda c: 0.5 * c.score
+            + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
+            + 0.25 * occurences[c],
             reverse=True,
         )
 
@@ -232,7 +272,6 @@ def _filter_concepts(
     return None
 
 
-# TODO: Incorporate the hypernym level s.t. adaptations with a similar level of generalization are preferred.
 def _filter_paths(
     current_path: graph.AbstractPath,
     path_extensions: t.Iterable[graph.AbstractPath],

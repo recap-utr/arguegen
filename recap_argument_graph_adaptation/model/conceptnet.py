@@ -219,7 +219,6 @@ class Database:
 
     # Currently, this function might return the same node that was given as input.
     # To resolve this, we would need to fork the function _nodes_along_paths.
-    # TODO: Rewrite such that the distances are returned.
     @staticmethod
     def _hypernym_distances(
         tx: neo4j.Session,
@@ -279,7 +278,7 @@ class Database:
         return frozenset()
 
     # ALL SHORTEST PATHS
-    # TODO: Check for overlap between hypernyms and all_shortest_paths
+
     def all_shortest_paths(
         self,
         start_nodes: t.Iterable[ConceptnetNode],

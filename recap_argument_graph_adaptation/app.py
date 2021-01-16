@@ -20,7 +20,6 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Improve conceptnet performance
-# TODO: Allow derivations from the reference path length
 
 
 def _init_child_process(lock_):
@@ -110,7 +109,9 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
 
     elif adaptation_method == "bfs":
         reference_paths = extract.paths(concepts, case.rules)
-        adapted_concepts, adapted_paths = adapt.paths(reference_paths, case.rules)
+        adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
+            reference_paths, case.rules
+        )
 
     if config["adaptation"]["export_graph"]:
         log.debug("Exporting graph.")
