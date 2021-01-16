@@ -259,13 +259,20 @@ def _filter_concepts(
     )
 
     if filtered_concepts:
-        sorted_concepts = sorted(
-            filtered_concepts,
-            key=lambda c: 0.5 * c.score
-            + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
-            + 0.25 * occurences[c],
-            reverse=True,
-        )
+        if occurences and length_differences:
+            sorted_concepts = sorted(
+                filtered_concepts,
+                key=lambda c: 0.5 * c.score
+                + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
+                + 0.25 * occurences[c],
+                reverse=True,
+            )
+        else:
+            sorted_concepts = sorted(
+                filtered_concepts,
+                key=lambda c: c.score,
+                reverse=True,
+            )
 
         return sorted_concepts[0]
 

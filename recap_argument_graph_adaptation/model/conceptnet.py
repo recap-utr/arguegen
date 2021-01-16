@@ -40,6 +40,7 @@ class ConceptnetRelationship(graph.AbstractRelationship):
     # start_node: Node
     # end_node: Node
     id: int
+    uri: str
     weight: float
     source: str
 
