@@ -238,18 +238,16 @@ class Database:
             only_longest_path=False,
         )
 
-    def hypernym_paths(
+    def hypernyms_as_paths(
         self,
         node: ConceptnetNode,
-        relation_types: t.Optional[t.Collection[str]] = None,
     ) -> t.FrozenSet[ConceptnetPath]:
-        if not relation_types:
-            relation_types = config["conceptnet"]["relation"]["generalization_types"]
+        relation_types = config["conceptnet"]["relation"]["generalization_types"]
 
         if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(
-                    self._hypernym_paths, node, relation_types, self.lang
+                    self._hypernyms_as_paths, node, relation_types, self.lang
                 )
 
         return frozenset()
@@ -257,7 +255,7 @@ class Database:
     # Currently, only the first node that returns a result is queried.
     # Could be updated if results are not satisfactory.
     @staticmethod
-    def _hypernym_paths(
+    def _hypernyms_as_paths(
         tx: neo4j.Session,
         node: ConceptnetNode,
         relation_types: t.Collection[str],
@@ -286,7 +284,7 @@ class Database:
         self,
         start_nodes: t.Iterable[ConceptnetNode],
         end_nodes: t.Iterable[ConceptnetNode],
-    ) -> t.List[ConceptnetPath]:
+    ) -> t.FrozenSet[ConceptnetPath]:
         relation_types = config["conceptnet"]["relation"]["generalization_types"]
         max_relations = config["conceptnet"]["path"]["max_length"]["shortest_path"]
 
@@ -300,7 +298,7 @@ class Database:
                     max_relations,
                 )
 
-        return []
+        return frozenset()
 
     @staticmethod
     def _all_shortest_paths(
@@ -309,7 +307,7 @@ class Database:
         end_nodes: t.Iterable[ConceptnetNode],
         relation_types: t.Collection[str],
         max_relations: int,
-    ) -> t.List[ConceptnetPath]:
+    ) -> t.FrozenSet[ConceptnetPath]:
         rel_query = _include_relations(relation_types)
 
         query = (
@@ -320,72 +318,15 @@ class Database:
             "RETURN p"
         )
 
-        nodes_iter = itertools.product(start_nodes, end_nodes)
-
-        for nodes_pair in nodes_iter:
-            records = tx.run(
-                query, start_id=nodes_pair[0].id, end_id=nodes_pair[1].id
-            ).value()
+        for start_node, end_node in itertools.product(start_nodes, end_nodes):
+            records = tx.run(query, start_id=start_node.id, end_id=end_node.id).value()
 
             if records:
-                return [ConceptnetPath.from_neo4j(record) for record in records]
-
-        return []
-
-    # ADAPT PATH
-
-    def adapt_paths(
-        self,
-        reference_paths: t.Iterable[ConceptnetPath],
-        start_nodes: t.Iterable[ConceptnetNode],
-    ) -> t.List[ConceptnetPath]:
-        if self.active:
-            with self._driver.session() as session:
-                return session.read_transaction(
-                    self._adapt_paths, reference_paths, start_nodes, self.lang
+                return frozenset(
+                    ConceptnetPath.from_neo4j(record) for record in records
                 )
 
-        return []
-
-    @staticmethod
-    def _adapt_paths(
-        tx: neo4j.Session,
-        reference_paths: t.Iterable[ConceptnetPath],
-        start_nodes: t.Iterable[ConceptnetNode],
-        lang: str,
-        relax_relationship_types: bool = False,
-    ) -> t.List[ConceptnetPath]:
-        adapted_paths = []
-
-        for reference_path in reference_paths:
-            query = "MATCH p=((n:Concept)"
-
-            for rel in reference_path.relationships:
-                rel_type = rel.type
-
-                if relax_relationship_types:
-                    rel_type = _include_relations(
-                        config["conceptnet"]["relation"]["generalization_types"]
-                    )
-
-                query += f"-[:{rel_type}]{_arrow()}" "(:Concept {language: $lang})"
-
-            query += ") WHERE id(n)=$start_id RETURN p"
-
-            for node in start_nodes:
-                records = tx.run(query, start_id=node.id, lang=lang).value()
-
-                if records:
-                    adapted_paths += [
-                        ConceptnetPath.from_neo4j(record) for record in records
-                    ]
-
-        if not adapted_paths and not relax_relationship_types:
-            adapted_paths = Database._adapt_paths(
-                tx, reference_paths, start_nodes, lang, relax_relationship_types
-            )
-
-        return adapted_paths
+        return frozenset()
 
     # METRICS
 

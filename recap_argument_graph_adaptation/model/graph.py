@@ -5,7 +5,6 @@ import typing as t
 from dataclasses import dataclass
 
 
-
 @dataclass(frozen=True)
 class AbstractNode(abc.ABC):
     name: str
@@ -17,6 +16,12 @@ class AbstractNode(abc.ABC):
             return f"{self.name}/{self.pos}"
 
         return self.name
+
+    def __eq__(self, other: AbstractNode) -> bool:
+        return self.uri == other.uri
+
+    def __hash__(self) -> int:
+        return hash((self.uri,))
 
     @property
     def processed_name(self):

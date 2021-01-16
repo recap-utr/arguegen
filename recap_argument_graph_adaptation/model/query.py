@@ -14,6 +14,7 @@ config = Config.instance()
 _kg = config["adaptation"]["knowledge_graph"]
 kg_wn = _kg == "wordnet"
 kg_cn = _kg == "conceptnet"
+kg_err = RuntimeError("The specified knowledge graph is not available.")
 
 
 def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
@@ -30,7 +31,7 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
     elif kg_cn:
         return casebase.cn2pos(tag)
 
-    return None
+    raise kg_err
 
 
 def concept_nodes(
@@ -42,7 +43,7 @@ def concept_nodes(
     elif kg_cn:
         return conceptnet.Database().nodes(name, pos)
 
-    return frozenset()
+    raise kg_err
 
 
 def concept_metrics(
@@ -99,13 +100,32 @@ def concept_metrics(
     return aggregated_metrics
 
 
-def hypernym_paths(node: graph.AbstractNode) -> t.FrozenSet[graph.AbstractPath]:
+def hypernyms_as_paths(node: graph.AbstractNode) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
-        return conceptnet.Database().hypernym_paths(
+        return conceptnet.Database().hypernyms_as_paths(
             t.cast(conceptnet.ConceptnetNode, node)
         )
 
     elif kg_wn:
-        return wordnet.hypernym_paths(t.cast(wordnet.WordnetNode, node))
+        return wordnet.hypernyms_as_paths(t.cast(wordnet.WordnetNode, node))
 
-    return frozenset()
+    raise kg_err
+
+
+def all_shortest_paths(
+    start_nodes: t.Iterable[graph.AbstractNode],
+    end_nodes: t.Iterable[graph.AbstractNode],
+) -> t.FrozenSet[graph.AbstractPath]:
+    if kg_cn:
+        return conceptnet.Database().all_shortest_paths(
+            t.cast(t.Iterable[conceptnet.ConceptnetNode], start_nodes),
+            t.cast(t.Iterable[conceptnet.ConceptnetNode], end_nodes),
+        )
+
+    if kg_wn:
+        return wordnet.all_shortest_paths(
+            t.cast(t.Iterable[wordnet.WordnetNode], start_nodes),
+            t.cast(t.Iterable[wordnet.WordnetNode], end_nodes),
+        )
+
+    raise kg_err

@@ -116,7 +116,7 @@ def paths(
 
     for original_concept, all_shortest_paths in reference_paths.items():
         adaptation_results = [
-            _adapt_shortest_path(shortest_path, original_concept, rule)
+            _bfs_adaptation(shortest_path, original_concept, rule)
             for shortest_path, rule in itertools.product(all_shortest_paths, rules)
         ]
 
@@ -168,18 +168,19 @@ def paths(
     return adapted_concepts, adapted_paths
 
 
-def _adapt_shortest_path(
+def _bfs_adaptation(
     shortest_path: graph.AbstractPath,
     concept: casebase.Concept,
     rule: casebase.Rule,
 ) -> t.List[graph.AbstractPath]:
-    method = config.tuning("conceptnet", "method")
-    current_paths = []
+    method = config.tuning("bfs", "method")
+    adapted_paths = []
 
     # We have to convert the target to a path object here.
     start_nodes = rule.target.nodes if method == "within" else concept.nodes
 
     for start_node in start_nodes:
+        current_paths = []
         current_paths.append(
             graph.AbstractPath.from_node(start_node)
         )  # Start with only one node.
@@ -188,7 +189,7 @@ def _adapt_shortest_path(
             next_paths = []
 
             for current_path in current_paths:
-                path_extensions = query.hypernym_paths(current_path.end_node)
+                path_extensions = query.hypernyms_as_paths(current_path.end_node)
 
                 if path_extensions:
                     path_extensions = _filter_paths(
@@ -202,7 +203,9 @@ def _adapt_shortest_path(
 
             current_paths = next_paths
 
-    return current_paths
+        adapted_paths.extend(current_paths)
+
+    return adapted_paths
 
 
 def _filter_concepts(
@@ -235,7 +238,7 @@ def _filter_paths(
     path_extensions: t.Iterable[graph.AbstractPath],
     reference_path: graph.AbstractPath,
 ) -> t.List[graph.AbstractPath]:
-    selector = config.tuning("conceptnet", "selector")
+    selector = config.tuning("bfs", "selector")
     candidate_values = {}
 
     start_index = len(current_path.relationships)
@@ -262,7 +265,7 @@ def _filter_paths(
     )
     sorted_candidates = [x[0] for x in sorted_candidate_tuples]
 
-    return sorted_candidates[: config["conceptnet"]["bfs_node_limit"]]
+    return sorted_candidates[: config["adaptation"]["bfs_node_limit"]]
 
 
 def _aggregate_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:

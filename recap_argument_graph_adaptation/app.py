@@ -19,14 +19,14 @@ log = logging.getLogger(__name__)
 # stackprinter.set_excepthook(style="darkbg2")
 
 
+# TODO: Improve conceptnet performance
+# TODO: Allow derivations from the reference path length
+
+
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
     # wordnet.lock = lock_
     wordnet.wn = wordnet.init_reader()
-
-
-# TODO: Check if conceptnet is still functional.
-# TODO: Add path-based adaptation for wordnet.
 
 
 def run():

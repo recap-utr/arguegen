@@ -2,7 +2,7 @@ import logging
 import typing as t
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.model import casebase, conceptnet, query, spacy
+from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -61,10 +61,9 @@ def keywords(
 
 def paths(
     concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
-) -> t.Dict[casebase.Concept, t.List[conceptnet.ConceptnetPath]]:
-    db = conceptnet.Database()
+) -> t.Dict[casebase.Concept, t.List[graph.AbstractPath]]:
     result = {}
-    method = config.tuning("conceptnet", "method")
+    method = config.tuning("bfs", "method")
 
     if method == "within":
         for concept in concepts:
@@ -72,7 +71,7 @@ def paths(
 
             for rule in rules:
                 if (
-                    candidates := db.all_shortest_paths(
+                    candidates := query.all_shortest_paths(
                         rule.source.nodes, concept.nodes
                     )
                 ) is not None:
@@ -88,7 +87,7 @@ def paths(
         paths = []
 
         for rule in rules:
-            if candidates := db.all_shortest_paths(
+            if candidates := query.all_shortest_paths(
                 rule.source.nodes, rule.target.nodes
             ):
                 paths.extend(candidates)

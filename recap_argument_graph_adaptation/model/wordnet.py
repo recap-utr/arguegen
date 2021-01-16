@@ -83,13 +83,6 @@ class WordnetNode(graph.AbstractNode):
             or frozenset()
         )
 
-    # def hypernym_paths(self) -> t.List[t.List[WordnetNode]]:
-    #     # The last element is the current synset and thus can be removed
-    #     return [
-    #         list(reversed([WordnetNode.from_nltk(hyp) for hyp in hyp_path[:-1]]))
-    #         for hyp_path in self.to_nltk().hypernym_paths()
-    #     ]
-
     def hypernym_distances(self) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
 
@@ -144,6 +137,11 @@ class WordnetPath(graph.AbstractPath):
     @classmethod
     def from_nltk(cls, synsets: t.Iterable[Synset]) -> WordnetPath:
         nodes = tuple((WordnetNode.from_nltk(synset) for synset in synsets))
+        return cls.from_nodes(nodes)
+
+    @classmethod
+    def from_nodes(cls, nodes: t.Iterable[WordnetNode]) -> WordnetPath:
+        nodes = tuple(nodes)
         relationships = tuple()
 
         if len(nodes) > 1:
@@ -171,10 +169,44 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
 
 
 def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
-    hyp_sequences = [
-        list(reversed(hyp_path[:-1])) for hyp_path in node.to_nltk().hypernym_paths()
-    ]
-    return frozenset(WordnetPath.from_nltk(hyp_seq) for hyp_seq in hyp_sequences)
+    hyp_paths = []
+
+    for hyp_path in node.to_nltk().hypernym_paths():
+        hyp_sequence = []
+
+        for hyp in reversed(hyp_path[:-1]):  # The last element is the queried node
+            hyp_node = WordnetNode.from_nltk(hyp)
+
+            if hyp_node.name_without_index not in config["wordnet"]["hypernym_filter"]:
+                hyp_sequence.append(hyp_node)
+
+        hyp_paths.append(WordnetPath.from_nodes(hyp_sequence))
+
+    return frozenset(hyp_paths)
+
+
+def hypernyms_as_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
+    hyps = (WordnetNode.from_nltk(hyp) for hyp in node.to_nltk().hypernyms())
+
+    return frozenset(WordnetPath.from_nodes((node, hyp)) for hyp in hyps)
+
+
+def all_shortest_paths(
+    start_nodes: t.Iterable[WordnetNode], end_nodes: t.Iterable[WordnetNode]
+) -> t.FrozenSet[WordnetPath]:
+    results = []
+
+    for start_node, end_node in itertools.product(start_nodes, end_nodes):
+        path_candidates = hypernym_paths(start_node)
+
+        for path_candidate in path_candidates:
+            if end_node in path_candidate.nodes:
+                end_idx = path_candidate.nodes.index(end_node)
+                shortest_path = (start_node,) + path_candidate.nodes[: end_idx + 1]
+
+                results.append(WordnetPath.from_nodes(shortest_path))
+
+    return frozenset(results)
 
 
 def concept_synsets(

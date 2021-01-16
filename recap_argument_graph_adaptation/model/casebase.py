@@ -21,16 +21,16 @@ metric_keys = {
     "path_similarity",
     "wup_similarity",
 }
-empty_metrics = lambda: {key: None for key in metric_keys}
+empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
+    key: None for key in metric_keys
+}
 
 
 @dataclass(frozen=True)
 class Concept:
     name: str
     vector: np.ndarray
-    pos: t.Optional[
-        POS
-    ]  # needed as it might be the case that the rule specifies a pos that is not available in ConceptNet.
+    pos: t.Optional[POS]
     nodes: t.FrozenSet[graph.AbstractNode]
     metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
 
