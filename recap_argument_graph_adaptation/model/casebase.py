@@ -4,6 +4,7 @@ import logging
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 import numpy as np
 import recap_argument_graph as ag
@@ -109,13 +110,13 @@ class Rule:
 
 @dataclass(frozen=True)
 class Case:
-    name: str
+    relative_path: Path
     query: str
     graph: ag.Graph
     _rules: t.Tuple[Rule, ...]
 
     def __str__(self) -> str:
-        return self.name
+        return str(self.relative_path)
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:

@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Improve conceptnet performance
+# TODO: Write validation script for adaptation rules
 
 
 def _init_child_process(lock_):
@@ -87,7 +88,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     log.debug("Starting adaptation pipeline.")
     start_time = timer()
     nested_out_path = export.nested_path(
-        args.out_path / case.name, config["_tuning_runs"], config["_tuning"]
+        args.out_path / case.relative_path, config["_tuning_runs"], config["_tuning"]
     )
 
     adapted_concepts = {}

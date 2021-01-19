@@ -67,33 +67,44 @@ def run_arguments(
     ]
 
 
+input_path = Path(config["resources"]["cases"]["input"])
+
+
 def cases() -> t.List[casebase.Case]:
-    input_path = Path(config["resources"]["cases"]["input"])
     result = []
 
-    for folder in sorted(input_path.iterdir()):
-        if folder.is_dir():
-            result.append(_case(folder))
+    for path in itertools.chain([input_path], sorted(input_path.rglob("*"))):
+        if path.is_dir() and (case := _case(path)):
+            result.append(case)
 
-    if not result:  # no nested folders were found
-        result.append(_case(input_path))
+    if not result:
+        raise RuntimeError(f"No cases were found in '{input_path}'.")
 
     return result
 
 
-def _case(path: Path) -> casebase.Case:
-    name = path.name
-    graph = ag.Graph.open(path / "graph.json")
-    rules = _parse_rules(path / "rules.csv")
-    query = _parse_txt(path / "query.txt")
+def _case(path: Path) -> t.Optional[casebase.Case]:
+    graph_path = path / "graph.json"
+    rules_path = path / "rules.csv"
+    query_path = path / "query.txt"
+    paths = (graph_path, rules_path, query_path)
 
-    if not (graph and rules and query):
+    # If the folder does not contain any file, ignore it.
+    if not any(p.exists() for p in paths):
+        return None
+
+    # If some files exist, but not all, raise an exception.
+    if not all(p.exists() for p in paths):
         raise RuntimeError(
-            "Not all required assets ('graph.json', 'rules.csv', 'query.txt') were found"
+            f"Only some of the required assets {[p.name for p in paths]} were found in '{path}'."
         )
 
+    graph = ag.Graph.open(graph_path)
+    rules = _parse_rules(rules_path)
+    query = _parse_txt(query_path)
+
     return casebase.Case(
-        name,
+        path.relative_to(input_path),
         query,
         graph,
         rules,
@@ -112,28 +123,33 @@ def _parse_rules(path: Path) -> t.Tuple[casebase.Rule]:
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            source = _parse_rule_concept(row[0])
-            target = _parse_rule_concept(row[1])
+            source = _parse_rule_concept(row[0], path)
+            target = _parse_rule_concept(row[1], path)
 
             rules.append(casebase.Rule(source, target))
 
     return tuple(rules)
 
 
-def _parse_rule_concept(rule: str) -> casebase.Concept:
+def _parse_rule_concept(rule: str, path: Path) -> casebase.Concept:
     rule_parts = rule.split("/")
     name = rule_parts[0]
     vector = spacy.vector(name)
     pos = None
 
     if len(rule_parts) > 1:
-        pos = casebase.POS(rule_parts[1])
+        try:
+            pos = casebase.POS(rule_parts[1])
+        except ValueError:
+            raise ValueError(
+                f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
+            )
 
     nodes = query.concept_nodes(name, pos)
 
     if not nodes:
         raise ValueError(
-            f"The rule concept '{name}' cannot be found in the knowledge graph."
+            f"The concept '{rule}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(

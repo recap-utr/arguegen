@@ -42,7 +42,7 @@ def case(
     for i, (original_concept, benchmark_adaptation) in enumerate(
         benchmark_adaptations.items()
     ):
-        weight = len(benchmark_adaptations) - i + 1
+        weight = len(benchmark_adaptations) - i
 
         if computed_adaptation := computed_adaptations.get(original_concept):
             positive_scores.append(
@@ -55,8 +55,7 @@ def case(
 
     for original_concept in only_computed:
         # Here, benchmark_adaptation == original_concept
-        # These scores are 'penalized' due to the fact that they get a lower weight:
-        # All of these concepts *combined* count as much as the least important benchmark rule.
+        # These scores are 'penalized' due to the fact that they get a lower weight.
         computed_adaptation = computed_adaptations[original_concept]
         negative_scores.append(
             WeightedScore(
