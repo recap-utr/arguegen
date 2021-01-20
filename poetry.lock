@@ -465,7 +465,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 
 [[package]]
 name = "recap-argument-graph"
-version = "0.1.34"
+version = "0.1.35"
 description = ""
 category = "main"
 optional = false
@@ -924,7 +924,7 @@ mecab = ["mecab-python3"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "6b80f5f02584804ac38c530d5742015be8935777406a7c938626c7e085ef30ec"
+content-hash = "59d46dd78b0fb33364b1d09dd621b6b8533774f9e43f17203857c33990746d45"
 
 [metadata.files]
 blis = [
@@ -1332,8 +1332,8 @@ pyyaml = [
     {file = "PyYAML-5.4.tar.gz", hash = "sha256:3c49e39ac034fd64fd576d63bb4db53cda89b362768a67f07749d55f128ac18a"},
 ]
 recap-argument-graph = [
-    {file = "ReCAP-Argument-Graph-0.1.34.tar.gz", hash = "sha256:94c35fc9d18fd61abc98989449907bf14bc4a7c32833e000f5d53ce11853835a"},
-    {file = "ReCAP_Argument_Graph-0.1.34-py3-none-any.whl", hash = "sha256:909194fb4ab64072ad783ca17aaf2ec560f6ea4579fe958110dfcea495b17f88"},
+    {file = "ReCAP-Argument-Graph-0.1.35.tar.gz", hash = "sha256:bbdd41fe85270cef179e19642fbe746de9b1dbcd9043bf9e3e5e9f07b40f5c74"},
+    {file = "ReCAP_Argument_Graph-0.1.35-py3-none-any.whl", hash = "sha256:b8fadb04fe510f4edb2115ce2ee2c021f88cabeb5aed2d4668accf4462dda889"},
 ]
 regex = [
     {file = "regex-2020.11.13-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:8b882a78c320478b12ff024e81dc7d43c1462aa4a3341c754ee65d857a521f85"},
