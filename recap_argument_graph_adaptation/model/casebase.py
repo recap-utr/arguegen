@@ -131,8 +131,24 @@ class Case:
 
 
 @dataclass(frozen=True)
+class WeightedScore:
+    concept: Concept
+    score: float
+    weight: float
+
+    def to_dict(self, negative: bool = False) -> t.Dict[str, t.Any]:
+        return {
+            "concept": str(self.concept),
+            "score": 1 - self.score if negative else self.score,
+            "weight": self.weight,
+        }
+
+
+@dataclass(frozen=True)
 class Evaluation:
     score: float
+    positive_scores: t.List[WeightedScore]
+    negative_scores: t.List[WeightedScore]
     benchmark_and_computed: t.Set[Concept]
     only_benchmark: t.Set[Concept]
     only_computed: t.Set[Concept]
@@ -151,6 +167,8 @@ class Evaluation:
             "benchmark_and_computed": convert.list_str(self.benchmark_and_computed),
             "only_benchmark": convert.list_str(self.only_benchmark),
             "only_computed": convert.list_str(self.only_computed),
+            "positive_scores": convert.list_dict(self.positive_scores, negative=False),
+            "negative_scores": convert.list_dict(self.negative_scores, negative=True),
         }
 
     def __lt__(self, other):

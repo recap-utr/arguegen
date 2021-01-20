@@ -46,10 +46,13 @@ def run():
     param_grid = load.parameter_grid()
     run_args = load.run_arguments(param_grid, cases, out_path)
 
+    if len(run_args) == 1:
+        processes = 1
+
     log.info(f"Starting with {len(run_args)} runs using {processes} processes.")
     results = []
 
-    if processes == 1 or len(run_args) == 1:
+    if processes == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
         results = [_parametrized_run(run_arg) for run_arg in run_args]
     else:

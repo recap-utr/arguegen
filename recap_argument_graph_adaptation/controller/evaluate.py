@@ -8,17 +8,11 @@ from recap_argument_graph_adaptation.model import casebase, spacy
 log = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class WeightedScore:
-    score: float
-    weight: float
-
-
 def case(
     case: casebase.Case, adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept]
 ) -> casebase.Evaluation:
-    case_rules = set(case.rules)
-    benchmark_rules = set(case.benchmark_rules)
+    case_rules = case.rules
+    benchmark_rules = case.benchmark_rules
 
     computed_adaptations = {**adapted_concepts}
     benchmark_adaptations = {
@@ -46,19 +40,24 @@ def case(
 
         if computed_adaptation := computed_adaptations.get(original_concept):
             positive_scores.append(
-                WeightedScore(
-                    _compute_score(benchmark_adaptation, computed_adaptation), weight
+                casebase.WeightedScore(
+                    original_concept,
+                    _compute_score(benchmark_adaptation, computed_adaptation),
+                    weight,
                 )
             )
         else:
-            negative_scores.append(WeightedScore(0.0, weight))
+            negative_scores.append(
+                casebase.WeightedScore(original_concept, 0.0, weight)
+            )
 
     for original_concept in only_computed:
         # Here, benchmark_adaptation == original_concept
         # These scores are 'penalized' due to the fact that they get a lower weight.
         computed_adaptation = computed_adaptations[original_concept]
         negative_scores.append(
-            WeightedScore(
+            casebase.WeightedScore(
+                original_concept,
                 _compute_score(original_concept, computed_adaptation),
                 1 / len(benchmark_rules),
             )
@@ -82,7 +81,12 @@ def case(
     log.debug(f"Finished with global score of {global_score}.")
 
     return casebase.Evaluation(
-        global_score, benchmark_and_computed, only_benchmark, only_computed
+        global_score,
+        positive_scores,
+        negative_scores,
+        benchmark_and_computed,
+        only_benchmark,
+        only_computed,
     )
 
 
