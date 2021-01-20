@@ -21,6 +21,8 @@ log = logging.getLogger(__name__)
 
 # TODO: Improve conceptnet performance
 # TODO: Write validation script for adaptation rules
+# TODO: Use query to compute evaluation score.
+# TODO: Incroporate distance to major claim.
 
 
 def _init_child_process(lock_):

@@ -19,14 +19,16 @@ def keywords(
     rule_targets = {rule.target for rule in rules}
 
     concepts: t.Set[casebase.Concept] = set()
+    mc = graph.major_claim
 
     keywords_response = spacy.keywords(
         [node.plain_text for node in graph.inodes], spacy_pos_tags
     )
 
-    for doc in keywords_response:
+    for node, doc in zip(graph.inodes, keywords_response):
         keywords = doc["keywords"]
         node_vector = doc["vector"]
+        mc_distance = graph.node_distance(node, mc)
 
         for k in keywords:
             pos_tag = casebase.spacy2pos(k["pos_tag"])
@@ -41,7 +43,11 @@ def keywords(
                     pos_tag,
                     nodes,
                     query.concept_metrics(
-                        nodes, k["vector"], k["weight"], None, related_concepts
+                        related_concepts,
+                        nodes,
+                        k["vector"],
+                        weight=k["weight"],
+                        major_claim_distance=mc_distance,
                     ),
                 )
 

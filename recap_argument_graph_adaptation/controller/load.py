@@ -31,8 +31,8 @@ def parameter_grid() -> t.List[t.Dict[str, t.Any]]:
     param_grid = [
         params
         for params in ParameterGrid(dict(config["tuning"]))
-        if round(sum(Config.filter_mapping(params, "weight").values()), 2) == 1
-        and round(sum(Config.filter_mapping(params, "score").values()), 2) == 1
+        # if round(sum(Config.filter_mapping(params, "weight").values()), 2) == 1
+        # and round(sum(Config.filter_mapping(params, "score").values()), 2) == 1
     ]
     if not param_grid:
         param_grid = [{key: values[0] for key, values in config["tuning"].items()}]

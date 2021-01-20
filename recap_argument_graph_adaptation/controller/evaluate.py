@@ -100,11 +100,9 @@ def _compute_score(concept1: casebase.Concept, concept2: casebase.Concept) -> fl
 
     for c1, c2 in ((concept1, concept2), (concept2, concept1)):
         metrics = query.concept_metrics(
+            c2,
             c1.nodes,
             c1.vector,
-            None,
-            None,
-            c2,
         )
         scores.append(casebase.score(metrics))
 

@@ -19,6 +19,7 @@ metric_keys = {
     "keyword_weight",
     "semantic_similarity",
     "hypernym_proximity",
+    "major_claim_proximity",
     "path_similarity",
     "wup_similarity",
 }
@@ -88,10 +89,9 @@ def score(metrics: t.Dict[str, t.Optional[float]]) -> float:
             result += metric * metric_weight
             total_weight += metric_weight
 
-    # If one metric is not set, the weights would not sum to 1.
-    # Thus, the result is normalized.
+    # Normalize the result.
     if total_weight > 0:
-        return result * (1 / total_weight)
+        return result / total_weight
 
     return 0.0
 
@@ -124,7 +124,7 @@ class Case:
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:
-        rules_limit = config.tuning("rules")["adaptation_limit"]
+        rules_limit = config["adaptation"]["rules_limit"]
         slice = len(self._rules) if rules_limit == 0 else rules_limit
 
         return self._rules[:slice]

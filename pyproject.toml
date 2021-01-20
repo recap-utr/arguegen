@@ -6,7 +6,7 @@ authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-recap-argument-graph = "^0.1.29"
+recap-argument-graph = "^0.1.35"
 neo4j = "^4.1"
 scipy = "^1.5"
 tomlkit = "^0.7"
@@ -23,7 +23,7 @@ nltk = "^3.5"
 stackprinter = "^0.2.5"
 fastapi = "^0.63.0"
 requests = "^2.25.1"
-uvicorn = {extras = ["standard"], version = "^0.13.2"}
+uvicorn = { extras = ["standard"], version = "^0.13.2" }
 typer = "^0.3.2"
 
 [tool.poetry.dev-dependencies]

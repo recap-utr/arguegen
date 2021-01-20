@@ -47,25 +47,26 @@ def concept_nodes(
 
 
 def concept_metrics(
+    related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
     nodes: t.Iterable[graph.AbstractNode],
     vector: np.ndarray,
-    weight: t.Optional[float],
-    hypernym_level: t.Optional[int],
-    related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
+    weight: t.Optional[float] = None,
+    hypernym_level: t.Optional[int] = None,
+    major_claim_distance: t.Optional[int] = None,
 ) -> t.Dict[str, t.Optional[float]]:
     if isinstance(related_concepts, casebase.Concept):
         related_concepts = {related_concepts: 1.0}
 
-    if sum(related_concepts.values()) != 1:
-        raise ValueError("The weights of the related concepts do not sum up to 1.")
-
+    total_weight = 0
     metrics_map = {key: [] for key in casebase.metric_keys}
 
     for related_concept, related_concept_weight in related_concepts.items():
+        total_weight += related_concept_weight
         metrics = {
             "keyword_weight": weight,
             "semantic_similarity": spacy.similarity(vector, related_concept.vector),
             "hypernym_proximity": _dist2sim(hypernym_level),
+            "major_claim_proximity": _dist2sim(major_claim_distance),
             "path_similarity": None,
             "wup_similarity": None,
         }
@@ -93,7 +94,7 @@ def concept_metrics(
 
     # No weight normalization required as given related concepts are available.
     aggregated_metrics = {
-        key: float(sum(entries)) if entries else None
+        key: float(sum(entries) / total_weight) if entries else None
         for key, entries in metrics_map.items()
     }
 

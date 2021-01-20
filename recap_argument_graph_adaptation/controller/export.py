@@ -139,6 +139,8 @@ def grid_stats(
     with grid_stats_path.open("w") as file:
         _json_dump(grid_stats, file)
 
+    log.info(f"Grid stats exported to {str(grid_stats_path)}")
+
 
 def nested_path(
     path: Path, total_runs: int, nested_folders: t.Mapping[str, t.Any]

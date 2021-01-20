@@ -84,7 +84,7 @@ def concepts(
                     query.pos(pos),
                     nodes,
                     query.concept_metrics(
-                        nodes, vector, None, hyp_distance, related_concepts
+                        related_concepts, nodes, vector, hypernym_level=hyp_distance
                     ),
                 )
 
@@ -152,7 +152,7 @@ def paths(
                 pos,
                 end_nodes,
                 query.concept_metrics(
-                    end_nodes, vector, None, hyp_distance, related_concepts
+                    related_concepts, end_nodes, vector, hypernym_level=hyp_distance
                 ),
             )
 
