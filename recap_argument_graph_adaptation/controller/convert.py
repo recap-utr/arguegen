@@ -12,7 +12,7 @@ def list_dict(
 ) -> t.Optional[t.List[str]]:
     """Convert a list of items into a list of strings to serialize as json"""
 
-    return [item.to_dict(kwargs) for item in items] if items else None
+    return [item.to_dict(**kwargs) for item in items] if items else None
 
 
 def xstr(obj: t.Optional[t.Any]) -> t.Optional[str]:

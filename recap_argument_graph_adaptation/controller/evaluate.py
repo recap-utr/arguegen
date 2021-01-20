@@ -3,7 +3,7 @@ import typing as t
 from dataclasses import dataclass
 
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, spacy
+from recap_argument_graph_adaptation.model import casebase, query, spacy
 
 log = logging.getLogger(__name__)
 
@@ -90,17 +90,22 @@ def case(
     )
 
 
-def _compute_score(
-    benchmark_adaptation: casebase.Concept, computed_adaptation: casebase.Concept
-) -> float:
-    if benchmark_adaptation == computed_adaptation:
+def _compute_score(concept1: casebase.Concept, concept2: casebase.Concept) -> float:
+    if concept1 == concept2:
         return 1.0
 
-    return spacy.similarity(benchmark_adaptation.vector, computed_adaptation.vector)
+    # return spacy.similarity(benchmark_adaptation.vector, computed_adaptation.vector)
 
-    # comparison_metrics = metrics.update_concept_metrics(
-    #     computed_adaptation, benchmark_adaptation
-    # )
-    # comparison_concept = casebase.Concept.from_concept(computed_adaptation, comparison_metrics)
+    scores = []
 
-    # return comparison_concept.score
+    for c1, c2 in ((concept1, concept2), (concept2, concept1)):
+        metrics = query.concept_metrics(
+            c1.nodes,
+            c1.vector,
+            None,
+            None,
+            c2,
+        )
+        scores.append(casebase.score(metrics))
+
+    return max(scores)

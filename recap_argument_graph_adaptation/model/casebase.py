@@ -57,20 +57,7 @@ class Concept:
 
     @property
     def score(self) -> float:
-        result = 0
-        total_weight = 0
-
-        for metric_name, metric_weight in config.tuning("score").items():
-            if (metric := self.metrics[metric_name]) is not None:
-                result += metric * metric_weight
-                total_weight += metric_weight
-
-        # If one metric is not set, the weights would not sum to 1.
-        # Thus, the result is normalized.
-        if total_weight > 0:
-            return result * (1 / total_weight)
-
-        return 0.0
+        return score(self.metrics)
 
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {
@@ -90,6 +77,23 @@ class Concept:
             source.nodes,
             metrics,
         )
+
+
+def score(metrics: t.Dict[str, t.Optional[float]]) -> float:
+    result = 0
+    total_weight = 0
+
+    for metric_name, metric_weight in config.tuning("score").items():
+        if (metric := metrics[metric_name]) is not None:
+            result += metric * metric_weight
+            total_weight += metric_weight
+
+    # If one metric is not set, the weights would not sum to 1.
+    # Thus, the result is normalized.
+    if total_weight > 0:
+        return result * (1 / total_weight)
+
+    return 0.0
 
 
 def filter_concepts(
@@ -139,7 +143,7 @@ class WeightedScore:
     def to_dict(self, negative: bool = False) -> t.Dict[str, t.Any]:
         return {
             "concept": str(self.concept),
-            "score": 1 - self.score if negative else self.score,
+            "score": self.score,  # (1 - self.score) if negative else self.score,
             "weight": self.weight,
         }
 
