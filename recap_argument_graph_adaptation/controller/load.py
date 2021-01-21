@@ -101,7 +101,7 @@ def _case(path: Path) -> t.Optional[casebase.Case]:
 
     graph = ag.Graph.open(graph_path)
     rules = _parse_rules(rules_path)
-    query = _parse_txt(query_path)
+    query = _parse_query(query_path)
 
     return casebase.Case(
         path.relative_to(input_path),
@@ -111,9 +111,11 @@ def _case(path: Path) -> t.Optional[casebase.Case]:
     )
 
 
-def _parse_txt(path: Path) -> str:
+def _parse_query(path: Path) -> casebase.TextVector:
     with path.open() as f:
-        return f.read()
+        text = f.read()
+
+    return casebase.TextVector(text, spacy.vector(text))
 
 
 def _parse_rules(path: Path) -> t.Tuple[casebase.Rule]:
@@ -156,6 +158,7 @@ def _parse_rule_concept(rule: str, path: Path) -> casebase.Concept:
         name,
         vector,
         pos,
+        None,
         nodes,
         {key: 1.0 for key in casebase.metric_keys},
     )

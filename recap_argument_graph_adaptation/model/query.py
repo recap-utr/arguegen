@@ -1,13 +1,8 @@
 import typing as t
 
 import numpy as np
-from recap_argument_graph_adaptation.model import (
-    casebase,
-    conceptnet,
-    graph,
-    spacy,
-    wordnet,
-)
+from recap_argument_graph_adaptation.model import (casebase, conceptnet, graph,
+                                                   spacy, wordnet)
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -35,10 +30,12 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 
 
 def concept_nodes(
-    name: str, pos: t.Optional[casebase.POS], text_vector: t.Optional[np.ndarray] = None
+    name: str,
+    pos: t.Optional[casebase.POS],
+    text_vectors: t.Optional[t.Iterable[casebase.TextVector]] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
-        return wordnet.concept_synsets(name, pos, text_vector)
+        return wordnet.concept_synsets(name, pos, text_vectors)
 
     elif kg_cn:
         return conceptnet.Database().nodes(name, pos)

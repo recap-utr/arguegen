@@ -33,24 +33,29 @@ class Concept:
     name: str
     vector: np.ndarray
     pos: t.Optional[POS]
+    inode: t.Optional[TextVector]
     nodes: t.FrozenSet[graph.AbstractNode]
     metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
 
-    # @property
-    # def best_node(self) -> graph.Node:
-    #     return self.nodes[0]
-
-    def __str__(self):
+    @property
+    def code(self) -> str:
         if self.pos:
             return f"{self.name}/{self.pos.value}"
 
         return self.name
 
+    def __str__(self):
+        return self.code
+
     def __eq__(self, other: Concept) -> bool:
-        return self.name == other.name and self.pos == other.pos
+        return (
+            self.name == other.name
+            and self.pos == other.pos
+            and self.inode == other.inode
+        )
 
     def __hash__(self) -> int:
-        return hash((self.name, self.pos))
+        return hash((self.name, self.pos, self.inode))
 
     @staticmethod
     def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
@@ -75,6 +80,7 @@ class Concept:
             source.name,
             source.vector,
             source.pos,
+            source.inode,
             source.nodes,
             metrics,
         )
@@ -113,9 +119,24 @@ class Rule:
 
 
 @dataclass(frozen=True)
+class TextVector:
+    text: str
+    vector: np.ndarray
+
+    def __str__(self) -> str:
+        return self.text
+
+    def __eq__(self, other: TextVector) -> bool:
+        return self.text == other.text
+
+    def __hash__(self) -> int:
+        return hash(self.text)
+
+
+@dataclass(frozen=True)
 class Case:
     relative_path: Path
-    query: str
+    user_query: TextVector
     graph: ag.Graph
     _rules: t.Tuple[Rule, ...]
 

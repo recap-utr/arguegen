@@ -217,28 +217,41 @@ def all_shortest_paths(
 def concept_synsets(
     name: str,
     pos: t.Optional[casebase.POS],
-    text_vector: t.Optional[np.ndarray],
+    text_vectors: t.Optional[t.Iterable[casebase.TextVector]] = None,
 ) -> t.FrozenSet[WordnetNode]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = frozenset(
         {WordnetNode.from_nltk(ss) for ss in _synsets(name, casebase.pos2wn(pos)) if ss}
     )
 
-    if text_vector is None:
+    if text_vectors is None:
         return synsets
 
     synset_definitions = [synset.definition for synset in synsets]
-    synset_vectors = spacy.vectors(synset_definitions)
-    synset_tuples = [
-        (synset, spacy.similarity(text_vector, definition_vector))
-        for synset, definition_vector in zip(synsets, synset_vectors)
-    ]
+    synset_examples = [synset.examples for synset in synsets]
+    definition_vectors = spacy.vectors(synset_definitions)
+    examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
+
+    synset_tuples = []
+
+    for synset, definition_vector, example_vectors in zip(
+        synsets, definition_vectors, examples_vectors
+    ):
+        synset_vectors = [definition_vector] + example_vectors
+        similarities = []
+
+        for v1, v2 in itertools.product(
+            synset_vectors, [x.vector for x in text_vectors]
+        ):
+            similarities.append(spacy.similarity(v1, v2))
+
+        synset_tuples.append((synset, np.mean(similarities, axis=0)))
 
     synset_tuples.sort(key=lambda item: item[1])
 
     # Check if the best result has a higher similarity than demanded.
     # If true, only include the synsets with higher similarity.
-    # Otherwise, include only the best one.
+    # Otherwise, include only the best one (regardless of the similarity).
     if best_synset_tuple := next(iter(synset_tuples), None):
         min_similarity = config.tuning("synset", "min_similarity")
 
@@ -270,9 +283,6 @@ def metrics(
 
     for key, values in tmp_results.items():
         if values:
-            # if "distance" in key:
-            #     results[key] = min(values)
-            # else:
             results[key] = max(values)
 
     return results

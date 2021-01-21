@@ -82,6 +82,7 @@ def concepts(
                     name,
                     vector,
                     query.pos(pos),
+                    original_concept.inode,
                     nodes,
                     query.concept_metrics(
                         related_concepts, nodes, vector, hypernym_level=hyp_distance
@@ -150,6 +151,7 @@ def paths(
                 name,
                 vector,
                 pos,
+                original_concept.inode,
                 end_nodes,
                 query.concept_metrics(
                     related_concepts, end_nodes, vector, hypernym_level=hyp_distance
@@ -252,8 +254,10 @@ def _filter_concepts(
     length_differences: t.Optional[t.Mapping[casebase.Concept, float]] = None,
 ) -> t.Optional[casebase.Concept]:
     # Remove the original adaptation source from the candidates
-    filter_expr = [rule.source for rule in rules] + [original_concept]
-    filtered_concepts = concepts.difference(filter_expr)
+    filter_expr = {rule.source.code for rule in rules}
+    filter_expr.add(original_concept.code)
+
+    filtered_concepts = {c for c in concepts if c.code not in filter_expr}
     filtered_concepts = casebase.filter_concepts(
         filtered_concepts, config.tuning("adaptation", "min_score")
     )

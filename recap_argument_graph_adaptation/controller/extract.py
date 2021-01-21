@@ -12,11 +12,11 @@ spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ"]  # ADV
 
 
 def keywords(
-    graph: ag.Graph, rules: t.Collection[casebase.Rule]
+    graph: ag.Graph, rules: t.Collection[casebase.Rule], user_query: casebase.TextVector
 ) -> t.Set[casebase.Concept]:
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
-    rule_sources = {rule.source for rule in rules}
-    rule_targets = {rule.target for rule in rules}
+    rule_sources = {rule.source.code for rule in rules}
+    rule_targets = {rule.target.code for rule in rules}
 
     concepts: t.Set[casebase.Concept] = set()
     mc = graph.major_claim
@@ -25,22 +25,23 @@ def keywords(
         [node.plain_text for node in graph.inodes], spacy_pos_tags
     )
 
-    for node, doc in zip(graph.inodes, keywords_response):
+    for graph_node, doc in zip(graph.inodes, keywords_response):
         keywords = doc["keywords"]
-        node_vector = doc["vector"]
-        mc_distance = graph.node_distance(node, mc)
+        inode = casebase.TextVector(graph_node.plain_text, doc["vector"])
+        mc_distance = graph.node_distance(graph_node, mc)
 
         for k in keywords:
             pos_tag = casebase.spacy2pos(k["pos_tag"])
             nodes = query.concept_nodes(
-                k["term"], pos_tag, node_vector
-            ) or query.concept_nodes(k["lemma"], pos_tag, node_vector)
+                k["term"], pos_tag, [inode, user_query]
+            ) or query.concept_nodes(k["lemma"], pos_tag, [inode, user_query])
 
             if nodes:
                 candidate = casebase.Concept(
                     k["term"],
                     k["vector"],
                     pos_tag,
+                    inode,
                     nodes,
                     query.concept_metrics(
                         related_concepts,
@@ -51,7 +52,10 @@ def keywords(
                     ),
                 )
 
-                if candidate not in rule_sources and candidate not in rule_targets:
+                if (
+                    candidate.code not in rule_sources
+                    and candidate.code not in rule_targets
+                ):
                     concepts.add(candidate)
 
     concepts = casebase.filter_concepts(

@@ -7,6 +7,8 @@ from recap_argument_graph_adaptation.model import casebase, query, spacy
 
 log = logging.getLogger(__name__)
 
+# TODO: __contains__ broken because of new inode attribute. Rework with .code.
+
 
 def case(
     case: casebase.Case, adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept]

@@ -22,7 +22,6 @@ log = logging.getLogger(__name__)
 # TODO: Improve conceptnet performance
 # TODO: Write validation script for adaptation rules
 # TODO: Use query to compute evaluation score.
-# TODO: Incroporate distance to major claim.
 
 
 def _init_child_process(lock_):
@@ -103,7 +102,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     adapted_graph = None
 
     log.debug("Extracting keywords.")
-    concepts = extract.keywords(case.graph, case.rules)
+    concepts = extract.keywords(case.graph, case.rules, case.user_query)
 
     log.debug("Adapting concepts.")
     adaptation_method = config.tuning("adaptation", "method")
