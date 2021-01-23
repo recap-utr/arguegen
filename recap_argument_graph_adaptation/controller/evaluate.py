@@ -94,13 +94,13 @@ def _compute_score(concept1: casebase.Concept, concept2: casebase.Concept) -> fl
     if concept1 == concept2:
         return 1.0
 
-    return casebase.score(
-        query.concept_metrics(concept2, concept1.nodes, concept1.vector)
-    )
+    # return casebase.score(
+    #     query.concept_metrics(concept2, concept1.nodes, concept1.vector)
+    # )
 
     # ---
 
-    # return spacy.similarity(benchmark_adaptation.vector, computed_adaptation.vector)
+    return spacy.similarity(concept1.vector, concept2.vector)
 
     # ---
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import statistics
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
@@ -180,28 +181,50 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     return results
 
 
-def _filter_nodes(
-    synsets: t.Iterable[WordnetNode],
-    comparison_vectors: t.Iterable[np.ndarray],
-    min_similarity: float,
-) -> t.FrozenSet[WordnetNode]:
+def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.List[np.ndarray]]:
     synset_definitions = [synset.definition for synset in synsets]
     synset_examples = [synset.examples for synset in synsets]
     definition_vectors = spacy.vectors(synset_definitions)
     examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
 
+    return [
+        [definition_vector] + example_vectors
+        for definition_vector, example_vectors in zip(
+            definition_vectors, examples_vectors
+        )
+    ]
+
+
+def _nodes_similarities(
+    synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
+) -> t.List[float]:
+    synsets1_vec = _nodes_vectors(synsets1)
+    synsets2_vec = _nodes_vectors(synsets2)
+    similarities = []
+
+    for vectors1, vectors2 in itertools.product(synsets1_vec, synsets2_vec):
+        for v1, v2 in itertools.product(vectors1, vectors2):
+            similarities.append(spacy.similarity(v1, v2))
+
+    return similarities
+
+
+def _filter_nodes(
+    synsets: t.Iterable[WordnetNode],
+    comparison_vectors: t.Iterable[np.ndarray],
+    min_similarity: float,
+) -> t.FrozenSet[WordnetNode]:
+    synsets_vectors = _nodes_vectors(synsets)
+
     synset_tuples = []
 
-    for synset, definition_vector, example_vectors in zip(
-        synsets, definition_vectors, examples_vectors
-    ):
-        synset_vectors = [definition_vector] + example_vectors
+    for synset, synset_vectors in zip(synsets, synsets_vectors):
         similarities = []
 
         for v1, v2 in itertools.product(synset_vectors, comparison_vectors):
             similarities.append(spacy.similarity(v1, v2))
 
-        synset_tuples.append((synset, np.mean(similarities, axis=0)))
+        synset_tuples.append((synset, statistics.mean(similarities)))
 
     synset_tuples.sort(key=lambda item: item[1])
 
@@ -220,7 +243,7 @@ def _filter_nodes(
     return frozenset({synset for synset, _ in synset_tuples})
 
 
-# TODO: This function does not use the function _filter_nodes
+# This function does not use the function _filter_nodes
 def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     hyp_paths = []
 
@@ -290,6 +313,7 @@ def metrics(
     synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
 ) -> t.Dict[str, t.Optional[float]]:
     tmp_results: t.Dict[str, t.List[float]] = {
+        "nodes_similarity": _nodes_similarities(synsets1, synsets2),
         "path_similarity": [],
         "wup_similarity": [],
     }
@@ -301,6 +325,7 @@ def metrics(
 
     results: t.Dict[str, t.Optional[float]] = {key: None for key in tmp_results.keys()}
 
+    # TODO: Check if max makes sense. One could also use mean.
     for key, values in tmp_results.items():
         if values:
             results[key] = max(values)

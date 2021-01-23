@@ -67,6 +67,7 @@ def concept_metrics(
         total_weight += related_concept_weight
         metrics = {
             "keyword_weight": weight,
+            "nodes_similarity": None,
             "semantic_similarity": spacy.similarity(vector, related_concept.vector),
             "hypernym_proximity": _dist2sim(hypernym_level),
             "major_claim_proximity": _dist2sim(major_claim_distance),

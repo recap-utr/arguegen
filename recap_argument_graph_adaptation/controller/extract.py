@@ -1,4 +1,5 @@
 import logging
+import re
 import typing as t
 
 import recap_argument_graph as ag
@@ -7,8 +8,6 @@ from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
 log = logging.getLogger(__name__)
-
-spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ"]  # ADV
 
 
 def keywords(
@@ -22,20 +21,21 @@ def keywords(
     mc = graph.major_claim
 
     keywords = spacy.keywords(
-        [node.plain_text for node in graph.inodes], spacy_pos_tags
+        [node.plain_text for node in graph.inodes],
+        config.tuning("extraction", "keyword_pos_tags"),
     )
 
     for k in keywords:
-        term = k["term"]
+        term = k["term"].lower()
         term_vector = k["vector"]
         term_pos = casebase.spacy2pos(k["pos_tag"])
         term_weight = k["weight"]
-        lemma = k["lemma"]
+        lemma = k["lemma"].lower()
 
         inodes = [
             t.cast(casebase.ArgumentNode, inode)
             for inode in graph.inodes
-            if term in inode.plain_text
+            if term in inode.plain_text.lower()
         ]
         mc_distances = set()
         mc_distance = None
@@ -47,7 +47,6 @@ def keywords(
         if mc_distances:
             mc_distance = min(mc_distances)
 
-        # TODO: Eventually add user_query.vector
         concept_query_args = (
             term_pos,
             [inode.vector for inode in inodes],

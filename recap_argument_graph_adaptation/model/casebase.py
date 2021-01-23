@@ -17,6 +17,7 @@ config = Config.instance()
 
 metric_keys = {
     "keyword_weight",
+    "nodes_similarity",
     "semantic_similarity",
     "hypernym_proximity",
     "major_claim_proximity",
@@ -61,16 +62,20 @@ class Concept:
         if self.pos:
             code += f"/{self.pos.value}"
 
-        # if self.inodes:
-        #     code += f"/{self.inodes}"
+        if self.inodes:
+            code += f"/{set(inode.key for inode in self.inodes)}"
 
         return code
 
     def __eq__(self, other: Concept) -> bool:
-        return self.name == other.name and self.pos == other.pos
+        return (
+            self.name == other.name
+            and self.pos == other.pos
+            and self.inodes == other.inodes
+        )
 
     def __hash__(self) -> int:
-        return hash((self.name, self.pos))
+        return hash((self.name, self.pos, self.inodes))
 
     @property
     def inode_vectors(self) -> t.List[np.ndarray]:
@@ -282,5 +287,18 @@ def pos2wn(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
         return ["a", "s"]
     elif pos == POS.ADVERB:
         return ["r"]
+
+    return [None]
+
+
+def pos2spacy(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
+    if pos == POS.NOUN:
+        return ["NOUN", "PROPN"]
+    elif pos == POS.VERB:
+        return ["VERB"]
+    elif pos == POS.ADJECTIVE:
+        return ["ADJ"]
+    elif pos == POS.ADVERB:
+        return ["ADV"]
 
     return [None]

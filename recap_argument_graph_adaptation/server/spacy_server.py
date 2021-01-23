@@ -1,3 +1,4 @@
+import statistics
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
@@ -219,14 +220,16 @@ def keywords(query: KeywordQuery) -> t.List[KeywordResponse]:
             lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
 
             for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords):
-                candidate = KeywordCandidate(
-                    term=term,
-                    vector=_vector(term),
-                    lemma=lemma,
-                    pos_tag=pos_tag,
-                )
+                # TODO: Some terms change their spelling, e.g. centres is extracted as (term: centers, lemma: centre)
+                if term in doc.text.lower():
+                    candidate = KeywordCandidate(
+                        term=term,
+                        vector=_vector(term),
+                        lemma=lemma,
+                        pos_tag=pos_tag,
+                    )
 
-                weights[candidate].append(weight)
+                    weights[candidate].append(weight)
 
     return [
         KeywordResponse(
@@ -234,7 +237,7 @@ def keywords(query: KeywordQuery) -> t.List[KeywordResponse]:
             vector=key.vector,
             lemma=key.lemma,
             pos_tag=key.pos_tag,
-            weight=np.mean(values),
+            weight=statistics.mean(values),
         )
         for key, values in weights.items()
     ]

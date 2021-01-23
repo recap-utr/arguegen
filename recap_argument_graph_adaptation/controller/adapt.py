@@ -40,7 +40,7 @@ def _replace(text: str, substitutions: t.Mapping[str, str]):
 
     for substring in substrings:
         pattern = re.compile(substring, re.IGNORECASE)
-        orig = pattern.sub(substitutions[substring], text)
+        text = pattern.sub(substitutions[substring], text)
 
     return text
 
@@ -57,15 +57,15 @@ def concepts(
 
     for original_concept in concepts:
         adaptation_candidates = set()
-        related_concepts = {}
+        related_concepts = {
+            original_concept: related_concept_weight["original_concept"]
+        }
 
         for rule in rules:
             related_concepts.update(
                 {
                     rule.target: related_concept_weight["rule_target"] / len(rules),
                     rule.source: related_concept_weight["rule_source"] / len(rules),
-                    original_concept: related_concept_weight["original_concept"]
-                    / len(rules),
                 }
             )
 

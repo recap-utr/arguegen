@@ -1,6 +1,7 @@
 import csv
 import itertools
 import logging
+import re
 import typing as t
 from dataclasses import dataclass
 from pathlib import Path
@@ -148,12 +149,12 @@ def _parse_rule_concept(
         tmp_inodes = set()
 
         for inode in graph.inodes:
-            if name in inode.plain_text:
+            if name in inode.plain_text.lower():
                 tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
 
         if len(tmp_inodes) == 0:
             raise RuntimeError(
-                f"The concept '{name}' specified in '{str(path)}' could not be found in any I-node. Please check the spelling."
+                f"The concept '{name}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
             )
 
         inodes = frozenset(tmp_inodes)
