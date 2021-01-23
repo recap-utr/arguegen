@@ -4,6 +4,8 @@ import abc
 import typing as t
 from dataclasses import dataclass
 
+import numpy as np
+
 
 @dataclass(frozen=True)
 class AbstractNode(abc.ABC):
@@ -28,7 +30,9 @@ class AbstractNode(abc.ABC):
         return self.name.replace("_", " ")
 
     @abc.abstractmethod
-    def hypernym_distances(self) -> t.Dict[AbstractNode, int]:
+    def hypernym_distances(
+        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+    ) -> t.Dict[AbstractNode, int]:
         pass
 
 

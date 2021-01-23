@@ -74,10 +74,7 @@ def keywords(
         json={"texts": texts, "pos_tags": pos_tags},
     ).json()
 
-    for doc in response:
-        doc["vector"] = np.array(doc["vector"])
-
-        for keyword in doc["keywords"]:
-            keyword["vector"] = np.array(keyword["vector"])
+    for k in response:
+        k["vector"] = np.array(k["vector"])
 
     return response

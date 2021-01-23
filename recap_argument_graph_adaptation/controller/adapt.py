@@ -70,7 +70,10 @@ def concepts(
             )
 
         for node in original_concept.nodes:
-            hypernym_distances = node.hypernym_distances()
+            hypernym_distances = node.hypernym_distances(
+                original_concept.inode_vectors,
+                config.tuning("adaptation", "min_synset_similarity"),
+            )
 
             for hypernym, hyp_distance in hypernym_distances.items():
                 name = hypernym.processed_name
@@ -82,7 +85,7 @@ def concepts(
                     name,
                     vector,
                     query.pos(pos),
-                    original_concept.inode,
+                    original_concept.inodes,
                     nodes,
                     query.concept_metrics(
                         related_concepts, nodes, vector, hypernym_level=hyp_distance
@@ -151,7 +154,7 @@ def paths(
                 name,
                 vector,
                 pos,
-                original_concept.inode,
+                original_concept.inodes,
                 end_nodes,
                 query.concept_metrics(
                     related_concepts, end_nodes, vector, hypernym_level=hyp_distance
@@ -215,7 +218,11 @@ def _bfs_adaptation(
             next_paths = set()
 
             for current_path in current_paths:
-                path_extensions = query.hypernyms_as_paths(current_path.end_node)
+                path_extensions = query.hypernyms_as_paths(
+                    current_path.end_node,
+                    concept.inode_vectors,
+                    config.tuning("adaptation", "min_synset_similarity"),
+                )
 
                 # Here, paths that are shorter than the reference path are discarded.
                 if path_extensions:
@@ -254,29 +261,30 @@ def _filter_concepts(
     length_differences: t.Optional[t.Mapping[casebase.Concept, float]] = None,
 ) -> t.Optional[casebase.Concept]:
     # Remove the original adaptation source from the candidates
-    filter_expr = {rule.source.code for rule in rules}
-    filter_expr.add(original_concept.code)
+    filter_expr = {rule.source for rule in rules}
+    filter_expr.add(original_concept)
 
-    filtered_concepts = {c for c in concepts if c.code not in filter_expr}
+    filtered_concepts = {c for c in concepts if c not in filter_expr}
     filtered_concepts = casebase.filter_concepts(
-        filtered_concepts, config.tuning("adaptation", "min_score")
+        filtered_concepts, config.tuning("adaptation", "min_concept_score")
     )
 
     if filtered_concepts:
-        if occurences and length_differences:
-            sorted_concepts = sorted(
-                filtered_concepts,
-                key=lambda c: 0.5 * c.score
-                + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
-                + 0.25 * occurences[c],
-                reverse=True,
-            )
-        else:
-            sorted_concepts = sorted(
-                filtered_concepts,
-                key=lambda c: c.score,
-                reverse=True,
-            )
+        # TODO: Check if this makes sense.
+        # if occurences and length_differences:
+        #     sorted_concepts = sorted(
+        #         filtered_concepts,
+        #         key=lambda c: 0.5 * c.score
+        #         + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
+        #         + 0.25 * occurences[c],
+        #         reverse=True,
+        #     )
+        # else:
+        sorted_concepts = sorted(
+            filtered_concepts,
+            key=lambda c: c.score,
+            reverse=True,
+        )
 
         return sorted_concepts[0]
 

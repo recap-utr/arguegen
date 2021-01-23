@@ -1,13 +1,12 @@
 import logging
 import typing as t
+from collections import defaultdict
 from dataclasses import dataclass
 
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 
 log = logging.getLogger(__name__)
-
-# TODO: __contains__ broken because of new inode attribute. Rework with .code.
 
 
 def case(
@@ -16,10 +15,10 @@ def case(
     case_rules = case.rules
     benchmark_rules = case.benchmark_rules
 
-    computed_adaptations = {**adapted_concepts}
     benchmark_adaptations = {
         rule.source: rule.target for rule in benchmark_rules if rule not in case_rules
     }
+    computed_adaptations = {**adapted_concepts}
 
     benchmark_keys = set(benchmark_adaptations)
     computed_keys = set(computed_adaptations)
@@ -55,7 +54,6 @@ def case(
 
     for original_concept in only_computed:
         # Here, benchmark_adaptation == original_concept
-        # These scores are 'penalized' due to the fact that they get a lower weight.
         computed_adaptation = computed_adaptations[original_concept]
         negative_scores.append(
             casebase.WeightedScore(
@@ -96,16 +94,24 @@ def _compute_score(concept1: casebase.Concept, concept2: casebase.Concept) -> fl
     if concept1 == concept2:
         return 1.0
 
+    return casebase.score(
+        query.concept_metrics(concept2, concept1.nodes, concept1.vector)
+    )
+
+    # ---
+
     # return spacy.similarity(benchmark_adaptation.vector, computed_adaptation.vector)
 
-    scores = []
+    # ---
 
-    for c1, c2 in ((concept1, concept2), (concept2, concept1)):
-        metrics = query.concept_metrics(
-            c2,
-            c1.nodes,
-            c1.vector,
-        )
-        scores.append(casebase.score(metrics))
+    # scores = []
 
-    return max(scores)
+    # for c1, c2 in ((concept1, concept2), (concept2, concept1)):
+    #     metrics = query.concept_metrics(
+    #         c2,
+    #         c1.nodes,
+    #         c1.vector,
+    #     )
+    #     scores.append(casebase.score(metrics))
+
+    # return max(scores)

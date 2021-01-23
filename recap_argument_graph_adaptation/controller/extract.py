@@ -12,54 +12,73 @@ spacy_pos_tags = ["NOUN", "PROPN", "VERB", "ADJ"]  # ADV
 
 
 def keywords(
-    graph: ag.Graph, rules: t.Collection[casebase.Rule], user_query: casebase.TextVector
+    graph: ag.Graph, rules: t.Collection[casebase.Rule], user_query: casebase.UserQuery
 ) -> t.Set[casebase.Concept]:
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
-    rule_sources = {rule.source.code for rule in rules}
-    rule_targets = {rule.target.code for rule in rules}
+    rule_sources = {rule.source for rule in rules}
+    rule_targets = {rule.target for rule in rules}
 
     concepts: t.Set[casebase.Concept] = set()
     mc = graph.major_claim
 
-    keywords_response = spacy.keywords(
+    keywords = spacy.keywords(
         [node.plain_text for node in graph.inodes], spacy_pos_tags
     )
 
-    for graph_node, doc in zip(graph.inodes, keywords_response):
-        keywords = doc["keywords"]
-        inode = casebase.TextVector(graph_node.plain_text, doc["vector"])
-        mc_distance = graph.node_distance(graph_node, mc)
+    for k in keywords:
+        term = k["term"]
+        term_vector = k["vector"]
+        term_pos = casebase.spacy2pos(k["pos_tag"])
+        term_weight = k["weight"]
+        lemma = k["lemma"]
 
-        for k in keywords:
-            pos_tag = casebase.spacy2pos(k["pos_tag"])
-            nodes = query.concept_nodes(
-                k["term"], pos_tag, [inode, user_query]
-            ) or query.concept_nodes(k["lemma"], pos_tag, [inode, user_query])
+        inodes = [
+            t.cast(casebase.ArgumentNode, inode)
+            for inode in graph.inodes
+            if term in inode.plain_text
+        ]
+        mc_distances = set()
+        mc_distance = None
 
-            if nodes:
-                candidate = casebase.Concept(
-                    k["term"],
-                    k["vector"],
-                    pos_tag,
-                    inode,
+        for inode in inodes:
+            if mc_distance := graph.node_distance(inode, mc):
+                mc_distances.add(mc_distance)
+
+        if mc_distances:
+            mc_distance = min(mc_distances)
+
+        # TODO: Eventually add user_query.vector
+        concept_query_args = (
+            term_pos,
+            [inode.vector for inode in inodes],
+            config.tuning("extraction", "min_synset_similarity"),
+        )
+        nodes = query.concept_nodes(term, *concept_query_args,) or query.concept_nodes(
+            lemma,
+            *concept_query_args,
+        )
+
+        if nodes:
+            candidate = casebase.Concept(
+                term,
+                term_vector,
+                term_pos,
+                frozenset(inodes),
+                nodes,
+                query.concept_metrics(
+                    related_concepts,
                     nodes,
-                    query.concept_metrics(
-                        related_concepts,
-                        nodes,
-                        k["vector"],
-                        weight=k["weight"],
-                        major_claim_distance=mc_distance,
-                    ),
-                )
+                    term_vector,
+                    weight=term_weight,
+                    major_claim_distance=mc_distance,
+                ),
+            )
 
-                if (
-                    candidate.code not in rule_sources
-                    and candidate.code not in rule_targets
-                ):
-                    concepts.add(candidate)
+            if candidate not in rule_sources and candidate not in rule_targets:
+                concepts.add(candidate)
 
     concepts = casebase.filter_concepts(
-        concepts, config.tuning("extraction", "min_score")
+        concepts, config.tuning("extraction", "min_concept_score")
     )
 
     log.debug(

@@ -1,8 +1,13 @@
 import typing as t
 
 import numpy as np
-from recap_argument_graph_adaptation.model import (casebase, conceptnet, graph,
-                                                   spacy, wordnet)
+from recap_argument_graph_adaptation.model import (
+    casebase,
+    conceptnet,
+    graph,
+    spacy,
+    wordnet,
+)
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -32,10 +37,11 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 def concept_nodes(
     name: str,
     pos: t.Optional[casebase.POS],
-    text_vectors: t.Optional[t.Iterable[casebase.TextVector]] = None,
+    comparison_vectors: t.Optional[t.Iterable[np.ndarray]] = None,
+    min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
-        return wordnet.concept_synsets(name, pos, text_vectors)
+        return wordnet.concept_synsets(name, pos, comparison_vectors, min_similarity)
 
     elif kg_cn:
         return conceptnet.Database().nodes(name, pos)
@@ -98,14 +104,20 @@ def concept_metrics(
     return aggregated_metrics
 
 
-def hypernyms_as_paths(node: graph.AbstractNode) -> t.FrozenSet[graph.AbstractPath]:
+def hypernyms_as_paths(
+    node: graph.AbstractNode,
+    comparison_vectors: t.Iterable[np.ndarray],
+    min_similarity: float,
+) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
         return conceptnet.Database().hypernyms_as_paths(
             t.cast(conceptnet.ConceptnetNode, node)
         )
 
     elif kg_wn:
-        return wordnet.hypernyms_as_paths(t.cast(wordnet.WordnetNode, node))
+        return wordnet.hypernyms_as_paths(
+            t.cast(wordnet.WordnetNode, node), comparison_vectors, min_similarity
+        )
 
     raise kg_err
 

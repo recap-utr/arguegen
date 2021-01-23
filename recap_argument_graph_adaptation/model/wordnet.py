@@ -4,6 +4,7 @@ import itertools
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
+from logging import Filterer
 
 import numpy as np
 from nltk.corpus.reader.api import CorpusReader
@@ -75,15 +76,18 @@ class WordnetNode(graph.AbstractNode):
 
         return self.name
 
-    def hypernyms(self) -> t.FrozenSet[WordnetNode]:
-        return (
-            frozenset(
-                {WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()}
-            )
-            or frozenset()
+    def hypernyms(
+        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+    ) -> t.FrozenSet[WordnetNode]:
+        hyps = frozenset(
+            WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()
         )
 
-    def hypernym_distances(self) -> t.Dict[WordnetNode, int]:
+        return _filter_nodes(hyps, comparison_vectors, min_similarity)
+
+    def hypernym_distances(
+        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+    ) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
 
         for hyp_, dist in self.to_nltk().hypernym_distances():
@@ -96,7 +100,15 @@ class WordnetNode(graph.AbstractNode):
             ):
                 distances_map[hyp].append(dist)
 
-        return {hyp: max(distances) for hyp, distances in distances_map.items()}
+        filtered_hypernym_keys = _filter_nodes(
+            distances_map.keys(), comparison_vectors, min_similarity
+        )
+
+        return {
+            hyp: max(distances)
+            for hyp, distances in distances_map.items()
+            if hyp in filtered_hypernym_keys
+        }
 
     def metrics(self, other: WordnetNode) -> t.Dict[str, float]:
         synset1 = self.to_nltk()
@@ -168,6 +180,47 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     return results
 
 
+def _filter_nodes(
+    synsets: t.Iterable[WordnetNode],
+    comparison_vectors: t.Iterable[np.ndarray],
+    min_similarity: float,
+) -> t.FrozenSet[WordnetNode]:
+    synset_definitions = [synset.definition for synset in synsets]
+    synset_examples = [synset.examples for synset in synsets]
+    definition_vectors = spacy.vectors(synset_definitions)
+    examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
+
+    synset_tuples = []
+
+    for synset, definition_vector, example_vectors in zip(
+        synsets, definition_vectors, examples_vectors
+    ):
+        synset_vectors = [definition_vector] + example_vectors
+        similarities = []
+
+        for v1, v2 in itertools.product(synset_vectors, comparison_vectors):
+            similarities.append(spacy.similarity(v1, v2))
+
+        synset_tuples.append((synset, np.mean(similarities, axis=0)))
+
+    synset_tuples.sort(key=lambda item: item[1])
+
+    # Check if the best result has a higher similarity than demanded.
+    # If true, only include the synsets with higher similarity.
+    # Otherwise, include only the best one (regardless of the similarity).
+    if best_synset_tuple := next(iter(synset_tuples), None):
+        if best_synset_tuple[1] > min_similarity:
+            synset_tuples = filter(
+                lambda x: x[1] > min_similarity,
+                synset_tuples,
+            )
+        else:
+            synset_tuples = (best_synset_tuple,)
+
+    return frozenset({synset for synset, _ in synset_tuples})
+
+
+# TODO: This function does not use the function _filter_nodes
 def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     hyp_paths = []
 
@@ -185,8 +238,10 @@ def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     return frozenset(hyp_paths)
 
 
-def hypernyms_as_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
-    hyps = (WordnetNode.from_nltk(hyp) for hyp in node.to_nltk().hypernyms())
+def hypernyms_as_paths(
+    node: WordnetNode, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+) -> t.FrozenSet[WordnetPath]:
+    hyps = node.hypernyms(comparison_vectors, min_similarity)
 
     return frozenset(WordnetPath.from_nodes((node, hyp)) for hyp in hyps)
 
@@ -217,53 +272,18 @@ def all_shortest_paths(
 def concept_synsets(
     name: str,
     pos: t.Optional[casebase.POS],
-    text_vectors: t.Optional[t.Iterable[casebase.TextVector]] = None,
+    comparison_vectors: t.Optional[t.Iterable[np.ndarray]] = None,
+    min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = frozenset(
         {WordnetNode.from_nltk(ss) for ss in _synsets(name, casebase.pos2wn(pos)) if ss}
     )
 
-    if text_vectors is None:
+    if comparison_vectors is None or min_similarity is None:
         return synsets
 
-    synset_definitions = [synset.definition for synset in synsets]
-    synset_examples = [synset.examples for synset in synsets]
-    definition_vectors = spacy.vectors(synset_definitions)
-    examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
-
-    synset_tuples = []
-
-    for synset, definition_vector, example_vectors in zip(
-        synsets, definition_vectors, examples_vectors
-    ):
-        synset_vectors = [definition_vector] + example_vectors
-        similarities = []
-
-        for v1, v2 in itertools.product(
-            synset_vectors, [x.vector for x in text_vectors]
-        ):
-            similarities.append(spacy.similarity(v1, v2))
-
-        synset_tuples.append((synset, np.mean(similarities, axis=0)))
-
-    synset_tuples.sort(key=lambda item: item[1])
-
-    # Check if the best result has a higher similarity than demanded.
-    # If true, only include the synsets with higher similarity.
-    # Otherwise, include only the best one (regardless of the similarity).
-    if best_synset_tuple := next(iter(synset_tuples), None):
-        min_similarity = config.tuning("synset", "min_similarity")
-
-        if best_synset_tuple[1] > min_similarity:
-            synset_tuples = filter(
-                lambda x: x[1] > min_similarity,
-                synset_tuples,
-            )
-        else:
-            synset_tuples = (best_synset_tuple,)
-
-    return frozenset({synset for synset, _ in synset_tuples})
+    return _filter_nodes(synsets, comparison_vectors, min_similarity)
 
 
 def metrics(

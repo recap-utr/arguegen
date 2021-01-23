@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import graph
+from recap_argument_graph_adaptation.model import graph, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)
@@ -28,34 +28,53 @@ empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
 }
 
 
+class ArgumentNode(ag.Node):
+    __slots__ = ("vector",)
+
+    vector: np.ndarray
+
+    def __post_init__(self):
+        self.vector = spacy.vector(self.plain_text)
+
+    def __str__(self) -> str:
+        return str(self.key)
+
+    def __eq__(self, other: ArgumentNode) -> bool:
+        return self.key == other.key
+
+    def __hash__(self) -> int:
+        return hash(self.key)
+
+
 @dataclass(frozen=True)
 class Concept:
     name: str
     vector: np.ndarray
     pos: t.Optional[POS]
-    inode: t.Optional[TextVector]
+    inodes: t.FrozenSet[ArgumentNode]
     nodes: t.FrozenSet[graph.AbstractNode]
     metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
 
-    @property
-    def code(self) -> str:
-        if self.pos:
-            return f"{self.name}/{self.pos.value}"
-
-        return self.name
-
     def __str__(self):
-        return self.code
+        code = f"{self.name}"
+
+        if self.pos:
+            code += f"/{self.pos.value}"
+
+        # if self.inodes:
+        #     code += f"/{self.inodes}"
+
+        return code
 
     def __eq__(self, other: Concept) -> bool:
-        return (
-            self.name == other.name
-            and self.pos == other.pos
-            and self.inode == other.inode
-        )
+        return self.name == other.name and self.pos == other.pos
 
     def __hash__(self) -> int:
-        return hash((self.name, self.pos, self.inode))
+        return hash((self.name, self.pos))
+
+    @property
+    def inode_vectors(self) -> t.List[np.ndarray]:
+        return [inode.vector for inode in self.inodes]
 
     @staticmethod
     def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
@@ -80,7 +99,7 @@ class Concept:
             source.name,
             source.vector,
             source.pos,
-            source.inode,
+            source.inodes,
             source.nodes,
             metrics,
         )
@@ -119,14 +138,14 @@ class Rule:
 
 
 @dataclass(frozen=True)
-class TextVector:
+class UserQuery:
     text: str
     vector: np.ndarray
 
     def __str__(self) -> str:
         return self.text
 
-    def __eq__(self, other: TextVector) -> bool:
+    def __eq__(self, other: UserQuery) -> bool:
         return self.text == other.text
 
     def __hash__(self) -> int:
@@ -136,7 +155,7 @@ class TextVector:
 @dataclass(frozen=True)
 class Case:
     relative_path: Path
-    user_query: TextVector
+    user_query: UserQuery
     graph: ag.Graph
     _rules: t.Tuple[Rule, ...]
 

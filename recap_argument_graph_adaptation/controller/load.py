@@ -99,8 +99,8 @@ def _case(path: Path) -> t.Optional[casebase.Case]:
             f"Only some of the required assets {[p.name for p in paths]} were found in '{path}'."
         )
 
-    graph = ag.Graph.open(graph_path)
-    rules = _parse_rules(rules_path)
+    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode)
+    rules = _parse_rules(rules_path, graph)
     query = _parse_query(query_path)
 
     return casebase.Case(
@@ -111,33 +111,52 @@ def _case(path: Path) -> t.Optional[casebase.Case]:
     )
 
 
-def _parse_query(path: Path) -> casebase.TextVector:
+def _parse_query(path: Path) -> casebase.UserQuery:
     with path.open() as f:
         text = f.read()
 
-    return casebase.TextVector(text, spacy.vector(text))
+    return casebase.UserQuery(text, spacy.vector(text))
 
 
-def _parse_rules(path: Path) -> t.Tuple[casebase.Rule]:
+def _parse_rules(path: Path, graph: ag.Graph) -> t.Tuple[casebase.Rule]:
     rules = []
 
     with path.open() as file:
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            source = _parse_rule_concept(row[0], path)
-            target = _parse_rule_concept(row[1], path)
+            source = _parse_rule_concept(row[0], graph, path, None)
+            target = _parse_rule_concept(row[1], graph, path, source.inodes)
 
             rules.append(casebase.Rule(source, target))
 
     return tuple(rules)
 
 
-def _parse_rule_concept(rule: str, path: Path) -> casebase.Concept:
+def _parse_rule_concept(
+    rule: str,
+    graph: ag.Graph,
+    path: Path,
+    inodes: t.Optional[t.FrozenSet[casebase.ArgumentNode]],
+) -> casebase.Concept:
     rule_parts = rule.split("/")
-    name = rule_parts[0]
+    name = rule_parts[0].lower()
     vector = spacy.vector(name)
     pos = None
+
+    if not inodes:
+        tmp_inodes = set()
+
+        for inode in graph.inodes:
+            if name in inode.plain_text:
+                tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
+
+        if len(tmp_inodes) == 0:
+            raise RuntimeError(
+                f"The concept '{name}' specified in '{str(path)}' could not be found in any I-node. Please check the spelling."
+            )
+
+        inodes = frozenset(tmp_inodes)
 
     if len(rule_parts) > 1:
         try:
@@ -147,7 +166,12 @@ def _parse_rule_concept(rule: str, path: Path) -> casebase.Concept:
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
 
-    nodes = query.concept_nodes(name, pos)
+    nodes = query.concept_nodes(
+        name,
+        pos,
+        [x.vector for x in inodes],
+        config["loading"]["min_synset_similarity"],
+    )
 
     if not nodes:
         raise ValueError(
@@ -158,7 +182,7 @@ def _parse_rule_concept(rule: str, path: Path) -> casebase.Concept:
         name,
         vector,
         pos,
-        None,
+        inodes,
         nodes,
         {key: 1.0 for key in casebase.metric_keys},
     )

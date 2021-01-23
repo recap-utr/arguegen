@@ -23,38 +23,43 @@ workers = 1
 
 # PUBLIC
 
+[loading]
+min_synset_similarity = 0.8
+
 [adaptation]
 export_graph = false
 export_single_stats = true
 export_grid_stats = true
 knowledge_graph = "wordnet"
 bfs_node_limit = 4
+rules_limit = 1
 
 
 [tuning]
-# How many of the given benchmark rules should be used as an input to the adaptation process.
-rules_adaptation_limit = [1]
-
 # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-synset_min_similarity = [0.0, 0.33, 0.67]
+# Threshold for retrieving synsets based on the semantic similarity of their example/definition.
+extraction_min_synset_similarity = [0.8]
+adaptation_min_synset_similarity = [0.8]
 
-# Threshold for extracting/adapting concepts
-extraction_min_score = [0.2]
-adaptation_min_score = [0.0, 0.25, 0.5]
+# Threshold for filtering concepts
+extraction_min_concept_score = [0.0, 0.33, 0.66]
+adaptation_min_concept_score = [0.0, 0.33, 0.66]
 
 # Of which metrics should the score consist
-# score_keyword_weight = [0.0, 0.33, 0.67, 1.0] # removed due to grid search
-score_semantic_similarity = [0.33, 0.67, 1.0]
-score_path_similarity = [0.33, 0.67, 1.0]
-score_wup_similarity = [0.0, 0.33, 0.67]
+# score_keyword_weight = [1]
+# score_hypernym_proximity = [1]
+# score_major_claim_proximity = [2, 3]
+score_semantic_similarity = [2, 3]
+score_path_similarity = [1, 2]
+score_wup_similarity = [0, 1]
 
 # From what concepts should the metrics be derived
-weight_original_concept = [0.5, 0.75, 1.0]
-weight_rule_source = [0.0, 0.25, 0.5]
-weight_rule_target = [0.0, 0.25, 0.5]
+weight_original_concept = [3]
+weight_rule_source = [1]
+weight_rule_target = [1]
 
 # How to perform the adaptation: direct, bfs
-adaptation_method = ["bfs"]
+adaptation_method = ["direct"]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
