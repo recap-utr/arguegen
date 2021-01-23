@@ -342,7 +342,7 @@ class Database:
                     self._metrics, nodes1, nodes2, relation_types, max_relations
                 )
 
-        return {"path_similarity": None}
+        return {"nodes_path_similarity": None}
 
     @staticmethod
     def _metrics(
@@ -375,9 +375,9 @@ class Database:
             if record:
                 shortest_length = min(record)
 
-            return {"path_similarity": _dist2sim(shortest_length)}
+            return {"nodes_path_similarity": _dist2sim(shortest_length)}
 
-        return {"path_similarity": None}
+        return {"nodes_path_similarity": None}
 
 
 def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:

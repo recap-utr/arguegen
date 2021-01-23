@@ -28,6 +28,10 @@ log = logging.getLogger(__name__)
 # For example 'tuition fees' and 'fees'. If 'fees' does not occur alone in the graph,
 # we should ignore it. Maybe we should do this during the extraction.
 
+# TODO: cap_rent_increases/nodeset6377
+# landlord/noun is benchmark concept, but landlord/noun is extracted.
+# Add mitigations for such small differences.
+
 
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
@@ -114,13 +118,13 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
 
     if adaptation_method == "direct":
         adapted_concepts, adapted_concept_candidates = adapt.concepts(
-            concepts, case.rules
+            concepts, case.rules, args.case.user_query
         )
 
     elif adaptation_method == "bfs":
         reference_paths = extract.paths(concepts, case.rules)
         adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
-            reference_paths, case.rules
+            reference_paths, case.rules, args.case.user_query
         )
 
     if config["adaptation"]["export_graph"]:

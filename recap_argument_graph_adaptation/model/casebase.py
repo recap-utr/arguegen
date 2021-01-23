@@ -17,12 +17,14 @@ config = Config.instance()
 
 metric_keys = {
     "keyword_weight",
-    "nodes_similarity",
-    "semantic_similarity",
+    "nodes_semantic_similarity",
+    "concept_semantic_similarity",
     "hypernym_proximity",
     "major_claim_proximity",
-    "path_similarity",
-    "wup_similarity",
+    "nodes_path_similarity",
+    "nodes_wup_similarity",
+    "query_nodes_semantic_similarity",
+    "query_concept_semantic_similarity",
 }
 empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
     key: None for key in metric_keys

@@ -46,7 +46,9 @@ def _replace(text: str, substitutions: t.Mapping[str, str]):
 
 
 def concepts(
-    concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
+    concepts: t.Iterable[casebase.Concept],
+    rules: t.Collection[casebase.Rule],
+    user_query: casebase.UserQuery,
 ) -> t.Tuple[
     t.Dict[casebase.Concept, casebase.Concept],
     t.Dict[casebase.Concept, t.Set[casebase.Concept]],
@@ -88,7 +90,11 @@ def concepts(
                     original_concept.inodes,
                     nodes,
                     query.concept_metrics(
-                        related_concepts, nodes, vector, hypernym_level=hyp_distance
+                        related_concepts,
+                        user_query,
+                        nodes,
+                        vector,
+                        hypernym_level=hyp_distance,
                     ),
                 )
 
@@ -112,6 +118,7 @@ def concepts(
 def paths(
     reference_paths: t.Mapping[casebase.Concept, t.Sequence[graph.AbstractPath]],
     rules: t.Collection[casebase.Rule],
+    user_query: casebase.UserQuery,
 ) -> t.Tuple[
     t.Dict[casebase.Concept, casebase.Concept],
     t.Dict[casebase.Concept, t.List[graph.AbstractPath]],
@@ -157,7 +164,11 @@ def paths(
                 original_concept.inodes,
                 end_nodes,
                 query.concept_metrics(
-                    related_concepts, end_nodes, vector, hypernym_level=hyp_distance
+                    related_concepts,
+                    user_query,
+                    end_nodes,
+                    vector,
+                    hypernym_level=hyp_distance,
                 ),
             )
 

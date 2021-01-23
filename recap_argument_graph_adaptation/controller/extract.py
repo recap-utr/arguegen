@@ -66,6 +66,7 @@ def keywords(
                 nodes,
                 query.concept_metrics(
                     related_concepts,
+                    user_query,
                     nodes,
                     term_vector,
                     weight=term_weight,

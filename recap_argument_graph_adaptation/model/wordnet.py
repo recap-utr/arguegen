@@ -117,8 +117,8 @@ class WordnetNode(graph.AbstractNode):
 
         # with lock:
         return {
-            "path_similarity": synset1.path_similarity(synset2) or 0.0,
-            "wup_similarity": synset1.wup_similarity(synset2) or 0.0,
+            "nodes_path_similarity": synset1.path_similarity(synset2) or 0.0,
+            "nodes_wup_similarity": synset1.wup_similarity(synset2) or 0.0,
         }
 
 
@@ -313,9 +313,9 @@ def metrics(
     synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
 ) -> t.Dict[str, t.Optional[float]]:
     tmp_results: t.Dict[str, t.List[float]] = {
-        "nodes_similarity": _nodes_similarities(synsets1, synsets2),
-        "path_similarity": [],
-        "wup_similarity": [],
+        "nodes_semantic_similarity": _nodes_similarities(synsets1, synsets2),
+        "nodes_path_similarity": [],
+        "nodes_wup_similarity": [],
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
@@ -325,9 +325,20 @@ def metrics(
 
     results: t.Dict[str, t.Optional[float]] = {key: None for key in tmp_results.keys()}
 
-    # TODO: Check if max makes sense. One could also use mean.
     for key, values in tmp_results.items():
         if values:
-            results[key] = max(values)
+            results[key] = statistics.mean(values)
 
     return results
+
+
+def query_nodes_similarity(
+    synsets: t.Iterable[WordnetNode], query: casebase.UserQuery
+) -> t.Optional[float]:
+    similarities = []
+    synset_vectors = itertools.chain(*_nodes_vectors(synsets))
+
+    for synset_vector in synset_vectors:
+        similarities.append(spacy.similarity(synset_vector, query.vector))
+
+    return statistics.mean(similarities) if similarities else None

@@ -43,7 +43,9 @@ def case(
             positive_scores.append(
                 casebase.WeightedScore(
                     original_concept,
-                    _compute_score(benchmark_adaptation, computed_adaptation),
+                    _compute_score(
+                        benchmark_adaptation, computed_adaptation, case.user_query
+                    ),
                     weight,
                 )
             )
@@ -58,7 +60,7 @@ def case(
         negative_scores.append(
             casebase.WeightedScore(
                 original_concept,
-                _compute_score(original_concept, computed_adaptation),
+                _compute_score(original_concept, computed_adaptation, case.user_query),
                 1 / len(benchmark_rules),
             )
         )
@@ -90,12 +92,16 @@ def case(
     )
 
 
-def _compute_score(concept1: casebase.Concept, concept2: casebase.Concept) -> float:
+def _compute_score(
+    concept1: casebase.Concept,
+    concept2: casebase.Concept,
+    user_query: casebase.UserQuery,
+) -> float:
     if concept1 == concept2:
         return 1.0
 
     return casebase.score(
-        query.concept_metrics(concept2, concept1.nodes, concept1.vector)
+        query.concept_metrics(concept2, user_query, concept1.nodes, concept1.vector)
     )
 
     # ---

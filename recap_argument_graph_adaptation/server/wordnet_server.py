@@ -509,8 +509,8 @@ def synset_metrics(query: SynsetPairQuery) -> t.Dict[str, t.Optional[float]]:
     s2 = query.code2
 
     return {
-        "path_similarity": path_similarity(s1, s2),
-        "wup_similarity": wup_similarity(s1, s2),
+        "nodes_path_similarity": path_similarity(s1, s2),
+        "nodes_wup_similarity": wup_similarity(s1, s2),
     }
 
 

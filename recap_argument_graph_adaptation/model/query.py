@@ -51,6 +51,7 @@ def concept_nodes(
 
 def concept_metrics(
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
+    user_query: casebase.UserQuery,
     nodes: t.Iterable[graph.AbstractNode],
     vector: np.ndarray,
     weight: t.Optional[float] = None,
@@ -67,12 +68,18 @@ def concept_metrics(
         total_weight += related_concept_weight
         metrics = {
             "keyword_weight": weight,
-            "nodes_similarity": None,
-            "semantic_similarity": spacy.similarity(vector, related_concept.vector),
+            "nodes_semantic_similarity": None,
+            "concept_semantic_similarity": spacy.similarity(
+                vector, related_concept.vector
+            ),
             "hypernym_proximity": _dist2sim(hypernym_level),
             "major_claim_proximity": _dist2sim(major_claim_distance),
-            "path_similarity": None,
-            "wup_similarity": None,
+            "nodes_path_similarity": None,
+            "nodes_wup_similarity": None,
+            "query_nodes_semantic_similarity": None,
+            "query_concept_semantic_similarity": spacy.similarity(
+                user_query.vector, vector
+            ),
         }
 
         assert metrics.keys() == casebase.metric_keys
@@ -83,6 +90,9 @@ def concept_metrics(
                 t.Iterable[wordnet.WordnetNode], related_concept.nodes
             )
             metrics.update(wordnet.metrics(nodes, related_nodes))
+            metrics["query_nodes_semantic_similarity"] = wordnet.query_nodes_similarity(
+                nodes, user_query
+            )
 
         elif kg_cn:
             db = conceptnet.Database()
