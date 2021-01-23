@@ -22,7 +22,6 @@ log = logging.getLogger(__name__)
 # TODO: Improve conceptnet performance
 # TODO: Write validation script for adaptation rules
 # TODO: Use query to compute evaluation score.
-# TODO: Add similarity between concept nodes to the concept score. Usefule for sorting etc.
 # TODO: Modify wordnet shortest path to use the node filtering function
 
 # TODO: Parts of another concepts are not correctly reflected in the evaluation.
