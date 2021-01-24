@@ -152,7 +152,7 @@ class Keyword:
         )
 
 
-# TODO: Create keywords cache
+# TODO: Limit number of keywords extracted.
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:
     response = session.post(
         _url("keywords"),

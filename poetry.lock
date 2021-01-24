@@ -826,18 +826,6 @@ lookups = ["spacy-lookups-data (>=0.3.2,<0.4.0)"]
 th = ["pythainlp (>=2.0)"]
 
 [[package]]
-name = "spacy-sentence-bert"
-version = "0.0.4"
-description = "SpaCy models for using sentence-BERT"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-sentence-transformers = "*"
-spacy = ">=2.3.0,<2.4.0"
-
-[[package]]
 name = "srsly"
 version = "1.0.5"
 description = "Modern high-performance serialization utilities for Python"
@@ -1252,7 +1240,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "570170703e40be65c94f9a9bc28531200e10ff30bc9145fae08bd6e1cc8639b2"
+content-hash = "71ac6a6c5b21728487563d4caf8194790366057410d5d300f114a2c61495057a"
 
 [metadata.files]
 absl-py = [
@@ -1955,9 +1943,6 @@ spacy = [
     {file = "spacy-2.3.5-cp39-cp39-manylinux2014_x86_64.whl", hash = "sha256:49f7818bd8a597887013fdaaea3263d8b6e99ca64db0933c32f0896158898209"},
     {file = "spacy-2.3.5-cp39-cp39-win_amd64.whl", hash = "sha256:45497775e986d2790c7ee3625c565e3ef7e9ffa607d50230aa3382dd6d9b26e7"},
     {file = "spacy-2.3.5.tar.gz", hash = "sha256:315278ab60094643baecd866017c7d4cbd966efd2d517ad0e6c888edf7fa5aef"},
-]
-spacy-sentence-bert = [
-    {file = "spacy_sentence_bert-0.0.4.tar.gz", hash = "sha256:5452773ec24d24bb86071af281982d2927550dacf441bf5d799ec39a465bf69c"},
 ]
 srsly = [
     {file = "srsly-1.0.5-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:a696e9c925e91f76ec53840c55483a4fbf76cb717424410a4f249d4805439038"},

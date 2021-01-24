@@ -24,6 +24,7 @@ _models = {
 _backup_models = {
     "en": "en_core_web_sm",
 }
+fuzzymax = config["nlp"]["fuzzymax"]
 
 
 def spacy_nlp() -> Language:
@@ -40,7 +41,7 @@ def spacy_nlp() -> Language:
     )  # parser needed for noun chunks
     model.add_pipe(model.create_pipe("sentencizer"))
 
-    if embeddings == "integrated" and config["nlp"]["fuzzymax"]:
+    if embeddings == "integrated" and fuzzymax:
         model.add_pipe(FuzzyModel(), first=True)
     if embeddings == "sbert":
         model.add_pipe(TransformerModel(model_name), first=True)
@@ -54,19 +55,11 @@ class FuzzyModel:
     def __call__(self, doc):
         doc.user_hooks["vector"] = self.vectors
         doc.user_span_hooks["vector"] = self.vectors
-        doc.user_token_hooks["vector"] = self.token_vectors
 
         return doc
 
     def vectors(self, obj):
-        return itertools.chain(t.vector for t in obj)
-
-    def token_vectors(self, obj):
-        # https://github.com/explosion/spaCy/blob/5ace559201c714ab89b3092b87d791e16973f31d/spacy/tokens/token.pyx#L387
-        if obj.vocab.vectors.size == 0 and obj.doc.tensor.size != 0:
-            return [obj.doc.tensor[obj.i]]
-        else:
-            return [obj.vocab.get_vector(obj.c.lex.orth)]
+        return list(itertools.chain(t.vector for t in obj))
 
 
 if config["nlp"]["embeddings"] == "sbert":
@@ -115,15 +108,19 @@ if config["nlp"]["embeddings"] == "use":
 
 app = FastAPI()
 nlp = spacy_nlp()
-extractor = ke.yake
+extractor = ke.textrank
+# ke.textrank, ke.yake, ke.scake, ke.sgrank
+# alternative: https://github.com/boudinfl/pke
+
 _vector_cache = {}
 Vector = t.Union[t.List[float], t.List[t.List[float]]]
-# ke.textrank, ke.yake, ke.scake, ke.sgrank
 
 
 def _convert_vector(vector: t.Union[np.ndarray, t.List[np.ndarray]]) -> Vector:
     if isinstance(vector, list):
         return [v.tolist() for v in vector]
+    elif fuzzymax:
+        return [vector.tolist()]
     else:
         return vector.tolist()
 
@@ -208,8 +205,12 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
             doc_keywords = []
 
             for pos_tag in query.pos_tags:
-                term_keywords = extractor(doc, include_pos=pos_tag, normalize=None)
-                lemma_keywords = extractor(doc, include_pos=pos_tag, normalize="lemma")
+                term_keywords = extractor(
+                    doc, include_pos=pos_tag, normalize=None, topn=1.0
+                )
+                lemma_keywords = extractor(
+                    doc, include_pos=pos_tag, normalize="lemma", topn=1.0
+                )
 
                 for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords):
                     # TODO: Some terms change their spelling, e.g. centres is extracted as (term: centers, lemma: centre)

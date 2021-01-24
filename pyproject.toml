@@ -11,7 +11,6 @@ neo4j = "^4.1"
 scipy = "^1.5"
 tomlkit = "^0.7"
 wordfreq = "^2.3"
-spacy = "^2.3"
 textacy = "^0.10"
 scikit-learn = "^0.23"
 packaging = "^20.4"
@@ -25,9 +24,9 @@ fastapi = "^0.63.0"
 requests = "^2.25.1"
 uvicorn = { extras = ["standard"], version = "^0.13.2" }
 typer = "^0.3.2"
-spacy-sentence-bert = "^0.0.4"
 tensorflow-hub = "^0.11.0"
 tensorflow = "^2.4.1"
+spacy = "^2.3.5"
 
 [tool.poetry.dev-dependencies]
 
