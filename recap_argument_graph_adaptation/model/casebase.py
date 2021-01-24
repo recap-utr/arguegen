@@ -31,8 +31,6 @@ empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
 }
 
 
-
-
 class ArgumentNode(ag.Node):
     __slots__ = ("vector",)
 
@@ -80,6 +78,9 @@ class Concept:
 
     def __hash__(self) -> int:
         return hash((self.name, self.pos, self.inodes))
+
+    def part_eq(self, other: Concept) -> bool:
+        return self.pos == other.pos and self.inodes == other.inodes
 
     @property
     def inode_vectors(self) -> t.List[spacy.Vector]:

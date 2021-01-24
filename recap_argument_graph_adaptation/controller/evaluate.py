@@ -1,3 +1,4 @@
+import itertools
 import logging
 import typing as t
 from collections import defaultdict
@@ -23,9 +24,33 @@ def case(
     benchmark_keys = set(benchmark_adaptations)
     computed_keys = set(computed_adaptations)
 
-    benchmark_and_computed = {k for k in benchmark_keys if k in computed_keys}
-    only_benchmark = {k for k in benchmark_keys - computed_keys}
-    only_computed = {k for k in computed_keys - benchmark_keys}
+    # landlord/noun is a benchmark concept, but landlords/noun is extracted.
+    # In the node, the concept is 'landlords', meaning that the benchmark concept is 'wrong'.
+    # The following is a mitigation to harmonize such small differences
+    benchmark_computed_map = {
+        benchmark: computed
+        for benchmark, computed in itertools.product(benchmark_keys, computed_keys)
+        if benchmark.part_eq(computed)
+        and abs(len(benchmark.name) - len(computed.name)) <= 2
+        and (benchmark.name in computed.name or computed.name in benchmark.name)
+    }
+    benchmark_and_computed = set(itertools.chain(*benchmark_computed_map.items()))
+    only_benchmark = {k for k in benchmark_keys - benchmark_and_computed}
+
+    # If 'tuition fees' and 'fees' are computed, but only 'tuition fees' is in the benchmark adaptations,
+    # we should not decrease the score because of this additional adaptation.
+    # This exclusion is only problematic, if a concept like 'fees' is left untouched deliberately.
+    # I will ignore this case for now.
+    # To improve, one could during the extraction check if the subset concept 'fees' only occurs
+    # as a part of the superset 'tuition fees'. If this is the case, remove it from the candidates.
+    # Otherwise, add it and evaluate it like any other concept (i.e., get rid of the following workaround).
+    only_computed = {
+        k
+        for k in computed_keys - benchmark_and_computed
+        if not any(
+            k.name in other.name and k.part_eq(other) for other in benchmark_keys
+        )
+    }
 
     log.debug(f"Common adaptations: {convert.list_str(benchmark_and_computed)}")
     log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
@@ -39,7 +64,9 @@ def case(
     ):
         weight = len(benchmark_adaptations) - i
 
-        if computed_adaptation := computed_adaptations.get(original_concept):
+        if computed_adaptation := computed_adaptations.get(
+            benchmark_computed_map[original_concept]
+        ):
             positive_scores.append(
                 casebase.WeightedScore(
                     original_concept,

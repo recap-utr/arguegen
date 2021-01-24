@@ -16,12 +16,6 @@ config = Config.instance()
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
-# stackprinter.set_excepthook(style="darkbg2")
-
-
-# TODO: Parts of another concepts are not correctly reflected in the evaluation.
-# For example 'tuition fees' and 'fees'. If 'fees' does not occur alone in the graph,
-# we should ignore it. Maybe we should do this during the extraction.
 
 # TODO: cap_rent_increases/nodeset6377
 # landlord/noun is benchmark concept, but landlords/noun is extracted.
