@@ -10,6 +10,7 @@ import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
+from spacy.lang.lex_attrs import is_alpha
 
 config = Config.instance()
 log = logging.getLogger(__name__)
@@ -148,8 +149,15 @@ def _parse_rule_concept(
     if not inodes:
         tmp_inodes = set()
 
+        # Only accept rules that cover a complete word.
+        # If for example 'landlord' is a rule, but the node only contains 'landlords',
+        # an exception will be thrown.
+        pattern = re.compile(f"\\b({name})\\b")
+
         for inode in graph.inodes:
-            if name in inode.plain_text.lower():
+            node_txt = inode.plain_text.lower()
+
+            if pattern.search(node_txt):
                 tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
 
         if len(tmp_inodes) == 0:
