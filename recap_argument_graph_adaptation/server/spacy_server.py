@@ -108,7 +108,7 @@ if config["nlp"]["embeddings"] == "use":
 
 app = FastAPI()
 nlp = spacy_nlp()
-extractor = ke.textrank
+extractor = ke.yake
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 # alternative: https://github.com/boudinfl/pke
 
@@ -190,6 +190,13 @@ class KeywordResponse(BaseModel):
 _keyword_cache = {}
 
 
+def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
+    if distance is not None:
+        return 1 / (1 + distance)
+
+    return None
+
+
 @app.post("/keywords", response_model=t.List[t.List[KeywordResponse]])
 def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
     unknown_texts = []
@@ -212,8 +219,9 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
                     doc, include_pos=pos_tag, normalize="lemma", topn=1.0
                 )
 
-                for (term, weight), (lemma, _) in zip(term_keywords, lemma_keywords):
+                for (term, score), (lemma, _) in zip(term_keywords, lemma_keywords):
                     # TODO: Some terms change their spelling, e.g. centres is extracted as (term: centers, lemma: centre)
+                    # Thus, we need to ensure that the keyword actually exists in the text.
                     if term in doc.text.lower():
                         doc_keywords.append(
                             KeywordResponse(
@@ -221,7 +229,7 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
                                 vector=_vector(term),
                                 lemma=lemma,
                                 pos_tag=pos_tag,
-                                weight=weight,
+                                weight=_dist2sim(score),
                             )
                         )
 

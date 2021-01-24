@@ -176,7 +176,7 @@ def paths(
 
         adaptation_candidates = set()
         candidate_occurences = {}
-        candidate_length_diff = defaultdict(lambda: float("inf"))
+        candidate_length_diff = {}
 
         for candidates in _adaptation_candidates.values():
             candidate = max(candidates, key=lambda x: x.score)
@@ -281,21 +281,20 @@ def _filter_concepts(
     )
 
     if filtered_concepts:
-        # TODO: Check if this makes sense.
-        # if occurences and length_differences:
-        #     sorted_concepts = sorted(
-        #         filtered_concepts,
-        #         key=lambda c: 0.5 * c.score
-        #         + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
-        #         + 0.25 * occurences[c],
-        #         reverse=True,
-        #     )
-        # else:
-        sorted_concepts = sorted(
-            filtered_concepts,
-            key=lambda c: c.score,
-            reverse=True,
-        )
+        if occurences and length_differences:
+            sorted_concepts = sorted(
+                filtered_concepts,
+                key=lambda c: 0.75 * c.score
+                # + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
+                + 0.25 * occurences[c],
+                reverse=True,
+            )
+        else:
+            sorted_concepts = sorted(
+                filtered_concepts,
+                key=lambda c: c.score,
+                reverse=True,
+            )
 
         return sorted_concepts[0]
 

@@ -7,7 +7,8 @@ from dataclasses import dataclass
 
 import neo4j
 import neo4j.data
-from recap_argument_graph_adaptation.model import casebase, conceptnet_helper, graph
+from recap_argument_graph_adaptation.model import (casebase, conceptnet_helper,
+                                                   graph)
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -114,8 +115,8 @@ class Database:
         rel_query = _include_relations(relation_types)
         start_index = 1 if exclude_start_node else 0
         limit = (
-            1 if only_longest_path else max_relations
-        )  # TODO: Check if max_relations sensible
+            1 if only_longest_path else 50
+        )
 
         query = (
             "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"

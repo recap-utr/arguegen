@@ -19,11 +19,6 @@ log = logging.getLogger(__name__)
 # stackprinter.set_excepthook(style="darkbg2")
 
 
-# TODO: Improve conceptnet performance
-# TODO: Write validation script for adaptation rules
-# TODO: Use query to compute evaluation score.
-# TODO: Modify wordnet shortest path to use the node filtering function
-
 # TODO: Parts of another concepts are not correctly reflected in the evaluation.
 # For example 'tuition fees' and 'fees'. If 'fees' does not occur alone in the graph,
 # we should ignore it. Maybe we should do this during the extraction.
@@ -94,14 +89,13 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
-    config["_tuning_runs"] = args.total_runs
     spacy.session = requests.Session()
     case = args.case
 
     log.debug("Starting adaptation pipeline.")
     start_time = timer()
     nested_out_path = export.nested_path(
-        args.out_path / case.relative_path, config["_tuning_runs"], config["_tuning"]
+        args.out_path / case.relative_path, args.total_params, config["_tuning"]
     )
 
     adapted_concepts = {}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import statistics
 import typing as t
 from collections import defaultdict
@@ -16,6 +17,11 @@ config = Config.instance()
 
 _base_url = f"http://{config['resources']['spacy']['host']}:{config['resources']['spacy']['port']}"
 session = requests.Session()
+
+
+def _check_response(response: requests.Response) -> None:
+    if not response.ok:
+        raise RuntimeError(json.dumps(response.json(), indent=4))
 
 
 def _url(*parts: str) -> str:
@@ -35,9 +41,10 @@ def _convert_vector(vector: t.Union[t.List[t.List[float]], t.List[float]]) -> Ve
 
 def vector(text: str) -> Vector:
     if text not in _vector_cache:
-        _vector_cache[text] = _convert_vector(
-            session.post(_url("vector"), json={"text": text}).json()
-        )
+        response = session.post(_url("vector"), json={"text": text})
+        _check_response(response)
+
+        _vector_cache[text] = _convert_vector(response.json())
 
     return _vector_cache[text]
 
@@ -51,9 +58,10 @@ def vectors(texts: t.Iterable[str]) -> t.List[Vector]:
             unknown_texts.append(text)
 
     if unknown_texts:
-        vectors = session.post(_url("vectors"), json={"texts": unknown_texts}).json()
+        response = session.post(_url("vectors"), json={"texts": unknown_texts})
+        _check_response(response)
 
-        for text, vector in zip(unknown_texts, vectors):
+        for text, vector in zip(unknown_texts, response.json()):
             _vector_cache[text] = _convert_vector(vector)
 
     return [_vector_cache[text] for text in texts]
@@ -152,21 +160,37 @@ class Keyword:
         )
 
 
-# TODO: Limit number of keywords extracted.
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:
+    weights_map = defaultdict(list)
     response = session.post(
         _url("keywords"),
-        json={"texts": texts, "pos_tags": pos_tags},
-    ).json()
+        json={
+            "texts": texts,
+            "pos_tags": pos_tags,
+        },
+    )
+    _check_response(response)
 
-    weights_map = defaultdict(list)
-
-    for doc in response:
+    for doc in response.json():
         for raw_keyword in doc:
             keyword = TemporaryKeyword.from_dict(raw_keyword)
             weights_map[keyword].append(raw_keyword["weight"])
 
-    return [
+    candidates = [
         Keyword.from_tmp(k, statistics.mean(weights))
         for k, weights in weights_map.items()
     ]
+    candidates.sort(key=lambda x: x.weight, reverse=True)
+
+    topn = config.tuning("extraction", "max_keywords")
+
+    if isinstance(topn, float):
+        if not 0.0 < topn <= 1.0:
+            raise ValueError(
+                f"topn = {topn} is invalid; "
+                "must be an int, or a float between 0.0 and 1.0"
+            )
+
+        topn = int(round(len(candidates) * topn))
+
+    return candidates[:]
