@@ -25,6 +25,9 @@ fastapi = "^0.63.0"
 requests = "^2.25.1"
 uvicorn = { extras = ["standard"], version = "^0.13.2" }
 typer = "^0.3.2"
+spacy-sentence-bert = "^0.0.4"
+tensorflow-hub = "^0.11.0"
+tensorflow = "^2.4.1"
 
 [tool.poetry.dev-dependencies]
 

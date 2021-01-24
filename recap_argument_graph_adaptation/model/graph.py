@@ -5,6 +5,7 @@ import typing as t
 from dataclasses import dataclass
 
 import numpy as np
+from recap_argument_graph_adaptation.model import spacy
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,7 @@ class AbstractNode(abc.ABC):
 
     @abc.abstractmethod
     def hypernym_distances(
-        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
     ) -> t.Dict[AbstractNode, int]:
         pass
 

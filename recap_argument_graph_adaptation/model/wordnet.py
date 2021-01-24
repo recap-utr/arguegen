@@ -78,7 +78,7 @@ class WordnetNode(graph.AbstractNode):
         return self.name
 
     def hypernyms(
-        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
     ) -> t.FrozenSet[WordnetNode]:
         hyps = frozenset(
             WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()
@@ -87,7 +87,7 @@ class WordnetNode(graph.AbstractNode):
         return _filter_nodes(hyps, comparison_vectors, min_similarity)
 
     def hypernym_distances(
-        self, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
     ) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
 
@@ -181,7 +181,7 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     return results
 
 
-def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.List[np.ndarray]]:
+def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.List[spacy.Vector]]:
     synset_definitions = [synset.definition for synset in synsets]
     synset_examples = [synset.examples for synset in synsets]
     definition_vectors = spacy.vectors(synset_definitions)
@@ -211,7 +211,7 @@ def _nodes_similarities(
 
 def _filter_nodes(
     synsets: t.Iterable[WordnetNode],
-    comparison_vectors: t.Iterable[np.ndarray],
+    comparison_vectors: t.Iterable[spacy.Vector],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetNode]:
     synsets_vectors = _nodes_vectors(synsets)
@@ -262,7 +262,9 @@ def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
 
 
 def hypernyms_as_paths(
-    node: WordnetNode, comparison_vectors: t.Iterable[np.ndarray], min_similarity: float
+    node: WordnetNode,
+    comparison_vectors: t.Iterable[spacy.Vector],
+    min_similarity: float,
 ) -> t.FrozenSet[WordnetPath]:
     hyps = node.hypernyms(comparison_vectors, min_similarity)
 
@@ -295,7 +297,7 @@ def all_shortest_paths(
 def concept_synsets(
     name: str,
     pos: t.Optional[casebase.POS],
-    comparison_vectors: t.Optional[t.Iterable[np.ndarray]] = None,
+    comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py

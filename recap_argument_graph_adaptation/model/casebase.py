@@ -31,10 +31,12 @@ empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
 }
 
 
+
+
 class ArgumentNode(ag.Node):
     __slots__ = ("vector",)
 
-    vector: np.ndarray
+    vector: spacy.Vector
 
     def __post_init__(self):
         self.vector = spacy.vector(self.plain_text)
@@ -52,7 +54,7 @@ class ArgumentNode(ag.Node):
 @dataclass(frozen=True)
 class Concept:
     name: str
-    vector: np.ndarray
+    vector: spacy.Vector
     pos: t.Optional[POS]
     inodes: t.FrozenSet[ArgumentNode]
     nodes: t.FrozenSet[graph.AbstractNode]
@@ -80,7 +82,7 @@ class Concept:
         return hash((self.name, self.pos, self.inodes))
 
     @property
-    def inode_vectors(self) -> t.List[np.ndarray]:
+    def inode_vectors(self) -> t.List[spacy.Vector]:
         return [inode.vector for inode in self.inodes]
 
     @staticmethod
@@ -147,7 +149,7 @@ class Rule:
 @dataclass(frozen=True)
 class UserQuery:
     text: str
-    vector: np.ndarray
+    vector: spacy.Vector
 
     def __str__(self) -> str:
         return self.text

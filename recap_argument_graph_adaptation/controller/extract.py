@@ -26,11 +26,11 @@ def keywords(
     )
 
     for k in keywords:
-        term = k["term"].lower()
-        term_vector = k["vector"]
-        term_pos = casebase.spacy2pos(k["pos_tag"])
-        term_weight = k["weight"]
-        lemma = k["lemma"].lower()
+        term = k.term.lower()
+        term_vector = k.vector
+        term_pos = casebase.spacy2pos(k.pos_tag)
+        term_weight = k.weight
+        lemma = k.lemma.lower()
 
         inodes = [
             t.cast(casebase.ArgumentNode, inode)

@@ -37,7 +37,7 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 def concept_nodes(
     name: str,
     pos: t.Optional[casebase.POS],
-    comparison_vectors: t.Optional[t.Iterable[np.ndarray]] = None,
+    comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
@@ -53,7 +53,7 @@ def concept_metrics(
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
     user_query: casebase.UserQuery,
     nodes: t.Iterable[graph.AbstractNode],
-    vector: np.ndarray,
+    vector: spacy.Vector,
     weight: t.Optional[float] = None,
     hypernym_level: t.Optional[int] = None,
     major_claim_distance: t.Optional[int] = None,
@@ -117,7 +117,7 @@ def concept_metrics(
 
 def hypernyms_as_paths(
     node: graph.AbstractNode,
-    comparison_vectors: t.Iterable[np.ndarray],
+    comparison_vectors: t.Iterable[spacy.Vector],
     min_similarity: float,
 ) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
