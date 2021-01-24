@@ -17,11 +17,6 @@ config = Config.instance()
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
-# TODO: cap_rent_increases/nodeset6377
-# landlord/noun is benchmark concept, but landlords/noun is extracted.
-# In the node, the concept is 'landlords', meaning that the benchmark concept is 'wrong'.
-# Add mitigations for such small differences.
-
 
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
