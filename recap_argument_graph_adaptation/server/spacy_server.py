@@ -180,9 +180,10 @@ class KeywordQuery(BaseModel):
 
 
 class KeywordResponse(BaseModel):
-    term: str
+    keyword: str
     vector: Vector
     lemma: str
+    norm: str
     pos_tag: str
     weight: float
 
@@ -212,22 +213,42 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
             doc_keywords = []
 
             for pos_tag in query.pos_tags:
-                term_keywords = extractor(
-                    doc, include_pos=pos_tag, normalize=None, topn=1.0
-                )
-                lemma_keywords = extractor(
-                    doc, include_pos=pos_tag, normalize="lemma", topn=1.0
+                # https://github.com/chartbeat-labs/textacy/blob/cdedd2351bf2a56e8773ec162e08c3188809d486/src/textacy/ke/yake.py#L137
+                # Textacy uses token.norm_ if normalize is None.
+                # This causes for example 'centres' to be extracted as 'centers'.
+                # To avoid this, we use 'lower' instead.
+                keywords = extractor(
+                    doc, include_pos=pos_tag, normalize="lower", topn=1.0
                 )
 
-                for (term, score), (lemma, _) in zip(term_keywords, lemma_keywords):
-                    # TODO: Some terms change their spelling, e.g. centres is extracted as (term: centers, lemma: centre)
-                    # Thus, we need to ensure that the keyword actually exists in the text.
-                    if term in doc.text.lower():
+                processed_keywords = list(nlp.pipe(k for k, _ in keywords))
+                keyword_vectors = [_convert_vector(k.vector) for k in processed_keywords]  # type: ignore
+                keyword_lemmas = [
+                    " ".join(token.lemma_ for token in span)
+                    for span in processed_keywords
+                ]
+                keyword_norms = [
+                    " ".join(token.norm_ for token in span)
+                    for span in processed_keywords
+                ]
+
+                # We cannot use this way.
+                # If both 'easy' and 'easier' appear in the text, the lemma keywords would only contain 'easy'.
+                # This would mean that the lists differ in length, so we cannot safely zip them.
+                # lemma_keywords = extractor(
+                #     doc, include_pos=pos_tag, normalize="lemma", topn=1.0
+                # )
+
+                for (keyword, score), vec, lemma, norm in zip(
+                    keywords, keyword_vectors, keyword_lemmas, keyword_norms
+                ):
+                    if keyword in text.lower():
                         doc_keywords.append(
                             KeywordResponse(
-                                term=term,
-                                vector=_vector(term),
+                                keyword=keyword,
+                                vector=vec,
                                 lemma=lemma,
+                                norm=norm,
                                 pos_tag=pos_tag,
                                 weight=_dist2sim(score),
                             )

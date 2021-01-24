@@ -21,7 +21,7 @@ session = requests.Session()
 
 def _check_response(response: requests.Response) -> None:
     if not response.ok:
-        raise RuntimeError(json.dumps(response.json(), indent=4))
+        raise RuntimeError(response.content)
 
 
 def _url(*parts: str) -> str:
@@ -125,38 +125,46 @@ def similarity(
 
 @dataclass(frozen=True)
 class TemporaryKeyword:
-    term: str
+    keyword: str
     vector: t.Union[t.List[float], t.List[t.List[float]]]
     lemma: str
+    norm: str
     pos_tag: str
 
     @classmethod
     def from_dict(cls, x: t.Mapping[str, t.Any]) -> TemporaryKeyword:
-        return cls(x["term"], x["vector"], x["lemma"], x["pos_tag"])
+        return cls(x["keyword"], x["vector"], x["lemma"], x["norm"], x["pos_tag"])
 
     def __eq__(self, other) -> bool:
         return (
-            self.term == other.term
+            self.keyword == other.keyword
             and self.lemma == other.lemma
+            and self.norm == other.norm
             and self.pos_tag == other.pos_tag
         )
 
     def __hash__(self) -> int:
-        return hash((self.term, self.lemma, self.pos_tag))
+        return hash((self.keyword, self.lemma, self.norm, self.pos_tag))
 
 
 @dataclass(frozen=True)
 class Keyword:
-    term: str
+    keyword: str
     vector: Vector
     lemma: str
+    norm: str
     pos_tag: str
     weight: float
 
     @classmethod
     def from_tmp(cls, obj: TemporaryKeyword, weight: float) -> Keyword:
         return cls(
-            obj.term, _convert_vector(obj.vector), obj.lemma, obj.pos_tag, weight
+            obj.keyword,
+            _convert_vector(obj.vector),
+            obj.lemma,
+            obj.norm,
+            obj.pos_tag,
+            weight,
         )
 
 

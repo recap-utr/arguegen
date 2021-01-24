@@ -24,7 +24,8 @@ log = logging.getLogger(__name__)
 # we should ignore it. Maybe we should do this during the extraction.
 
 # TODO: cap_rent_increases/nodeset6377
-# landlord/noun is benchmark concept, but landlord/noun is extracted.
+# landlord/noun is benchmark concept, but landlords/noun is extracted.
+# In the node, the concept is 'landlords', meaning that the benchmark concept is 'wrong'.
 # Add mitigations for such small differences.
 
 

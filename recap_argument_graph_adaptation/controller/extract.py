@@ -26,11 +26,12 @@ def keywords(
     )
 
     for k in keywords:
-        term = k.term.lower()
+        term = k.keyword
         term_vector = k.vector
         term_pos = casebase.spacy2pos(k.pos_tag)
         term_weight = k.weight
-        lemma = k.lemma.lower()
+        lemma = k.lemma
+        norm = k.norm
 
         inodes = [
             t.cast(casebase.ArgumentNode, inode)
@@ -52,14 +53,26 @@ def keywords(
             [inode.vector for inode in inodes],
             config.tuning("extraction", "min_synset_similarity"),
         )
-        nodes = query.concept_nodes(term, *concept_query_args,) or query.concept_nodes(
-            lemma,
+        nodes = query.concept_nodes(
+            term,
             *concept_query_args,
         )
 
-        if nodes:
+        if len(nodes) == 0 and norm != term:
+            nodes = query.concept_nodes(
+                norm,
+                *concept_query_args,
+            )
+
+        if len(nodes) == 0 and lemma != norm and lemma != term:
+            nodes = query.concept_nodes(
+                lemma,
+                *concept_query_args,
+            )
+
+        if len(nodes) > 0:
             candidate = casebase.Concept(
-                term,
+                term.lower(),
                 term_vector,
                 term_pos,
                 frozenset(inodes),

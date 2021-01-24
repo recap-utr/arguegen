@@ -84,7 +84,7 @@ def concepts(
                 nodes = frozenset([hypernym])
 
                 candidate = casebase.Concept(
-                    name,
+                    name.lower(),
                     vector,
                     query.pos(pos),
                     original_concept.inodes,
@@ -158,7 +158,7 @@ def paths(
                 )
 
             candidate = casebase.Concept(
-                name,
+                name.lower(),
                 vector,
                 pos,
                 original_concept.inodes,
