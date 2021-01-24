@@ -131,7 +131,7 @@ def _convert_vector(vector: t.Union[np.ndarray, t.List[np.ndarray]]) -> Vector:
 def _vector(text: str) -> Vector:
     if text not in _vector_cache:
         # with nlp.disable_pipes(vector_disabled_pipes):
-        _vector_cache[text] = nlp(text).vector
+        _vector_cache[text] = _convert_vector(nlp(text).vector)
 
     return _vector_cache[text]
 
