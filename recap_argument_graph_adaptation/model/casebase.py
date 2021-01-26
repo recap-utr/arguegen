@@ -59,10 +59,7 @@ class Concept:
     metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
 
     def __str__(self):
-        code = f"{self.name}"
-
-        if self.pos:
-            code += f"/{self.pos.value}"
+        code = self.code
 
         if self.inodes:
             code += f"/{set(inode.key for inode in self.inodes)}"
@@ -81,6 +78,15 @@ class Concept:
 
     def part_eq(self, other: Concept) -> bool:
         return self.pos == other.pos and self.inodes == other.inodes
+
+    @property
+    def code(self) -> str:
+        out = f"{self.name}"
+
+        if self.pos:
+            out += f"/{self.pos.value}"
+
+        return out
 
     @property
     def inode_vectors(self) -> t.List[spacy.Vector]:
@@ -138,7 +144,7 @@ def filter_concepts(
     return {concept for concept in concepts if concept.score > min_score}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class Rule:
     source: Concept
     target: Concept

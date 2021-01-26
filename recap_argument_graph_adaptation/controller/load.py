@@ -69,14 +69,11 @@ def run_arguments(
     ]
 
 
-input_path = Path(config["resources"]["cases"]["input"])
-
-
-def cases() -> t.List[casebase.Case]:
+def cases(input_path: Path) -> t.List[casebase.Case]:
     result = []
 
     for path in itertools.chain([input_path], sorted(input_path.rglob("*"))):
-        if path.is_dir() and (case := _case(path)):
+        if path.is_dir() and (case := _case(path, input_path)):
             result.append(case)
 
     if not result:
@@ -85,7 +82,7 @@ def cases() -> t.List[casebase.Case]:
     return result
 
 
-def _case(path: Path) -> t.Optional[casebase.Case]:
+def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
     graph_path = path / "graph.json"
     rules_path = path / "rules.csv"
     query_path = path / "query.txt"
@@ -106,7 +103,7 @@ def _case(path: Path) -> t.Optional[casebase.Case]:
     query = _parse_query(query_path)
 
     return casebase.Case(
-        path.relative_to(input_path),
+        path.relative_to(root_path),
         query,
         graph,
         rules,
@@ -141,8 +138,8 @@ def _parse_rule_concept(
     path: Path,
     inodes: t.Optional[t.FrozenSet[casebase.ArgumentNode]],
 ) -> casebase.Concept:
-    rule_parts = rule.split("/")
-    name = rule_parts[0].lower()
+    rule_parts = rule.strip().lower().split("/")
+    name = rule_parts[0]
     vector = spacy.vector(name)
     pos = None
 

@@ -18,6 +18,9 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
+# TODO: Compute inter-annotator agreement(s).
+
+
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
     # wordnet.lock = lock_
@@ -37,7 +40,7 @@ def run():
         config["resources"]["cases"]["output"],
         pendulum.now().format("YYYY-MM-DD-HH-mm-ss"),
     )
-    cases = load.cases()
+    cases = load.cases(Path(config["resources"]["cases"]["input"]))
     param_grid = load.parameter_grid()
     run_args = load.run_arguments(param_grid, cases, out_path)
 
