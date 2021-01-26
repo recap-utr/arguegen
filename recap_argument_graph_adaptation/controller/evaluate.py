@@ -20,6 +20,7 @@ def case(
         rule.source: rule.target for rule in benchmark_rules if rule not in case_rules
     }
     computed_adaptations = {**adapted_concepts}
+    benchmark_weights = list(range(len(benchmark_adaptations), 0, -1))
 
     benchmark_keys = set(benchmark_adaptations)
     computed_keys = set(computed_adaptations)
@@ -47,16 +48,16 @@ def case(
     log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
     log.debug(f"Only computed adaptations: {convert.list_str(only_computed)}")
 
-    positive_scores = []
-    negative_scores = []
+    true_positives = []
+    false_negatives = []
+    false_positives = []
+    fp_weight = 1 / len(benchmark_rules)
 
-    for i, (original_concept, benchmark_adaptation) in enumerate(
-        benchmark_adaptations.items()
+    for weight, (original_concept, benchmark_adaptation) in zip(
+        benchmark_weights, benchmark_adaptations.items()
     ):
-        weight = len(benchmark_adaptations) - i
-
         if computed_adaptation := computed_adaptations.get(original_concept):
-            positive_scores.append(
+            true_positives.append(
                 casebase.WeightedScore(
                     original_concept,
                     _compute_score(
@@ -66,46 +67,57 @@ def case(
                 )
             )
         else:
-            negative_scores.append(
+            false_negatives.append(
                 casebase.WeightedScore(original_concept, 0.0, weight)
             )
 
     for original_concept in only_computed:
         # Here, benchmark_adaptation == original_concept
         computed_adaptation = computed_adaptations[original_concept]
-        negative_scores.append(
+        false_positives.append(
             casebase.WeightedScore(
                 original_concept,
                 _compute_score(original_concept, computed_adaptation, case.user_query),
-                1 / len(benchmark_rules),
+                fp_weight,
             )
         )
 
-    positive_score = 0
-    negative_score = 0
+    tp_score = 0.0
+    fn_score = 0.0
+    fp_score = 0.0
 
-    if positive_scores:
-        positive_score = sum(
-            item.score * item.weight for item in positive_scores
-        ) / sum(item.weight for item in positive_scores)
+    if true_positives:
+        tp_score = sum(x.score * x.weight for x in true_positives) / sum(
+            x.weight for x in true_positives
+        )
 
-    if negative_scores:
-        negative_score = sum(
-            (1 - item.score) * item.weight for item in negative_scores
-        ) / sum(item.weight for item in negative_scores)
+    if false_negatives:
+        fn_score = sum(x.weight for x in false_negatives) / sum(benchmark_weights)
 
-    global_score = positive_score - negative_score
+    if false_positives:
+        fp_score = (
+            fp_weight
+            * (sum((1 - x.score) for x in false_positives))
+            / (
+                sum(
+                    1 - _compute_score(concept, adaptation, case.user_query)
+                    for concept, adaptation in computed_adaptations.items()
+                )
+            )
+        )
 
-    log.debug(f"Finished with global score of {global_score}.")
-
-    return casebase.Evaluation(
-        global_score,
-        positive_scores,
-        negative_scores,
-        benchmark_and_computed,
-        only_benchmark,
-        only_computed,
+    eval_result = casebase.Evaluation(
+        true_positives=true_positives,
+        false_positives=false_positives,
+        false_negatives=false_negatives,
+        tp_score=tp_score,
+        fn_score=fn_score,
+        fp_score=fp_score,
     )
+
+    log.debug(f"Finished with global score of {eval_result.score}.")
+
+    return eval_result
 
 
 def _compute_score(

@@ -190,7 +190,7 @@ class WeightedScore:
     score: float
     weight: float
 
-    def to_dict(self, negative: bool = False) -> t.Dict[str, t.Any]:
+    def to_dict(self) -> t.Dict[str, t.Any]:
         return {
             "concept": str(self.concept),
             "score": self.score,  # (1 - self.score) if negative else self.score,
@@ -200,30 +200,57 @@ class WeightedScore:
 
 @dataclass(frozen=True)
 class Evaluation:
-    score: float
-    positive_scores: t.List[WeightedScore]
-    negative_scores: t.List[WeightedScore]
-    benchmark_and_computed: t.Set[Concept]
-    only_benchmark: t.Set[Concept]
-    only_computed: t.Set[Concept]
+    true_positives: t.List[WeightedScore]
+    false_positives: t.List[WeightedScore]
+    false_negatives: t.List[WeightedScore]
+    tp_score: float
+    fn_score: float
+    fp_score: float
 
     def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
-        if compact:
-            return {
-                "score": self.score,
-                "benchmark_and_computed": len(self.benchmark_and_computed),
-                "only_benchmark": len(self.only_benchmark),
-                "only_computed": len(self.only_computed),
-            }
-
-        return {
+        mapping = {
             "score": self.score,
-            "benchmark_and_computed": convert.list_str(self.benchmark_and_computed),
-            "only_benchmark": convert.list_str(self.only_benchmark),
-            "only_computed": convert.list_str(self.only_computed),
-            "positive_scores": convert.list_dict(self.positive_scores, negative=False),
-            "negative_scores": convert.list_dict(self.negative_scores, negative=True),
+            "tp_score": self.tp_score,
+            "fn_score": self.fn_score,
+            "fp_score": self.fp_score,
+            "precision": self.precision,
+            "recall": self.recall,
+            "f1": self.f1,
+            "true_positives": convert.list_dict(self.true_positives),
+            "false_positives": convert.list_dict(self.false_positives),
+            "false_negatives": convert.list_dict(self.false_negatives),
         }
+
+        if not compact:
+            mapping.update({})
+
+        return mapping
+
+    @property
+    def score(self) -> float:
+        return self.tp_score - self.fn_score - self.fp_score
+
+    @property
+    def precision(self) -> float:
+        return len(self.true_positives) / (
+            len(self.true_positives) + len(self.false_positives)
+        )
+
+    @property
+    def recall(self) -> float:
+        return len(self.true_positives) / (
+            len(self.true_positives) + len(self.false_negatives)
+        )
+
+    @property
+    def f1(self) -> float:
+        return (2 * len(self.true_positives)) / (
+            2 * len(self.true_positives)
+            + len(self.false_positives)
+            + len(self.false_negatives)
+        )
+
+    # TODO: Accuracy, balanced accuracy
 
     def __lt__(self, other):
         return self.score < other.score
