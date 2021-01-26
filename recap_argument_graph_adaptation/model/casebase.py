@@ -200,9 +200,10 @@ class WeightedScore:
 
 @dataclass(frozen=True)
 class Evaluation:
-    true_positives: t.List[WeightedScore]
-    false_positives: t.List[WeightedScore]
-    false_negatives: t.List[WeightedScore]
+    tp: t.List[WeightedScore]
+    tn: t.Set[Concept]
+    fp: t.List[WeightedScore]
+    fn: t.List[WeightedScore]
     tp_score: float
     fn_score: float
     fp_score: float
@@ -215,42 +216,80 @@ class Evaluation:
             "fp_score": self.fp_score,
             "precision": self.precision,
             "recall": self.recall,
+            "accuracy": self.accuracy,
+            "balanced_accuracy": self.balanced_accuracy,
             "f1": self.f1,
-            "true_positives": convert.list_dict(self.true_positives),
-            "false_positives": convert.list_dict(self.false_positives),
-            "false_negatives": convert.list_dict(self.false_negatives),
         }
 
         if not compact:
-            mapping.update({})
+            mapping.update(
+                {
+                    "true_positives": convert.list_dict(self.tp),
+                    "false_positives": convert.list_dict(self.fp),
+                    "false_negatives": convert.list_dict(self.fn),
+                }
+            )
 
         return mapping
 
     @property
     def score(self) -> float:
-        return self.tp_score - self.fn_score - self.fp_score
+        return (1 / 3) * (2 + self.tp_score - self.fn_score - self.fp_score)
 
     @property
-    def precision(self) -> float:
-        return len(self.true_positives) / (
-            len(self.true_positives) + len(self.false_positives)
-        )
+    def precision(self) -> t.Optional[float]:
+        den = len(self.tp) + len(self.fp)
+
+        if den > 0:
+            return len(self.tp) / den
+
+        return None
 
     @property
-    def recall(self) -> float:
-        return len(self.true_positives) / (
-            len(self.true_positives) + len(self.false_negatives)
-        )
+    def recall(self) -> t.Optional[float]:
+        den = len(self.tp) + len(self.fn)
+
+        if den > 0:
+            return len(self.tp) / den
+
+        return None
 
     @property
-    def f1(self) -> float:
-        return (2 * len(self.true_positives)) / (
-            2 * len(self.true_positives)
-            + len(self.false_positives)
-            + len(self.false_negatives)
-        )
+    def f1(self) -> t.Optional[float]:
+        den = 2 * len(self.tp) + len(self.fp) + len(self.fn)
 
-    # TODO: Accuracy, balanced accuracy
+        if den > 0:
+            return (2 * len(self.tp)) / (den)
+
+        return None
+
+    @property
+    def accuracy(self) -> t.Optional[float]:
+        den = len(self.tp) + len(self.tn) + len(self.fp) + len(self.fn)
+
+        if den > 0:
+            return (len(self.tp) + len(self.tn)) / den
+
+        return None
+
+    @property
+    def balanced_accuracy(self) -> t.Optional[float]:
+        tpr = None
+        tnr = None
+
+        tpr_den = len(self.tp) + len(self.fn)
+        tnr_den = len(self.tn) + len(self.fp)
+
+        if tpr_den > 0:
+            tpr = len(self.tp) / tpr_den
+
+        if tnr_den > 0:
+            tnr = len(self.tn) / tnr_den
+
+        if tnr and tpr:
+            return (tpr + tnr) / 2
+
+        return None
 
     def __lt__(self, other):
         return self.score < other.score

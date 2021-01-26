@@ -11,7 +11,9 @@ log = logging.getLogger(__name__)
 
 
 def case(
-    case: casebase.Case, adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept]
+    case: casebase.Case,
+    adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
+    all_concepts: t.List[casebase.Concept],
 ) -> casebase.Evaluation:
     case_rules = case.rules
     benchmark_rules = case.benchmark_rules
@@ -52,6 +54,10 @@ def case(
     false_negatives = []
     false_positives = []
     fp_weight = 1 / len(benchmark_rules)
+
+    true_negatives = {
+        x for x in all_concepts if x not in benchmark_keys and x not in computed_keys
+    }
 
     for weight, (original_concept, benchmark_adaptation) in zip(
         benchmark_weights, benchmark_adaptations.items()
@@ -96,8 +102,8 @@ def case(
 
     if false_positives:
         fp_score = (
-            fp_weight
-            * (sum((1 - x.score) for x in false_positives))
+            # fp_weight *
+            (sum(1 - x.score for x in false_positives))
             / (
                 sum(
                     1 - _compute_score(concept, adaptation, case.user_query)
@@ -107,9 +113,10 @@ def case(
         )
 
     eval_result = casebase.Evaluation(
-        true_positives=true_positives,
-        false_positives=false_positives,
-        false_negatives=false_negatives,
+        tp=true_positives,
+        tn=true_negatives,
+        fp=false_positives,
+        fn=false_negatives,
         tp_score=tp_score,
         fn_score=fn_score,
         fp_score=fp_score,

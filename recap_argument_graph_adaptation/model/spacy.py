@@ -190,15 +190,4 @@ def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keywor
     ]
     candidates.sort(key=lambda x: x.weight, reverse=True)
 
-    topn = config.tuning("extraction", "max_keywords")
-
-    if isinstance(topn, float):
-        if not 0.0 < topn <= 1.0:
-            raise ValueError(
-                f"topn = {topn} is invalid; "
-                "must be an int, or a float between 0.0 and 1.0"
-            )
-
-        topn = int(round(len(candidates) * topn))
-
-    return candidates[:]
+    return candidates

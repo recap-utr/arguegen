@@ -12,12 +12,12 @@ log = logging.getLogger(__name__)
 
 def keywords(
     graph: ag.Graph, rules: t.Collection[casebase.Rule], user_query: casebase.UserQuery
-) -> t.Set[casebase.Concept]:
+) -> t.Tuple[t.Set[casebase.Concept], t.List[casebase.Concept]]:
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
     rule_sources = {rule.source for rule in rules}
     rule_targets = {rule.target for rule in rules}
 
-    concepts: t.Set[casebase.Concept] = set()
+    candidates: t.List[casebase.Concept] = []
     mc = graph.major_claim
 
     keywords = spacy.keywords(
@@ -88,17 +88,28 @@ def keywords(
             )
 
             if candidate not in rule_sources and candidate not in rule_targets:
-                concepts.add(candidate)
+                candidates.append(candidate)
+
+    topn = config.tuning("extraction", "max_keywords")
+
+    if isinstance(topn, float):
+        if not 0.0 < topn <= 1.0:
+            raise ValueError(
+                f"topn = {topn} is invalid; "
+                "must be an int, or a float between 0.0 and 1.0"
+            )
+
+        topn = int(round(len(candidates) * topn))
 
     concepts = casebase.filter_concepts(
-        concepts, config.tuning("extraction", "min_concept_score")
+        candidates[:topn], config.tuning("extraction", "min_concept_score")
     )
 
     log.debug(
         f"Found the following concepts: {', '.join((str(concept) for concept in concepts))}"
     )
 
-    return concepts
+    return concepts, candidates
 
 
 def paths(

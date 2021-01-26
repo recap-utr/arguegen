@@ -95,18 +95,20 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     adapted_graph = None
 
     log.debug("Extracting keywords.")
-    concepts = extract.keywords(case.graph, case.rules, case.user_query)
+    relevant_concepts, all_concepts = extract.keywords(
+        case.graph, case.rules, case.user_query
+    )
 
     log.debug("Adapting concepts.")
     adaptation_method = config.tuning("adaptation", "method")
 
     if adaptation_method == "direct":
         adapted_concepts, adapted_concept_candidates = adapt.concepts(
-            concepts, case.rules, args.case.user_query
+            relevant_concepts, case.rules, args.case.user_query
         )
 
     elif adaptation_method == "bfs":
-        reference_paths = extract.paths(concepts, case.rules)
+        reference_paths = extract.paths(relevant_concepts, case.rules)
         adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
             reference_paths, case.rules, args.case.user_query
         )
@@ -116,7 +118,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
         adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
     log.debug("Evaluating adaptations.")
-    eval_results = evaluate.case(case, adapted_concepts)
+    eval_results = evaluate.case(case, adapted_concepts, all_concepts)
 
     end_time = timer()
 
@@ -129,7 +131,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
             "case_rules": convert.list_str(case.rules),
         },
         "results": export.statistic(
-            concepts,
+            relevant_concepts,
             reference_paths,
             adapted_paths,
             adapted_concept_candidates,
