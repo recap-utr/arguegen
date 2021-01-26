@@ -111,14 +111,26 @@ class WordnetNode(graph.AbstractNode):
             if hyp in filtered_hypernym_keys
         }
 
-    def metrics(self, other: WordnetNode) -> t.Dict[str, float]:
+    def metrics(
+        self, other: WordnetNode, active: t.Callable[[str], bool]
+    ) -> t.Dict[str, t.Optional[float]]:
         synset1 = self.to_nltk()
         synset2 = other.to_nltk()
 
-        # with lock:
+        path_similarity = (
+            (synset1.path_similarity(synset2) or 0.0)
+            if active("nodes_path_similarity")
+            else None
+        )
+        wup_similarity = (
+            (synset1.wup_similarity(synset2) or 0.0)
+            if active("nodes_wup_similarity")
+            else None
+        )
+
         return {
-            "nodes_path_similarity": synset1.path_similarity(synset2) or 0.0,
-            "nodes_wup_similarity": synset1.wup_similarity(synset2) or 0.0,
+            "nodes_path_similarity": path_similarity,
+            "nodes_wup_similarity": wup_similarity,
         }
 
 
@@ -312,17 +324,25 @@ def concept_synsets(
 
 
 def metrics(
-    synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
+    synsets1: t.Iterable[WordnetNode],
+    synsets2: t.Iterable[WordnetNode],
+    active: t.Callable[[str], bool],
 ) -> t.Dict[str, t.Optional[float]]:
+    nodes_semantic_similarity = (
+        _nodes_similarities(synsets1, synsets2)
+        if active("nodes_semantic_similarity")
+        else []
+    )
+
     tmp_results: t.Dict[str, t.List[float]] = {
-        "nodes_semantic_similarity": _nodes_similarities(synsets1, synsets2),
+        "nodes_semantic_similarity": nodes_semantic_similarity,
         "nodes_path_similarity": [],
         "nodes_wup_similarity": [],
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):
-        for key, value in s1.metrics(s2).items():
-            if value:
+        for key, value in s1.metrics(s2, active).items():
+            if value is not None:
                 tmp_results[key].append(value)
 
     results: t.Dict[str, t.Optional[float]] = {key: None for key in tmp_results.keys()}

@@ -19,6 +19,7 @@ def keywords(
 
     candidates: t.List[casebase.Concept] = []
     mc = graph.major_claim
+    use_mc_proximity = "major_claim_proximity" in config.tuning("score")
 
     keywords = spacy.keywords(
         [node.plain_text for node in graph.inodes],
@@ -38,15 +39,17 @@ def keywords(
             for inode in graph.inodes
             if term in inode.plain_text.lower()
         ]
-        mc_distances = set()
         mc_distance = None
 
-        for inode in inodes:
-            if mc_distance := graph.node_distance(inode, mc):
-                mc_distances.add(mc_distance)
+        if use_mc_proximity:
+            mc_distances = set()
 
-        if mc_distances:
-            mc_distance = min(mc_distances)
+            for inode in inodes:
+                if mc_distance := graph.node_distance(inode, mc):
+                    mc_distances.add(mc_distance)
+
+            if mc_distances:
+                mc_distance = min(mc_distances)
 
         concept_query_args = (
             term_pos,

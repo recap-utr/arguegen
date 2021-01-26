@@ -61,25 +61,35 @@ def concept_metrics(
     if isinstance(related_concepts, casebase.Concept):
         related_concepts = {related_concepts: 1.0}
 
+    active_metrics = config.tuning("score").keys()
+    active = lambda x: x in active_metrics
+
     total_weight = 0
     metrics_map = {key: [] for key in casebase.metric_keys}
 
     for related_concept, related_concept_weight in related_concepts.items():
         total_weight += related_concept_weight
+        concept_semantic_similarity = (
+            spacy.similarity(vector, related_concept.vector)
+            if active("concept_semantic_similarity")
+            else None
+        )
+        query_concept_semantic_similarity = (
+            spacy.similarity(user_query.vector, vector)
+            if active("query_concept_semantic_similarity")
+            else None
+        )
+
         metrics = {
             "keyword_weight": weight,
             "nodes_semantic_similarity": None,
-            "concept_semantic_similarity": spacy.similarity(
-                vector, related_concept.vector
-            ),
+            "concept_semantic_similarity": concept_semantic_similarity,
             "hypernym_proximity": _dist2sim(hypernym_level),
             "major_claim_proximity": _dist2sim(major_claim_distance),
             "nodes_path_similarity": None,
             "nodes_wup_similarity": None,
             "query_nodes_semantic_similarity": None,
-            "query_concept_semantic_similarity": spacy.similarity(
-                user_query.vector, vector
-            ),
+            "query_concept_semantic_similarity": query_concept_semantic_similarity,
         }
 
         assert metrics.keys() == casebase.metric_keys
@@ -89,9 +99,12 @@ def concept_metrics(
             related_nodes = t.cast(
                 t.Iterable[wordnet.WordnetNode], related_concept.nodes
             )
-            metrics.update(wordnet.metrics(nodes, related_nodes))
-            metrics["query_nodes_semantic_similarity"] = wordnet.query_nodes_similarity(
-                nodes, user_query
+
+            metrics.update(wordnet.metrics(nodes, related_nodes, active))
+            metrics["query_nodes_semantic_similarity"] = (
+                wordnet.query_nodes_similarity(nodes, user_query)
+                if active("query_nodes_semantic_similarity")
+                else None
             )
 
         elif kg_cn:
@@ -100,7 +113,8 @@ def concept_metrics(
             related_nodes = t.cast(
                 t.Iterable[conceptnet.ConceptnetNode], related_concept.nodes
             )
-            metrics.update(db.metrics(nodes, related_nodes))
+
+            metrics.update(db.metrics(nodes, related_nodes, active))
 
         for key, value in metrics.items():
             if value is not None:

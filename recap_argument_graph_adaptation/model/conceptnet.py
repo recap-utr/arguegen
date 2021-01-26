@@ -332,7 +332,7 @@ class Database:
     # METRICS
 
     def metrics(
-        self, nodes1: t.Iterable[ConceptnetNode], nodes2: t.Iterable[ConceptnetNode]
+        self, nodes1: t.Iterable[ConceptnetNode], nodes2: t.Iterable[ConceptnetNode], active: t.Callable[[str], bool]
     ) -> t.Dict[str, t.Optional[float]]:
         max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]
@@ -340,7 +340,7 @@ class Database:
         if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(
-                    self._metrics, nodes1, nodes2, relation_types, max_relations
+                    self._metrics, nodes1, nodes2, active, relation_types, max_relations
                 )
 
         return {"nodes_path_similarity": None}
@@ -350,12 +350,13 @@ class Database:
         tx: neo4j.Session,
         nodes1: t.Iterable[ConceptnetNode],
         nodes2: t.Iterable[ConceptnetNode],
+        active: t.Callable[[str], bool],
         relation_types: t.Collection[str],
         max_relations: int,
     ) -> t.Dict[str, t.Optional[float]]:
         # If there is any node equal in both sequences, we return a distance of 0.
         # In this case, the shortest path algorithm does not work.
-        if set(nodes1).isdisjoint(nodes2):
+        if active("nodes_path_similarity") and set(nodes1).isdisjoint(nodes2):
             rel_query = _exclude_relations(relation_types)
             shortest_length = max_relations
 
