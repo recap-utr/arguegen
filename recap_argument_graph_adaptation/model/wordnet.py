@@ -200,7 +200,7 @@ def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.List[spacy.Vect
     examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
 
     return [
-        [definition_vector] + example_vectors
+        [definition_vector] + list(example_vectors)
         for definition_vector, example_vectors in zip(
             definition_vectors, examples_vectors
         )
@@ -307,15 +307,24 @@ def all_shortest_paths(
 
 
 def concept_synsets(
-    name: str,
+    names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
     comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
     # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
-    synsets = frozenset(
-        {WordnetNode.from_nltk(ss) for ss in _synsets(name, casebase.pos2wn(pos)) if ss}
-    )
+    synsets = set()
+
+    for name in names:
+        synsets.update(
+            {
+                WordnetNode.from_nltk(ss)
+                for ss in _synsets(name, casebase.pos2wn(pos))
+                if ss
+            }
+        )
+
+    synsets = frozenset(synsets)
 
     if comparison_vectors is None or min_similarity is None:
         return synsets

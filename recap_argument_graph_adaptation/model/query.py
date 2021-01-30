@@ -35,16 +35,17 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 
 
 def concept_nodes(
-    name: str,
+    names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
     comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
-        return wordnet.concept_synsets(name, pos, comparison_vectors, min_similarity)
+        return wordnet.concept_synsets(names, pos, comparison_vectors, min_similarity)
 
+    # TODO: Update conceptnet
     elif kg_cn:
-        return conceptnet.Database().nodes(name, pos)
+        return conceptnet.Database().nodes(names, pos)
 
     raise kg_err
 

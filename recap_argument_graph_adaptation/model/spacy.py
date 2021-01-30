@@ -29,14 +29,16 @@ def _url(*parts: str) -> str:
 
 
 _vector_cache = {}
-Vector = t.Union[np.ndarray, t.List[np.ndarray]]
+Vector = t.Union[np.ndarray, t.Tuple[np.ndarray, ...]]
 
 
-def _convert_vector(vector: t.Union[t.List[t.List[float]], t.List[float]]) -> Vector:
+def _convert_vector(
+    vector: t.Union[t.Tuple[t.Tuple[float, ...], ...], t.Tuple[float, ...]]
+) -> Vector:
     if any(isinstance(i, float) for i in vector):
         return np.array(vector)
     else:
-        return [np.array(v) for v in vector]
+        return tuple(np.array(v) for v in vector)
 
 
 def vector(text: str) -> Vector:
@@ -50,7 +52,7 @@ def vector(text: str) -> Vector:
 
 
 # This function does not use the cache!
-def vectors(texts: t.Iterable[str]) -> t.List[Vector]:
+def vectors(texts: t.Iterable[str]) -> t.Tuple[Vector]:
     unknown_texts = []
 
     for text in texts:
@@ -64,7 +66,7 @@ def vectors(texts: t.Iterable[str]) -> t.List[Vector]:
         for text, vector in zip(unknown_texts, response.json()):
             _vector_cache[text] = _convert_vector(vector)
 
-    return [_vector_cache[text] for text in texts]
+    return tuple(_vector_cache[text] for text in texts)
 
 
 # https://github.com/babylonhealth/fuzzymax/blob/master/similarity/fuzzy.py
@@ -101,8 +103,8 @@ def dynamax_jaccard(x, y):
 
 
 def similarity(
-    obj1: t.Union[str, np.ndarray, t.List[np.ndarray]],
-    obj2: t.Union[str, np.ndarray, t.List[np.ndarray]],
+    obj1: t.Union[str, Vector],
+    obj2: t.Union[str, Vector],
 ) -> float:
     if isinstance(obj1, str):
         obj1 = vector(obj1)
@@ -114,7 +116,9 @@ def similarity(
             return float(1 - distance.cosine(obj1, obj2))
         return 0.0
 
-    elif isinstance(obj1, list) and isinstance(obj2, list):
+    # TODO: Check type of objects
+
+    elif isinstance(obj1, tuple) and isinstance(obj2, tuple):
         return dynamax_jaccard(obj1, obj2)
 
     else:
@@ -126,33 +130,30 @@ def similarity(
 @dataclass(frozen=True)
 class TemporaryKeyword:
     keyword: str
-    vector: t.Union[t.List[float], t.List[t.List[float]]]
-    lemma: str
-    norm: str
+    vector: t.Union[t.Tuple[float, ...], t.Tuple[t.Tuple[float, ...], ...]]
+    forms: t.FrozenSet[str]
     pos_tag: str
 
     @classmethod
     def from_dict(cls, x: t.Mapping[str, t.Any]) -> TemporaryKeyword:
-        return cls(x["keyword"], x["vector"], x["lemma"], x["norm"], x["pos_tag"])
+        return cls(x["keyword"], x["vector"], x["forms"], x["pos_tag"])
 
     def __eq__(self, other) -> bool:
         return (
             self.keyword == other.keyword
-            and self.lemma == other.lemma
-            and self.norm == other.norm
+            and self.forms == other.forms
             and self.pos_tag == other.pos_tag
         )
 
     def __hash__(self) -> int:
-        return hash((self.keyword, self.lemma, self.norm, self.pos_tag))
+        return hash((self.keyword, self.forms, self.pos_tag))
 
 
 @dataclass(frozen=True)
 class Keyword:
     keyword: str
     vector: Vector
-    lemma: str
-    norm: str
+    forms: t.FrozenSet[str]
     pos_tag: str
     weight: float
 
@@ -161,11 +162,24 @@ class Keyword:
         return cls(
             obj.keyword,
             _convert_vector(obj.vector),
-            obj.lemma,
-            obj.norm,
+            obj.forms,
             obj.pos_tag,
             weight,
         )
+
+
+def inflect(keyword: str, pos: t.Optional[str]) -> t.Dict[str, t.Any]:
+    response = session.post(
+        _url("inflect"),
+        json={"keyword": keyword, "pos": pos},
+    )
+    _check_response(response)
+
+    result = response.json()
+    result["vector"] = _convert_vector(result["vector"])
+    result["forms"] = frozenset(result["forms"])
+
+    return result
 
 
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:

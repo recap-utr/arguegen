@@ -22,18 +22,18 @@ def keywords(
     use_mc_proximity = "major_claim_proximity" in config.tuning("score")
 
     keywords = spacy.keywords(
-        [node.plain_text for node in graph.inodes],
+        [node.plain_text.lower() for node in graph.inodes],
         config.tuning("extraction", "keyword_pos_tags"),
     )
 
     for k in keywords:
-        term = k.keyword
-        term_vector = k.vector
-        term_pos = casebase.spacy2pos(k.pos_tag)
-        term_weight = k.weight
-        lemma = k.lemma
-        norm = k.norm
+        kw = k.keyword
+        kw_forms = k.forms
+        kw_vector = k.vector
+        kw_pos = casebase.spacy2pos(k.pos_tag)
+        kw_weight = k.weight
 
+        # TODO: Move from server to here
         inodes = [
             t.cast(casebase.ArgumentNode, inode)
             for inode in graph.inodes
@@ -51,41 +51,27 @@ def keywords(
             if mc_distances:
                 mc_distance = min(mc_distances)
 
-        concept_query_args = (
-            term_pos,
+        nodes = query.concept_nodes(
+            kw_forms,
+            kw_pos,
             [inode.vector for inode in inodes],
             config.tuning("extraction", "min_synset_similarity"),
         )
-        nodes = query.concept_nodes(
-            term,
-            *concept_query_args,
-        )
-
-        if len(nodes) == 0 and norm != term:
-            nodes = query.concept_nodes(
-                norm,
-                *concept_query_args,
-            )
-
-        if len(nodes) == 0 and lemma != norm and lemma != term:
-            nodes = query.concept_nodes(
-                lemma,
-                *concept_query_args,
-            )
 
         if len(nodes) > 0:
             candidate = casebase.Concept(
-                term.lower(),
-                term_vector,
-                term_pos,
+                kw.lower(),
+                kw_vector,
+                frozenset([kw.lower()]),
+                kw_pos,
                 frozenset(inodes),
                 nodes,
                 query.concept_metrics(
                     related_concepts,
                     user_query,
                     nodes,
-                    term_vector,
-                    weight=term_weight,
+                    kw_vector,
+                    weight=kw_weight,
                     major_claim_distance=mc_distance,
                 ),
             )

@@ -138,31 +138,10 @@ def _parse_rule_concept(
     path: Path,
     inodes: t.Optional[t.FrozenSet[casebase.ArgumentNode]],
 ) -> casebase.Concept:
-    rule_parts = rule.strip().lower().split("/")
+    rule = rule.strip().lower()
+    rule_parts = rule.split("/")
     name = rule_parts[0]
-    vector = spacy.vector(name)
     pos = None
-
-    if not inodes:
-        tmp_inodes = set()
-
-        # Only accept rules that cover a complete word.
-        # If for example 'landlord' is a rule, but the node only contains 'landlords',
-        # an exception will be thrown.
-        pattern = re.compile(f"\\b({name})\\b")
-
-        for inode in graph.inodes:
-            node_txt = inode.plain_text.lower()
-
-            if pattern.search(node_txt):
-                tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
-
-        if len(tmp_inodes) == 0:
-            raise RuntimeError(
-                f"The concept '{name}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
-            )
-
-        inodes = frozenset(tmp_inodes)
 
     if len(rule_parts) > 1:
         try:
@@ -172,8 +151,38 @@ def _parse_rule_concept(
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
 
+    inflection = spacy.inflect(name, pos.value if pos else None)
+    kw_name = inflection["keyword"]
+    kw_forms = inflection["forms"]
+    vector = inflection["vector"]
+
+    found_forms = set()
+
+    if not inodes:
+        tmp_inodes = set()
+
+        # Only accept rules that cover a complete word.
+        # If for example 'landlord' is a rule, but the node only contains 'landlords',
+        # an exception will be thrown.
+        for kw_form in kw_forms:
+            pattern = re.compile(f"\\b({kw_form})\\b")
+
+            for inode in graph.inodes:
+                node_txt = inode.plain_text.lower()
+
+                if pattern.search(node_txt):
+                    tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
+                    found_forms.add(kw_form)
+
+        if len(tmp_inodes) == 0:
+            raise RuntimeError(
+                f"The concept '{name}' with the forms '{kw_forms}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
+            )
+
+        inodes = frozenset(tmp_inodes)
+
     nodes = query.concept_nodes(
-        name,
+        kw_forms,
         pos,
         [x.vector for x in inodes],
         config["loading"]["min_synset_similarity"],
@@ -185,8 +194,9 @@ def _parse_rule_concept(
         )
 
     return casebase.Concept(
-        name,
+        kw_name,
         vector,
+        frozenset(found_forms),
         pos,
         inodes,
         nodes,

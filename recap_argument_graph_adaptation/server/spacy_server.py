@@ -1,16 +1,22 @@
+from __future__ import annotations
+
 import itertools
+import re
 import statistics
 import typing as t
 from collections import defaultdict
-from dataclasses import dataclass
 
+import lemminflect
 import numpy as np
 import spacy
 from fastapi import FastAPI
 from pydantic import BaseModel
+from pydantic.dataclasses import dataclass
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from spacy.language import Language
+
+# from spacy.tokens import Doc, Span, Token  # type: ignore
 from textacy import ke
 
 config = Config.instance()
@@ -113,16 +119,20 @@ extractor = ke.yake
 # alternative: https://github.com/boudinfl/pke
 
 _vector_cache = {}
-Vector = t.Union[t.List[float], t.List[t.List[float]]]
+Vector = t.Union[t.Tuple[float, ...], t.Tuple[t.Tuple[float, ...], ...]]
+
+
+def np2tuple(vector: np.ndarray) -> t.Tuple[float, ...]:
+    return tuple(vector.tolist())
 
 
 def _convert_vector(vector: t.Union[np.ndarray, t.List[np.ndarray]]) -> Vector:
     if isinstance(vector, list):
-        return [v.tolist() for v in vector]
+        return tuple(tuple(v.tolist()) for v in vector)
     elif fuzzymax:
-        return [vector.tolist()]
+        return (tuple(vector.tolist()),)
     else:
-        return vector.tolist()
+        return tuple(vector.tolist())
 
 
 def _vector(text: str) -> Vector:
@@ -135,7 +145,7 @@ def _vector(text: str) -> Vector:
 
 def _vectors(
     texts: t.Iterable[str],
-) -> t.List[Vector]:
+) -> t.Tuple[Vector, ...]:
     # docs = nlp.pipe(query.texts)  # disable=vector_disabled_pipes
     # return [doc.vector.tolist() for doc in docs]  # type: ignore
 
@@ -151,7 +161,85 @@ def _vectors(
         for text, doc in zip(unknown_texts, docs):
             _vector_cache[text] = _convert_vector(doc.vector)  # type: ignore
 
-    return [_vector_cache[text] for text in texts]
+    return tuple(_vector_cache[text] for text in texts)
+
+
+def _inflect(doc: t.Any, transformation: str) -> str:
+    inflections = []
+    max_idx = len(doc) - 1
+
+    for i, token in enumerate(doc):
+        pos = token.tag_
+        inflected = token.text
+
+        if transformation == "singular":
+            if i == max_idx:
+                if pos == "NNS":
+                    inflected = token._.inflect("NN")
+                elif pos == "NNPS":
+                    inflected = token._.inflect("NNP")
+
+        elif transformation == "plural":
+            if i == max_idx:
+                if pos == "NN":
+                    inflected = token._.inflect("NNS")
+                elif pos == "NNP":
+                    inflected = token._.inflect("NNPS")
+
+        elif transformation == "lemma":
+            inflected = token._.lemma()
+
+        elif transformation == "norm":
+            inflected = token.norm_
+
+        else:
+            raise ValueError(
+                f"The transformation '{transformation}' is unknown. Use either 'singular' or 'plural'."
+            )
+
+        inflections.append(inflected)
+
+    return " ".join(inflections)
+
+
+class InflectionQuery(BaseModel):
+    keyword: str
+    pos: t.Optional[str]
+
+
+@dataclass(frozen=True)
+class InflectionResponse:
+    keyword: str
+    vector: Vector
+    forms: t.FrozenSet[str]
+
+
+@app.post("/inflect")
+def inflect(query: InflectionQuery) -> InflectionResponse:
+    if query.pos == "noun":
+        query_kw = f"the {query.keyword} avoided"
+        kw = nlp(query_kw)[1:-1]
+    else:
+        query_kw = query.keyword
+        kw = nlp(query_kw)
+
+    lemma = _inflect(kw, "lemma")
+
+    forms = frozenset(
+        {
+            query.keyword,
+            lemma,
+            _inflect(kw, "singular"),
+            _inflect(kw, "plural"),
+            _inflect(kw, "norm"),
+        }
+    )
+
+    return InflectionResponse(
+        keyword=lemma,
+        vector=_convert_vector(kw.vector),
+        forms=forms,
+    )
 
 
 class VectorQuery(BaseModel):
@@ -164,28 +252,39 @@ def vector(query: VectorQuery) -> Vector:
 
 
 class VectorsQuery(BaseModel):
-    texts: t.List[str]
+    texts: t.Tuple[str, ...]
 
 
 @app.post("/vectors")
 def vectors(
     query: VectorsQuery,
-) -> t.List[Vector]:
+) -> t.Tuple[Vector, ...]:
     return _vectors(query.texts)
 
 
 class KeywordQuery(BaseModel):
-    texts: t.List[str]
-    pos_tags: t.List[str]
+    texts: t.Tuple[str, ...]
+    pos_tags: t.Tuple[str, ...]
 
 
-class KeywordResponse(BaseModel):
+@dataclass(frozen=True)
+class KeywordResponse:
     keyword: str
     vector: Vector
-    lemma: str
-    norm: str
+    forms: t.FrozenSet[str]
     pos_tag: str
     weight: float
+
+    def __eq__(self, other: KeywordResponse) -> bool:
+        return (
+            self.keyword == other.keyword
+            and self.forms == other.forms
+            and self.pos_tag == other.pos_tag
+            and self.weight == other.weight
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.keyword, self.forms, self.pos_tag, self.weight))
 
 
 _keyword_cache = {}
@@ -198,8 +297,8 @@ def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
     return None
 
 
-@app.post("/keywords", response_model=t.List[t.List[KeywordResponse]])
-def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
+@app.post("/keywords", response_model=t.Tuple[t.Tuple[KeywordResponse, ...], ...])
+def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]:
     unknown_texts = []
 
     for text in query.texts:
@@ -220,43 +319,53 @@ def keywords(query: KeywordQuery) -> t.List[t.List[KeywordResponse]]:
                 keywords = extractor(
                     doc, include_pos=pos_tag, normalize="lower", topn=1.0
                 )
+                processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
 
-                processed_keywords = list(nlp.pipe(k for k, _ in keywords))
-                keyword_vectors = [_convert_vector(k.vector) for k in processed_keywords]  # type: ignore
-                keyword_lemmas = [
-                    " ".join(token.lemma_ for token in span)
-                    for span in processed_keywords
-                ]
-                keyword_norms = [
-                    " ".join(token.norm_ for token in span)
-                    for span in processed_keywords
-                ]
+                keyword_vectors = {}
+                keyword_scores = {}
+                keyword_forms = defaultdict(set)
+                lemmas = set()
 
-                # We cannot use this way.
-                # If both 'easy' and 'easier' appear in the text, the lemma keywords would only contain 'easy'.
-                # This would mean that the lists differ in length, so we cannot safely zip them.
-                # lemma_keywords = extractor(
-                #     doc, include_pos=pos_tag, normalize="lemma", topn=1.0
-                # )
+                for (plain_kw, score), kw in zip(keywords, processed_keywords):
+                    lemma = _inflect(kw, "lemma")
+                    lemmas.add(lemma)
+                    keyword_vectors[lemma] = _convert_vector(kw.vector)
+                    keyword_scores[lemma] = score
 
-                for (keyword, score), vec, lemma, norm in zip(
-                    keywords, keyword_vectors, keyword_lemmas, keyword_norms
-                ):
-                    if keyword in text.lower():
+                    forms = {
+                        lemma,
+                        plain_kw,
+                        _inflect(kw, "singular"),
+                        _inflect(kw, "plural"),
+                        _inflect(kw, "norm"),
+                    }
+
+                    # TODO: Execute this filtering step on the client side
+                    for form in forms:
+                        pattern = re.compile(f"\\b({form})\\b")
+
+                        if pattern.search(text):
+                            keyword_forms[lemma].add(form)
+
+                for lemma in lemmas:
+                    forms = keyword_forms.get(lemma)
+                    score = keyword_scores[lemma]
+                    vector = keyword_vectors[lemma]
+
+                    if forms is not None:
                         doc_keywords.append(
                             KeywordResponse(
-                                keyword=keyword,
-                                vector=vec,
-                                lemma=lemma,
-                                norm=norm,
+                                keyword=lemma,
+                                vector=vector,
+                                forms=frozenset(forms),
                                 pos_tag=pos_tag,
                                 weight=_dist2sim(score),
                             )
                         )
 
-            _keyword_cache[text] = doc_keywords
+            _keyword_cache[text] = tuple(dict.fromkeys(doc_keywords))
 
-    return [_keyword_cache[text] for text in query.texts]
+    return tuple(_keyword_cache[text] for text in query.texts)
 
 
 @app.get("/")

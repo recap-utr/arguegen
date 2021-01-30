@@ -49,10 +49,12 @@ class ArgumentNode(ag.Node):
         return hash(self.key)
 
 
+# TODO: Check if one concept > another concept (w.r.t. the forms)
 @dataclass(frozen=True)
 class Concept:
     name: str
     vector: spacy.Vector
+    forms: t.FrozenSet[str]
     pos: t.Optional[POS]
     inodes: t.FrozenSet[ArgumentNode]
     nodes: t.FrozenSet[graph.AbstractNode]
@@ -66,6 +68,7 @@ class Concept:
 
         return code
 
+    # TODO: SHould forms be added here?
     def __eq__(self, other: Concept) -> bool:
         return (
             self.name == other.name
@@ -103,6 +106,7 @@ class Concept:
     def to_dict(self) -> t.Dict[str, t.Any]:
         return {
             "concept": str(self),
+            "forms": str(self.forms),
             "nodes": [str(node) for node in self.nodes],
             "score": self.score,
         }
@@ -114,6 +118,7 @@ class Concept:
         return cls(
             source.name,
             source.vector,
+            source.forms,
             source.pos,
             source.inodes,
             source.nodes,
