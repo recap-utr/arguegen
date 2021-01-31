@@ -20,7 +20,9 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
     cases1 = load.cases(path1)
     cases2 = load.cases(path2)
     source_triples = []
+    target_triples = []
     source_target_triples = []
+    common_target_triples = []
     rule_code = lambda x: f"{x.source.code},{x.target.code}"
 
     for c1, c2 in itertools.product(cases1, cases2):
@@ -31,19 +33,42 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
                 source_triples.append(("coder1", name, r1.source.code))
                 source_triples.append(("coder2", name, r2.source.code))
 
+                target_triples.append(("coder1", name, r1.target.code))
+                target_triples.append(("coder2", name, r2.target.code))
+
                 source_target_triples.append(("coder1", name, rule_code(r1)))
                 source_target_triples.append(("coder2", name, rule_code(r2)))
 
-    source_task = agreement.AnnotationTask(source_triples)
-    source_target_task = agreement.AnnotationTask(source_target_triples)
+                if r1.source == r2.source:
+                    common_target_triples.append(("coder1", name, r1.target.code))
+                    common_target_triples.append(("coder2", name, r2.target.code))
 
-    typer.echo("Only considering sources:")
+    source_task = agreement.AnnotationTask(source_triples)
+    target_task = agreement.AnnotationTask(target_triples)
+    source_target_task = agreement.AnnotationTask(source_target_triples)
+    common_target_task = agreement.AnnotationTask(common_target_triples)
+
+    typer.echo(f"Considering only sources ({len(source_triples)} triples):")
     _echo_task(source_task)
 
     typer.echo()
 
-    typer.echo("Considering both sources and targets:")
+    typer.echo(f"Considering only targets ({len(target_triples)} triples):")
+    _echo_task(target_task)
+
+    typer.echo()
+
+    typer.echo(
+        f"Considering both sources and targets ({len(source_target_triples)} triples):"
+    )
     _echo_task(source_target_task)
+
+    typer.echo()
+
+    typer.echo(
+        f"Considering only targets from common sources ({len(common_target_triples)} triples):"
+    )
+    _echo_task(common_target_task)
 
 
 def _echo_task(task: agreement.AnnotationTask) -> None:
