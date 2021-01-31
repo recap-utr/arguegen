@@ -151,7 +151,7 @@ def _parse_rule_concept(
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
 
-    inflection = spacy.inflect(name, pos.value if pos else None)
+    inflection = spacy.inflect(name, casebase.pos2spacy(pos))
     kw_name = inflection["keyword"]
     kw_forms = inflection["forms"]
     vector = inflection["vector"]
@@ -190,7 +190,7 @@ def _parse_rule_concept(
 
     if not nodes:
         raise ValueError(
-            f"The concept '{rule}' specified in '{str(path)}' cannot be found in the knowledge graph."
+            f"The concept '{rule}' with the forms '{kw_forms}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(

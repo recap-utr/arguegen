@@ -33,12 +33,21 @@ def keywords(
         kw_pos = casebase.spacy2pos(k.pos_tag)
         kw_weight = k.weight
 
-        # TODO: Move from server to here
-        inodes = [
-            t.cast(casebase.ArgumentNode, inode)
-            for inode in graph.inodes
-            if term in inode.plain_text.lower()
-        ]
+        found_forms = set()
+        inodes = set()
+
+        for kw_form in kw_forms:
+            pattern = re.compile(f"\\b({kw_form})\\b")
+
+            for inode in graph.inodes:
+                node_txt = inode.plain_text.lower()
+
+                if pattern.search(node_txt):
+                    inodes.add(t.cast(casebase.ArgumentNode, inode))
+                    found_forms.add(kw_form)
+
+        assert len(inodes) > 0
+
         mc_distance = None
 
         if use_mc_proximity:
@@ -51,25 +60,25 @@ def keywords(
             if mc_distances:
                 mc_distance = min(mc_distances)
 
-        nodes = query.concept_nodes(
+        kg_nodes = query.concept_nodes(
             kw_forms,
             kw_pos,
             [inode.vector for inode in inodes],
             config.tuning("extraction", "min_synset_similarity"),
         )
 
-        if len(nodes) > 0:
+        if len(kg_nodes) > 0:
             candidate = casebase.Concept(
                 kw.lower(),
                 kw_vector,
                 frozenset([kw.lower()]),
                 kw_pos,
                 frozenset(inodes),
-                nodes,
+                kg_nodes,
                 query.concept_metrics(
                     related_concepts,
                     user_query,
-                    nodes,
+                    kg_nodes,
                     kw_vector,
                     weight=kw_weight,
                     major_claim_distance=mc_distance,

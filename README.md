@@ -7,18 +7,18 @@ poetry install
 cp config-example.toml config.toml
 poetry run python -m spacy download en_core_web_lg
 poetry run python -m spacy download en_core_web_sm
-poetry run python -m nltk.downloader popular
+poetry run python -m nltk.downloader popular universal_tagset
 ```
 
 ## Running
 
 - Start a spacy server in one terminal session:
 
-  ```./spacy.sh```
+  `./spacy.sh`
 
 - Run the adaptation in another session:
 
-  ```poetry run python -m recap_argument_graph_adaptation```
+  `poetry run python -m recap_argument_graph_adaptation`
 
 ## Folder Structure
 
@@ -29,9 +29,9 @@ Within the folder `data`, there are two folders: `input` and `output`.
 For each case that should be adapted, create a folder with an arbitrary name in `input`.
 Then, place the following files in that folder:
 
--   `graph.json`: Argument graph that should be adapted.
--   `query.txt`: Query for the imaginary retrieval.
--   `rules.csv`: Adaptation rules for all concepts in `graph.json` in the form `source:pos,target:pos`.
+- `graph.json`: Argument graph that should be adapted.
+- `query.txt`: Query for the imaginary retrieval.
+- `rules.csv`: Adaptation rules for all concepts in `graph.json` in the form `source:pos,target:pos`.
 
 ## Output Folder
 

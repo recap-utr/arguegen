@@ -10,6 +10,7 @@ import lemminflect
 import numpy as np
 import spacy
 from fastapi import FastAPI
+from nltk import pos_tag, word_tokenize
 from pydantic import BaseModel
 from pydantic.dataclasses import dataclass
 from recap_argument_graph_adaptation.model.config import Config
@@ -127,7 +128,7 @@ def np2tuple(vector: np.ndarray) -> t.Tuple[float, ...]:
 
 
 def _convert_vector(vector: t.Union[np.ndarray, t.List[np.ndarray]]) -> Vector:
-    if isinstance(vector, list):
+    if isinstance(vector, (list, tuple)):
         return tuple(tuple(v.tolist()) for v in vector)
     elif fuzzymax:
         return (tuple(vector.tolist()),)
@@ -164,47 +165,47 @@ def _vectors(
     return tuple(_vector_cache[text] for text in texts)
 
 
-def _inflect(doc: t.Any, transformation: str) -> str:
-    inflections = []
-    max_idx = len(doc) - 1
+def _lemma_parts(text: str, pos: str) -> t.List[str]:
+    tokens: t.List[str] = word_tokenize(text)  # type: ignore
 
-    for i, token in enumerate(doc):
-        pos = token.tag_
-        inflected = token.text
+    *parts, tail = tokens
+    parts.append(lemminflect.getLemma(tail, pos)[0])
 
-        if transformation == "singular":
-            if i == max_idx:
-                if pos == "NNS":
-                    inflected = token._.inflect("NN")
-                elif pos == "NNPS":
-                    inflected = token._.inflect("NNP")
+    return parts
 
-        elif transformation == "plural":
-            if i == max_idx:
-                if pos == "NN":
-                    inflected = token._.inflect("NNS")
-                elif pos == "NNP":
-                    inflected = token._.inflect("NNPS")
 
-        elif transformation == "lemma":
-            inflected = token._.lemma()
+def _inflect(text: str, pos: str) -> t.Tuple[str, t.FrozenSet[str]]:
+    """Return the lemma of `text` and all inflected forms of `text`."""
 
-        elif transformation == "norm":
-            inflected = token.norm_
+    lemma_parts = _lemma_parts(text, pos)
+    lemma = " ".join(lemma_parts)
+    *lemma_prefixes, lemma_suffix = lemma_parts
+    lemma_prefix = " ".join(lemma_prefixes)
 
-        else:
-            raise ValueError(
-                f"The transformation '{transformation}' is unknown. Use either 'singular' or 'plural'."
+    inflections = frozenset(
+        itertools.chain(*lemminflect.getAllInflections(lemma_suffix, pos).values())
+    )
+
+    if not inflections:
+        inflections = frozenset(
+            itertools.chain(
+                *lemminflect.getAllInflectionsOOV(lemma_suffix, pos).values()
             )
+        )
 
-        inflections.append(inflected)
+    forms = set()
+    forms.add(lemma)
 
-    return " ".join(inflections)
+    for inflection in inflections:
+        form = " ".join([lemma_prefix, inflection])
+        forms.add(form.strip())
+
+    return lemma, frozenset(forms)
 
 
 class InflectionQuery(BaseModel):
     keyword: str
-    pos: t.Optional[str]
+    pos_tags: t.List[t.Optional[str]]
 
 
 @dataclass(frozen=True)
@@ -214,31 +215,30 @@ class InflectionResponse:
     forms: t.FrozenSet[str]
 
 
+# TODO: Add support for multiple lemmas, e.g. proven should have proved and proven as past participle
 @app.post("/inflect")
 def inflect(query: InflectionQuery) -> InflectionResponse:
-    if query.pos == "noun":
-        query_kw = f"the {query.keyword} avoided"
-        kw = nlp(query_kw)[1:-1]
-    else:
-        query_kw = query.keyword
-        kw = nlp(query_kw)
+    lemmas = set()
+    forms = set()
 
-    lemma = _inflect(kw, "lemma")
+    for pos in query.pos_tags:
+        if pos is None:
+            # The pos tag (index 1) of the last token (index -1) is used.
+            pos = pos_tag(query.keyword, tagset="universal")[-1][1]
 
-    forms = frozenset(
-        {
-            query.keyword,
-            lemma,
-            _inflect(kw, "singular"),
-            _inflect(kw, "plural"),
-            _inflect(kw, "norm"),
-        }
-    )
+        pos_lemma, pos_forms = _inflect(query.keyword, pos)
+        lemmas.add(pos_lemma)
+        forms.update(pos_forms)
+
+    # assert len(lemmas) == 1
+
+    lemma = next(iter(lemmas))
+    vector = _vector(lemma)
 
     return InflectionResponse(
         keyword=lemma,
-        vector=_convert_vector(kw.vector),
-        forms=forms,
+        vector=vector,
+        forms=frozenset(forms),
     )
 
 
@@ -275,16 +275,16 @@ class KeywordResponse:
     pos_tag: str
     weight: float
 
-    def __eq__(self, other: KeywordResponse) -> bool:
-        return (
-            self.keyword == other.keyword
-            and self.forms == other.forms
-            and self.pos_tag == other.pos_tag
-            and self.weight == other.weight
-        )
+    # def __eq__(self, other: KeywordResponse) -> bool:
+    #     return (
+    #         self.keyword == other.keyword  # type: ignore
+    #         and self.forms == other.forms  # type: ignore
+    #         and self.pos_tag == other.pos_tag  # type: ignore
+    #         and self.weight == other.weight  # type: ignore
+    #     )
 
-    def __hash__(self) -> int:
-        return hash((self.keyword, self.forms, self.pos_tag, self.weight))
+    # def __hash__(self) -> int:
+    #     return hash((self.keyword, self.forms, self.pos_tag, self.weight))
 
 
 _keyword_cache = {}
@@ -319,38 +319,11 @@ def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]
                 keywords = extractor(
                     doc, include_pos=pos_tag, normalize="lower", topn=1.0
                 )
-                processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
+                # processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
 
-                keyword_vectors = {}
-                keyword_scores = {}
-                keyword_forms = defaultdict(set)
-                lemmas = set()
-
-                for (plain_kw, score), kw in zip(keywords, processed_keywords):
-                    lemma = _inflect(kw, "lemma")
-                    lemmas.add(lemma)
-                    keyword_vectors[lemma] = _convert_vector(kw.vector)
-                    keyword_scores[lemma] = score
-
-                    forms = {
-                        lemma,
-                        plain_kw,
-                        _inflect(kw, "singular"),
-                        _inflect(kw, "plural"),
-                        _inflect(kw, "norm"),
-                    }
-
-                    # TODO: Execute this filtering step on the client side
-                    for form in forms:
-                        pattern = re.compile(f"\\b({form})\\b")
-
-                        if pattern.search(text):
-                            keyword_forms[lemma].add(form)
-
-                for lemma in lemmas:
-                    forms = keyword_forms.get(lemma)
-                    score = keyword_scores[lemma]
-                    vector = keyword_vectors[lemma]
+                for kw_, score in keywords:
+                    lemma, forms = _inflect(kw_, pos_tag)
+                    vector = _vector(lemma)
 
                     if forms is not None:
                         doc_keywords.append(
@@ -363,7 +336,9 @@ def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]
                             )
                         )
 
-            _keyword_cache[text] = tuple(dict.fromkeys(doc_keywords))
+            _keyword_cache[text] = tuple(
+                doc_keywords
+            )  # tuple(dict.fromkeys(doc_keywords))
 
     return tuple(_keyword_cache[text] for text in query.texts)
 

@@ -116,15 +116,27 @@ def similarity(
             return float(1 - distance.cosine(obj1, obj2))
         return 0.0
 
-    # TODO: Check type of objects
-
-    elif isinstance(obj1, tuple) and isinstance(obj2, tuple):
+    elif isinstance(obj1, (list, tuple)) and isinstance(obj2, (list, tuple)):
         return dynamax_jaccard(obj1, obj2)
 
     else:
         raise ValueError(
             "Both vectors must have the same format (either 'np.ndarray' or 'List[np.ndarray]')."
         )
+
+
+def inflect(keyword: str, pos_tags: t.Iterable[t.Optional[str]]) -> t.Dict[str, t.Any]:
+    response = session.post(
+        _url("inflect"),
+        json={"keyword": keyword, "pos_tags": pos_tags},
+    )
+    _check_response(response)
+
+    result = response.json()
+    result["vector"] = _convert_vector(result["vector"])
+    result["forms"] = frozenset(result["forms"])
+
+    return result
 
 
 @dataclass(frozen=True)
@@ -166,20 +178,6 @@ class Keyword:
             obj.pos_tag,
             weight,
         )
-
-
-def inflect(keyword: str, pos: t.Optional[str]) -> t.Dict[str, t.Any]:
-    response = session.post(
-        _url("inflect"),
-        json={"keyword": keyword, "pos": pos},
-    )
-    _check_response(response)
-
-    result = response.json()
-    result["vector"] = _convert_vector(result["vector"])
-    result["forms"] = frozenset(result["forms"])
-
-    return result
 
 
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:

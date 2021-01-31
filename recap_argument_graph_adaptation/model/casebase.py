@@ -49,7 +49,6 @@ class ArgumentNode(ag.Node):
         return hash(self.key)
 
 
-# TODO: Check if one concept > another concept (w.r.t. the forms)
 @dataclass(frozen=True)
 class Concept:
     name: str
@@ -68,16 +67,17 @@ class Concept:
 
         return code
 
-    # TODO: SHould forms be added here?
     def __eq__(self, other: Concept) -> bool:
         return (
             self.name == other.name
             and self.pos == other.pos
+            and self.forms == other.forms
             and self.inodes == other.inodes
         )
 
+    # TODO: If the pos is missing (None), the forms will differ. We need to account for that!
     def __hash__(self) -> int:
-        return hash((self.name, self.pos, self.inodes))
+        return hash((self.name, self.pos, self.forms, self.inodes))
 
     def part_eq(self, other: Concept) -> bool:
         return self.pos == other.pos and self.inodes == other.inodes
@@ -375,7 +375,7 @@ def pos2wn(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
 
 def pos2spacy(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
     if pos == POS.NOUN:
-        return ["NOUN", "PROPN"]
+        return ["NOUN"]  # "PROPN"
     elif pos == POS.VERB:
         return ["VERB"]
     elif pos == POS.ADJECTIVE:
