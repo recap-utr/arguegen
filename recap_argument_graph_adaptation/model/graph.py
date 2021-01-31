@@ -28,7 +28,7 @@ class AbstractNode(abc.ABC):
 
     @property
     def processed_name(self):
-        return self.name.replace("_", " ")
+        return self.name.replace("_", " ").lower()
 
     @abc.abstractmethod
     def hypernym_distances(

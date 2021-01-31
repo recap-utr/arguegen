@@ -12,7 +12,6 @@ import spacy
 from fastapi import FastAPI
 from nltk import pos_tag, word_tokenize
 from pydantic import BaseModel
-from pydantic.dataclasses import dataclass
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from spacy.language import Language
@@ -174,6 +173,9 @@ def _lemma_parts(text: str, pos: str) -> t.List[str]:
     return parts
 
 
+ADDITIONAL_INFLECTIONS = {"prove": ["proven"]}
+
+
 def _inflect(text: str, pos: str) -> t.Tuple[str, t.FrozenSet[str]]:
     """Return the lemma of `text` and all inflected forms of `text`."""
 
@@ -200,6 +202,9 @@ def _inflect(text: str, pos: str) -> t.Tuple[str, t.FrozenSet[str]]:
         form = " ".join([lemma_prefix, inflection])
         forms.add(form.strip())
 
+    if additional_inflections := ADDITIONAL_INFLECTIONS.get(lemma):
+        forms.update(additional_inflections)
+
     return lemma, frozenset(forms)
 
 
@@ -208,14 +213,14 @@ class InflectionQuery(BaseModel):
     pos_tags: t.List[t.Optional[str]]
 
 
-@dataclass(frozen=True)
-class InflectionResponse:
+class InflectionResponse(BaseModel):
     keyword: str
     vector: Vector
     forms: t.FrozenSet[str]
 
 
-# TODO: Add support for multiple lemmas, e.g. proven should have proved and proven as past participle
+# TODO: Eventually migrate the inflection to the client (no spacy involved here.)
+# TODO: Add cache for inflections.
 @app.post("/inflect")
 def inflect(query: InflectionQuery) -> InflectionResponse:
     lemmas = set()
@@ -232,8 +237,15 @@ def inflect(query: InflectionQuery) -> InflectionResponse:
 
     # assert len(lemmas) == 1
 
+    # Currently, PROPN is removed from the list of possible keywords.
+    # Thus, len(query.pos_tags) == 1 in all cases.
     lemma = next(iter(lemmas))
     vector = _vector(lemma)
+
+    if not query.keyword in forms:
+        raise RuntimeError(
+            f"{query.keyword=} not in {forms=}. You should set ADDITIONAL_INFLECTIONS['{lemma}'] = ['{query.keyword}']"
+        )
 
     return InflectionResponse(
         keyword=lemma,
@@ -267,24 +279,12 @@ class KeywordQuery(BaseModel):
     pos_tags: t.Tuple[str, ...]
 
 
-@dataclass(frozen=True)
-class KeywordResponse:
+class KeywordResponse(BaseModel):
     keyword: str
     vector: Vector
     forms: t.FrozenSet[str]
     pos_tag: str
     weight: float
-
-    # def __eq__(self, other: KeywordResponse) -> bool:
-    #     return (
-    #         self.keyword == other.keyword  # type: ignore
-    #         and self.forms == other.forms  # type: ignore
-    #         and self.pos_tag == other.pos_tag  # type: ignore
-    #         and self.weight == other.weight  # type: ignore
-    #     )
-
-    # def __hash__(self) -> int:
-    #     return hash((self.keyword, self.forms, self.pos_tag, self.weight))
 
 
 _keyword_cache = {}

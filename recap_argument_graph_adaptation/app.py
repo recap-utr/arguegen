@@ -128,6 +128,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
 
     log.debug("Exporting statistics.")
     stats_export = {
+        "path": str(Path(config["resources"]["cases"]["input"]) / case.relative_path),
         "evaluation": eval_results.to_dict(),
         "time": end_time - start_time,
         "rules": {

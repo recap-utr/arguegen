@@ -176,10 +176,12 @@ def _parse_rule_concept(
 
         if len(tmp_inodes) == 0:
             raise RuntimeError(
-                f"The concept '{name}' with the forms '{kw_forms}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
+                f"The concept '{rule}' with the forms '{kw_forms}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
             )
 
         inodes = frozenset(tmp_inodes)
+    else:
+        found_forms.add(name)
 
     nodes = query.concept_nodes(
         kw_forms,

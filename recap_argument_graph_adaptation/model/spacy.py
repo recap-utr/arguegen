@@ -148,7 +148,9 @@ class TemporaryKeyword:
 
     @classmethod
     def from_dict(cls, x: t.Mapping[str, t.Any]) -> TemporaryKeyword:
-        return cls(x["keyword"], x["vector"], x["forms"], x["pos_tag"])
+        return cls(
+            x["keyword"], tuple(x["vector"]), frozenset(x["forms"]), x["pos_tag"]
+        )
 
     def __eq__(self, other) -> bool:
         return (

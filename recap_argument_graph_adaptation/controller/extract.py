@@ -46,7 +46,8 @@ def keywords(
                     inodes.add(t.cast(casebase.ArgumentNode, inode))
                     found_forms.add(kw_form)
 
-        assert len(inodes) > 0
+        if len(inodes) == 0:
+            continue
 
         mc_distance = None
 
@@ -71,7 +72,7 @@ def keywords(
             candidate = casebase.Concept(
                 kw.lower(),
                 kw_vector,
-                frozenset([kw.lower()]),
+                frozenset(found_forms),
                 kw_pos,
                 frozenset(inodes),
                 kg_nodes,
