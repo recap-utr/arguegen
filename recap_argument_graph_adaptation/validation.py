@@ -27,7 +27,7 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
 
     for c1, c2 in itertools.product(cases1, cases2):
         if c1.relative_path == c2.relative_path:
-            name = c1.relative_path
+            name = str(c1.relative_path)
 
             for r1, r2 in itertools.product(c1.benchmark_rules, c2.benchmark_rules):
                 source_triples.append(("coder1", name, r1.source.code))
