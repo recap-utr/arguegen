@@ -75,7 +75,6 @@ class Concept:
             and self.inodes == other.inodes
         )
 
-    # TODO: If the pos is missing (None), the forms will differ. We need to account for that!
     def __hash__(self) -> int:
         return hash((self.name, self.pos, self.forms, self.inodes))
 

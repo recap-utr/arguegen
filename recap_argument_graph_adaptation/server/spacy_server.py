@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import itertools
-import re
-import statistics
 import typing as t
-from collections import defaultdict
 
-import lemminflect
 import numpy as np
 import spacy
 from fastapi import FastAPI
-from nltk import pos_tag, word_tokenize
 from pydantic import BaseModel
+from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from spacy.language import Language
@@ -122,10 +118,6 @@ _vector_cache = {}
 Vector = t.Union[t.Tuple[float, ...], t.Tuple[t.Tuple[float, ...], ...]]
 
 
-def np2tuple(vector: np.ndarray) -> t.Tuple[float, ...]:
-    return tuple(vector.tolist())
-
-
 def _convert_vector(vector: t.Union[np.ndarray, t.List[np.ndarray]]) -> Vector:
     if isinstance(vector, (list, tuple)):
         return tuple(tuple(v.tolist()) for v in vector)
@@ -162,96 +154,6 @@ def _vectors(
             _vector_cache[text] = _convert_vector(doc.vector)  # type: ignore
 
     return tuple(_vector_cache[text] for text in texts)
-
-
-def _lemma_parts(text: str, pos: str) -> t.List[str]:
-    tokens: t.List[str] = word_tokenize(text)  # type: ignore
-
-    *parts, tail = tokens
-    parts.append(lemminflect.getLemma(tail, pos)[0])
-
-    return parts
-
-
-ADDITIONAL_INFLECTIONS = {"prove": ["proven"]}
-
-
-def _inflect(text: str, pos: str) -> t.Tuple[str, t.FrozenSet[str]]:
-    """Return the lemma of `text` and all inflected forms of `text`."""
-
-    lemma_parts = _lemma_parts(text, pos)
-    lemma = " ".join(lemma_parts)
-    *lemma_prefixes, lemma_suffix = lemma_parts
-    lemma_prefix = " ".join(lemma_prefixes)
-
-    inflections = frozenset(
-        itertools.chain(*lemminflect.getAllInflections(lemma_suffix, pos).values())
-    )
-
-    if not inflections:
-        inflections = frozenset(
-            itertools.chain(
-                *lemminflect.getAllInflectionsOOV(lemma_suffix, pos).values()
-            )
-        )
-
-    forms = set()
-    forms.add(lemma)
-
-    for inflection in inflections:
-        form = " ".join([lemma_prefix, inflection])
-        forms.add(form.strip())
-
-    if additional_inflections := ADDITIONAL_INFLECTIONS.get(lemma):
-        forms.update(additional_inflections)
-
-    return lemma, frozenset(forms)
-
-
-class InflectionQuery(BaseModel):
-    keyword: str
-    pos_tags: t.List[t.Optional[str]]
-
-
-class InflectionResponse(BaseModel):
-    keyword: str
-    vector: Vector
-    forms: t.FrozenSet[str]
-
-
-# TODO: Eventually migrate the inflection to the client (no spacy involved here.)
-# TODO: Add cache for inflections.
-@app.post("/inflect")
-def inflect(query: InflectionQuery) -> InflectionResponse:
-    lemmas = set()
-    forms = set()
-
-    for pos in query.pos_tags:
-        if pos is None:
-            # The pos tag (index 1) of the last token (index -1) is used.
-            pos = pos_tag(query.keyword, tagset="universal")[-1][1]
-
-        pos_lemma, pos_forms = _inflect(query.keyword, pos)
-        lemmas.add(pos_lemma)
-        forms.update(pos_forms)
-
-    # assert len(lemmas) == 1
-
-    # Currently, PROPN is removed from the list of possible keywords.
-    # Thus, len(query.pos_tags) == 1 in all cases.
-    lemma = next(iter(lemmas))
-    vector = _vector(lemma)
-
-    if not query.keyword in forms:
-        raise RuntimeError(
-            f"{query.keyword=} not in {forms=}. You should set ADDITIONAL_INFLECTIONS['{lemma}'] = ['{query.keyword}']"
-        )
-
-    return InflectionResponse(
-        keyword=lemma,
-        vector=vector,
-        forms=frozenset(forms),
-    )
 
 
 class VectorQuery(BaseModel):
@@ -322,7 +224,7 @@ def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]
                 # processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
 
                 for kw_, score in keywords:
-                    lemma, forms = _inflect(kw_, pos_tag)
+                    lemma, forms = inflect_concept(kw_, pos_tag)
                     vector = _vector(lemma)
 
                     if forms is not None:

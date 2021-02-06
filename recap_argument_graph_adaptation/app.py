@@ -18,10 +18,6 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
-# TODO: Compute inter-annotator agreement(s).
-# Check for singular/plural versions of concepts defined by the user and found by the software.
-
-
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
     # wordnet.lock = lock_

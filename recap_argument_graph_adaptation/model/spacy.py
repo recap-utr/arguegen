@@ -125,20 +125,6 @@ def similarity(
         )
 
 
-def inflect(keyword: str, pos_tags: t.Iterable[t.Optional[str]]) -> t.Dict[str, t.Any]:
-    response = session.post(
-        _url("inflect"),
-        json={"keyword": keyword, "pos_tags": pos_tags},
-    )
-    _check_response(response)
-
-    result = response.json()
-    result["vector"] = _convert_vector(result["vector"])
-    result["forms"] = frozenset(result["forms"])
-
-    return result
-
-
 @dataclass(frozen=True)
 class TemporaryKeyword:
     keyword: str

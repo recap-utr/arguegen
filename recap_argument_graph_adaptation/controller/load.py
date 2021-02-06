@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
@@ -151,10 +152,8 @@ def _parse_rule_concept(
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
 
-    inflection = spacy.inflect(name, casebase.pos2spacy(pos))
-    kw_name = inflection["keyword"]
-    kw_forms = inflection["forms"]
-    vector = inflection["vector"]
+    kw_name, kw_forms = inflect_concept(name, casebase.pos2spacy(pos))
+    vector = spacy.vector(kw_name)
 
     found_forms = set()
 
