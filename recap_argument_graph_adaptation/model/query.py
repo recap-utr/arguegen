@@ -148,6 +148,20 @@ def hypernyms_as_paths(
     raise kg_err
 
 
+def hypernym_distances(
+    node: graph.AbstractNode,
+) -> t.Dict[graph.AbstractNode, int]:
+    if kg_cn:
+        return conceptnet.Database().hypernym_distances(
+            t.cast(conceptnet.ConceptnetNode, node)
+        )
+
+    elif kg_wn:
+        return t.cast(wordnet.WordnetNode, node).hypernym_distances()
+
+    raise kg_err
+
+
 def all_shortest_paths(
     start_nodes: t.Iterable[graph.AbstractNode],
     end_nodes: t.Iterable[graph.AbstractNode],

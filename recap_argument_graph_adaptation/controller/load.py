@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import recap_argument_graph as ag
+from nltk.corpus import wordnet as wn
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
@@ -128,9 +129,34 @@ def _parse_rules(path: Path, graph: ag.Graph) -> t.Tuple[casebase.Rule]:
             source = _parse_rule_concept(row[0], graph, path, None)
             target = _parse_rule_concept(row[1], graph, path, source.inodes)
 
-            rules.append(casebase.Rule(source, target))
+            rule = casebase.Rule(source, target)
+            _verify_rule(rule, path)
+
+            rules.append(rule)
 
     return tuple(rules)
+
+
+def _verify_rule(rule: casebase.Rule, path: Path) -> None:
+    paths = query.all_shortest_paths(rule.source.nodes, rule.target.nodes)
+
+    if len(paths) == 0:
+        synsets = [wn.synset(node.uri) for node in rule.source.nodes]
+        hypernyms = itertools.chain(
+            *[
+                hyp.lemmas()
+                for synset in synsets
+                for hyp, _ in synset.hypernym_distances()
+                if not hyp.name().startswith(rule.source.name)
+            ]
+        )
+        lemmas = {lemma.name() for lemma in hypernyms}
+
+        raise RuntimeError(
+            f"The given rule '{str(rule)}' specified in '{path}' is invalid. "
+            "No path to connect the concepts could be found in the knowledge graph. "
+            f"The following hypernyms are permitted: {sorted(lemmas)}"
+        )
 
 
 def _parse_rule_concept(

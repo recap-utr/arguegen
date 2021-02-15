@@ -78,16 +78,23 @@ class WordnetNode(graph.AbstractNode):
         return self.name
 
     def hypernyms(
-        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
+        self,
+        comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+        min_similarity: t.Optional[float] = None,
     ) -> t.FrozenSet[WordnetNode]:
         hyps = frozenset(
             WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()
         )
 
-        return _filter_nodes(hyps, comparison_vectors, min_similarity)
+        if comparison_vectors and min_similarity:
+            hyps = _filter_nodes(hyps, comparison_vectors, min_similarity)
+
+        return hyps
 
     def hypernym_distances(
-        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
+        self,
+        comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+        min_similarity: t.Optional[float] = None,
     ) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
 
@@ -101,9 +108,12 @@ class WordnetNode(graph.AbstractNode):
             ):
                 distances_map[hyp].append(dist)
 
-        filtered_hypernym_keys = _filter_nodes(
-            distances_map.keys(), comparison_vectors, min_similarity
-        )
+        filtered_hypernym_keys = distances_map.keys()
+
+        if comparison_vectors and min_similarity:
+            filtered_hypernym_keys = _filter_nodes(
+                distances_map.keys(), comparison_vectors, min_similarity
+            )
 
         return {
             hyp: max(distances)
