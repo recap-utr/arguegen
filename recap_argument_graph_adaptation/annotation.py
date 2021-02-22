@@ -20,8 +20,8 @@ def _pos2wn(pos: str) -> t.Optional[t.List[str]]:
 def hypernyms():
     while True:
         try:
-            concept_uri = input("Enter concept in the form 'name.pos': ")
-            concept, user_pos = concept_uri.split(".")
+            concept_uri = input("Enter concept in the form 'name/pos': ")
+            concept, user_pos = concept_uri.split("/")
             concept = concept.replace(" ", "_").strip()
             wn_pos_tags = _pos2wn(user_pos)
 
@@ -41,11 +41,24 @@ def hypernyms():
                     for synset in synsets
                     for hyp, _ in synset.hypernym_distances()
                     if not hyp.name().startswith(concept)
+                    and hyp.name()
+                    not in [
+                        "entity.n.01",
+                        "artifact.n.01",
+                        "causal_agent.n.01",
+                        "living_thing.n.01",
+                        "object.n.01",
+                        "physical_entity.n.01",
+                        "psychological_feature.n.01",
+                    ]
                 ]
             )
-            lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
+            lemmas = sorted(
+                {lemma.name().replace("_", " ") + f"/{user_pos}" for lemma in hypernyms}
+            )
 
-            print(sorted(lemmas))
+            print("The following hypernyms are possible:")
+            print("\n".join(lemmas))
         except Exception as e:
             print(e)
 

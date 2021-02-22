@@ -12,8 +12,7 @@ app = typer.Typer()
 
 @app.command()
 def check_rules(path: Path) -> None:
-    load.cases(path)
-    typer.echo("No issues found.")
+    load.cases(path, ignore_errors=True)
 
 
 def _triples(name: str, value1: str, value2: str) -> t.List[t.Tuple[str, str, str]]:

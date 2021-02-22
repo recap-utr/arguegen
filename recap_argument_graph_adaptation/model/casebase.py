@@ -111,7 +111,10 @@ class Concept:
 
     @classmethod
     def from_concept(
-        cls, source: Concept, metrics: t.Dict[str, t.Optional[float]]
+        cls,
+        source: Concept,
+        nodes: t.Optional[t.FrozenSet[graph.AbstractNode]] = None,
+        metrics: t.Optional[t.Dict[str, t.Optional[float]]] = None,
     ) -> Concept:
         return cls(
             source.name,
@@ -119,8 +122,8 @@ class Concept:
             source.forms,
             source.pos,
             source.inodes,
-            source.nodes,
-            metrics,
+            nodes or source.nodes,
+            metrics or source.metrics,
         )
 
 

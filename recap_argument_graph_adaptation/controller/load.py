@@ -70,12 +70,21 @@ def run_arguments(
     ]
 
 
-def cases(input_path: Path) -> t.List[casebase.Case]:
+def cases(input_path: Path, ignore_errors: bool = False) -> t.List[casebase.Case]:
     result = []
 
     for path in itertools.chain([input_path], sorted(input_path.rglob("*"))):
-        if path.is_dir() and (case := _case(path, input_path)):
-            result.append(case)
+        if path.is_dir():
+            try:
+                case = _case(path, input_path)
+
+                if case:
+                    result.append(case)
+            except RuntimeError as e:
+                if ignore_errors:
+                    print(e)
+                else:
+                    raise e
 
     if not result:
         raise RuntimeError(f"No cases were found in '{input_path}'.")
@@ -127,35 +136,44 @@ def _parse_rules(path: Path, graph: ag.Graph) -> t.Tuple[casebase.Rule]:
         for row in reader:
             source = _parse_rule_concept(row[0], graph, path, None)
             target = _parse_rule_concept(row[1], graph, path, source.inodes)
-
-            rule = casebase.Rule(source, target)
-            _verify_rule(rule, path)
+            rule = _postprocess_rule(source, target, path)
 
             rules.append(rule)
 
     return tuple(rules)
 
 
-def _verify_rule(rule: casebase.Rule, path: Path) -> None:
-    paths = query.all_shortest_paths(rule.source.nodes, rule.target.nodes)
+def _postprocess_rule(
+    source: casebase.Concept, target: casebase.Concept, path: Path
+) -> casebase.Rule:
+    paths = query.all_shortest_paths(source.nodes, target.nodes)
 
     if len(paths) == 0:
-        synsets = [wn.synset(node.uri) for node in rule.source.nodes]
+        synsets = [wn.synset(node.uri) for node in source.nodes]
         hypernyms = itertools.chain(
             *[
                 hyp.lemmas()
                 for synset in synsets
                 for hyp, _ in synset.hypernym_distances()
-                if not hyp.name().startswith(rule.source.name)
+                if not hyp.name().startswith(source.name)
+                and hyp.name() not in config["wordnet"]["hypernym_filter"]
             ]
         )
-        lemmas = {lemma.name() for lemma in hypernyms}
+        lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
 
         raise RuntimeError(
-            f"The given rule '{str(rule)}' specified in '{path}' is invalid. "
+            f"The given rule '{str(source)}->{str(target)}' specified in '{path}' is invalid. "
             "No path to connect the concepts could be found in the knowledge graph. "
             f"The following hypernyms are permitted: {sorted(lemmas)}"
         )
+
+    source_nodes = frozenset(path.start_node for path in paths)
+    target_nodes = frozenset(path.end_node for path in paths)
+
+    source = casebase.Concept.from_concept(source, nodes=source_nodes)
+    target = casebase.Concept.from_concept(target, nodes=target_nodes)
+
+    return casebase.Rule(source, target)
 
 
 def _parse_rule_concept(
@@ -173,7 +191,7 @@ def _parse_rule_concept(
         try:
             pos = casebase.POS(rule_parts[1])
         except ValueError:
-            raise ValueError(
+            raise RuntimeError(
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
 
@@ -207,15 +225,10 @@ def _parse_rule_concept(
     else:
         found_forms.add(name)
 
-    nodes = query.concept_nodes(
-        kw_forms,
-        pos,
-        [x.vector for x in inodes],
-        config["loading"]["min_synset_similarity"],
-    )
+    nodes = query.concept_nodes(kw_forms, pos)
 
     if not nodes:
-        raise ValueError(
+        raise RuntimeError(
             f"The concept '{rule}' with the forms '{kw_forms}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 

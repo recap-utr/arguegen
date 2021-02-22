@@ -102,7 +102,7 @@ class WordnetNode(graph.AbstractNode):
             if (
                 hyp != self
                 and dist > 0
-                and hyp.name_without_index not in config["wordnet"]["hypernym_filter"]
+                and hyp.name not in config["wordnet"]["hypernym_filter"]
             ):
                 distances_map[hyp].append(dist)
 
@@ -274,7 +274,7 @@ def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
         for hyp in reversed(hyp_path[:-1]):  # The last element is the queried node
             hyp_node = WordnetNode.from_nltk(hyp)
 
-            if hyp_node.name_without_index not in config["wordnet"]["hypernym_filter"]:
+            if hyp_node.name not in config["wordnet"]["hypernym_filter"]:
                 hyp_sequence.append(hyp_node)
 
         hyp_paths.append(WordnetPath.from_nodes(hyp_sequence))
