@@ -10,9 +10,6 @@ from pydantic import BaseModel
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
-from spacy.language import Language
-
-# from spacy.tokens import Doc, Span, Token  # type: ignore
 from textacy import ke
 
 config = Config.instance()
@@ -29,7 +26,7 @@ _backup_models = {
 fuzzymax = config["nlp"]["fuzzymax"]
 
 
-def spacy_nlp() -> Language:
+def spacy_nlp():
     lang = config["nlp"]["lang"]
     embeddings = config["nlp"]["embeddings"]
     model_name = f"{lang}-{embeddings}"

@@ -3,7 +3,6 @@ import logging
 import re
 import typing as t
 from collections import defaultdict
-from dataclasses import dataclass
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
@@ -131,9 +130,15 @@ def paths(
     all_candidates = {}
 
     for original_concept, all_shortest_paths in reference_paths.items():
+        start_nodes = (
+            itertools.chain(*[rule.target.nodes for rule in rules])
+            if config.tuning("bfs", "method") == "within"
+            else original_concept.nodes
+        )
+
         adaptation_results = [
-            _bfs_adaptation(shortest_path, original_concept, rule)
-            for shortest_path, rule in itertools.product(all_shortest_paths, rules)
+            _bfs_adaptation(shortest_path, original_concept, start_nodes)
+            for shortest_path in all_shortest_paths
         ]
 
         adaptation_results = list(itertools.chain(*adaptation_results))
@@ -212,13 +217,9 @@ def paths(
 def _bfs_adaptation(
     shortest_path: graph.AbstractPath,
     concept: casebase.Concept,
-    rule: casebase.Rule,
+    start_nodes: t.Iterable[graph.AbstractNode],
 ) -> t.Set[graph.AbstractPath]:
-    method = config.tuning("bfs", "method")
     adapted_paths = set()
-
-    # We have to convert the target to a path object here.
-    start_nodes = rule.target.nodes if method == "within" else concept.nodes
 
     for start_node in start_nodes:
         current_paths = set()
@@ -249,8 +250,9 @@ def _bfs_adaptation(
                         )
 
                 # We still want these shorter paths, they can be filtered later
-                else:
-                    adapted_paths.add(current_path)
+                # TODO: Maybe we should add shorter paths.
+                # else:
+                #     adapted_paths.add(current_path)
 
             current_paths = next_paths
 
@@ -279,7 +281,7 @@ def _filter_concepts(
 
     filtered_concepts = {c for c in concepts if c not in filter_expr}
     filtered_concepts = casebase.filter_concepts(
-        filtered_concepts, config.tuning("adaptation", "min_concept_score")
+        filtered_concepts, config.tuning("adaptation", "min_concept_score"), topn=None
     )
 
     if filtered_concepts:

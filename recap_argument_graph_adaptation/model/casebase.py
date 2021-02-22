@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
-import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import graph, spacy
@@ -142,10 +141,14 @@ def score(metrics: t.Dict[str, t.Optional[float]]) -> float:
 
 
 def filter_concepts(
-    concepts: t.Iterable[Concept],
-    min_score: float,
+    concepts: t.Iterable[Concept], min_score: float, topn: t.Optional[int]
 ) -> t.Set[Concept]:
-    return {concept for concept in concepts if concept.score > min_score}
+    filtered = list(filter(lambda x: x.score > min_score, concepts))
+
+    if topn:
+        filtered = filtered[:topn]
+
+    return set(filtered)
 
 
 @dataclass(frozen=True, eq=True)

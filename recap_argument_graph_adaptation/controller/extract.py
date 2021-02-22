@@ -101,7 +101,7 @@ def keywords(
         topn = int(round(len(candidates) * topn))
 
     concepts = casebase.filter_concepts(
-        candidates[:topn], config.tuning("extraction", "min_concept_score")
+        candidates, config.tuning("extraction", "min_concept_score"), topn
     )
 
     log.debug(

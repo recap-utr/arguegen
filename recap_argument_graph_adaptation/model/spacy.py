@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import statistics
 import typing as t
 from collections import defaultdict

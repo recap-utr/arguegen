@@ -4,7 +4,6 @@ import abc
 import typing as t
 from dataclasses import dataclass
 
-import numpy as np
 from recap_argument_graph_adaptation.model import spacy
 
 

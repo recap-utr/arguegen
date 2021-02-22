@@ -12,7 +12,6 @@ from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
-from spacy.lang.lex_attrs import is_alpha
 
 config = Config.instance()
 log = logging.getLogger(__name__)

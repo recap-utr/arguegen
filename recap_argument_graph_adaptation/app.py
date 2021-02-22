@@ -18,6 +18,15 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
+# TODO: Differentiate between example and definition vectors in wordnet.
+# TODO: Lemmas bei der Auswahl der Generalisierung betrachten.
+# Dadurch könnten die Adaptionen besser werden.
+# Man könnte einfach bei den Hypernymen durch die Lemmas iterieren
+# und dann insgesamt mehr Konzepte als Kandidate hinzufügen.
+# TODO: Use the same lemmatization/inflection strategy for both KGs.
+# TODO: Add LaTeX tabular export option.
+
+
 def _init_child_process(lock_):
     # https://stackoverflow.com/a/50379950/7626878
     # wordnet.lock = lock_

@@ -5,9 +5,7 @@ import statistics
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
-from logging import Filterer
 
-import numpy as np
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
@@ -266,6 +264,7 @@ def _filter_nodes(
 
 
 # This function does not use the function _filter_nodes
+# Currently only used for determining all shortest paths.
 def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     hyp_paths = []
 
@@ -308,12 +307,7 @@ def all_shortest_paths(
 
                 all_paths.append(WordnetPath.from_nodes(shortest_path))
 
-    if all_paths:
-        shortest_length = min(len(path) for path in all_paths)
-
-        return frozenset(path for path in all_paths if len(path) == shortest_length)
-
-    return frozenset()
+    return frozenset(all_paths)
 
 
 def concept_synsets(

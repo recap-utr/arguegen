@@ -1,6 +1,5 @@
 import typing as t
 
-import numpy as np
 from recap_argument_graph_adaptation.model import (
     casebase,
     conceptnet,
@@ -167,15 +166,23 @@ def all_shortest_paths(
     end_nodes: t.Iterable[graph.AbstractNode],
 ) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
-        return conceptnet.Database().all_shortest_paths(
+        all_paths = conceptnet.Database().all_shortest_paths(
             t.cast(t.Iterable[conceptnet.ConceptnetNode], start_nodes),
             t.cast(t.Iterable[conceptnet.ConceptnetNode], end_nodes),
         )
 
-    if kg_wn:
-        return wordnet.all_shortest_paths(
+    elif kg_wn:
+        all_paths = wordnet.all_shortest_paths(
             t.cast(t.Iterable[wordnet.WordnetNode], start_nodes),
             t.cast(t.Iterable[wordnet.WordnetNode], end_nodes),
         )
 
-    raise kg_err
+    else:
+        raise kg_err
+
+    # if all_paths:
+    #     shortest_length = min(len(path) for path in all_paths)
+
+    #     return frozenset(path for path in all_paths if len(path) == shortest_length)
+
+    return all_paths

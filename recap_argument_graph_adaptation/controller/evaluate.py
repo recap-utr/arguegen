@@ -1,11 +1,8 @@
-import itertools
 import logging
 import typing as t
-from collections import defaultdict
-from dataclasses import dataclass
 
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, query, spacy
+from recap_argument_graph_adaptation.model import casebase, query
 
 log = logging.getLogger(__name__)
 
