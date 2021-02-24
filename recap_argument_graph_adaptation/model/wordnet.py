@@ -57,6 +57,7 @@ class WordnetNode(graph.AbstractNode):
                 uri=code,
                 definition=s.definition() or "",
                 examples=tuple(s.examples()) or tuple(),
+                lemmas=tuple(lemma.name() for lemma in s.lemmas()),
             )
 
         raise RuntimeError("The synset does not have a name!")
@@ -68,12 +69,12 @@ class WordnetNode(graph.AbstractNode):
     def __str__(self) -> str:
         return self.uri
 
-    @property
-    def name_without_index(self) -> str:
-        if self.pos:
-            return ".".join((self.name, self.pos))
+    # @property
+    # def name_without_index(self) -> str:
+    #     if self.pos:
+    #         return ".".join((self.name, self.pos))
 
-        return self.name
+    #     return self.name
 
     def hypernyms(
         self,
@@ -201,18 +202,21 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     return results
 
 
-def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.List[spacy.Vector]]:
-    synset_definitions = [synset.definition for synset in synsets]
-    synset_examples = [synset.examples for synset in synsets]
-    definition_vectors = spacy.vectors(synset_definitions)
-    examples_vectors = [spacy.vectors(examples) for examples in synset_examples]
+def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.Tuple[spacy.Vector]]:
+    synset_contexts = []
 
-    return [
-        [definition_vector] + list(example_vectors)
-        for definition_vector, example_vectors in zip(
-            definition_vectors, examples_vectors
-        )
-    ]
+    for synset in synsets:
+        synset_context = []
+
+        for vector_type in config["wordnet"]["node_vector_components"]:
+            if vector_type == "examples":
+                synset_context.extend(synset.examples)
+            elif vector_type == "definition":
+                synset_context.append(synset.definition)
+
+        synset_contexts.append(synset_context)
+
+    return [spacy.vectors(context) for context in synset_contexts]
 
 
 def _nodes_similarities(

@@ -140,7 +140,18 @@ def _parse_rules(path: Path, graph: ag.Graph) -> t.Tuple[casebase.Rule]:
 
             rules.append(rule)
 
+    _verify_rules(rules, path)
+
     return tuple(rules)
+
+
+def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:
+    if len(rules) != len(set(rule.source for rule in rules)):
+        raise RuntimeError(
+            f"The number of rules specified in '{str(path)}' does not match the number of unique lemmas in the source column. "
+            "Please verify that you only specify one rule per lemma (e.g., 'runner/noun'), not one rule per form (e.g., 'runner/noun' and 'runners/noun'). "
+            "Different POS tags however should be represented with multiple rules (e.g. 'runner/noun' and 'running/verb')."
+        )
 
 
 def _postprocess_rule(

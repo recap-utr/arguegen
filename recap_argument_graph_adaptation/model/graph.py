@@ -10,6 +10,7 @@ from recap_argument_graph_adaptation.model import spacy
 @dataclass(frozen=True)
 class AbstractNode(abc.ABC):
     name: str
+    lemmas: t.Tuple[str]
     pos: t.Optional[str]
     uri: str
 
@@ -25,15 +26,15 @@ class AbstractNode(abc.ABC):
     def __hash__(self) -> int:
         return hash((self.uri,))
 
-    @property
-    def processed_name(self):
-        return self.name.replace("_", " ").lower()
-
     @abc.abstractmethod
     def hypernym_distances(
         self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
     ) -> t.Dict[AbstractNode, int]:
         pass
+
+
+def process_name(name: str):
+    return name.replace("_", " ").lower()
 
 
 @dataclass(frozen=True)

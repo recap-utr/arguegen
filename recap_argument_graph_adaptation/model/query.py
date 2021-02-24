@@ -42,7 +42,6 @@ def concept_nodes(
     if kg_wn:
         return wordnet.concept_synsets(names, pos, comparison_vectors, min_similarity)
 
-    # TODO: Update conceptnet
     elif kg_cn:
         return conceptnet.Database().nodes(names, pos)
 

@@ -7,8 +7,7 @@ from dataclasses import dataclass
 
 import neo4j
 import neo4j.data
-from recap_argument_graph_adaptation.model import (casebase, conceptnet_helper,
-                                                   graph)
+from recap_argument_graph_adaptation.model import casebase, conceptnet_helper, graph
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -114,9 +113,7 @@ class Database:
         nodes = defaultdict(list)
         rel_query = _include_relations(relation_types)
         start_index = 1 if exclude_start_node else 0
-        limit = (
-            1 if only_longest_path else 50
-        )
+        limit = 1 if only_longest_path else 50
 
         query = (
             "MATCH p=((n:Concept {name: $name, pos: $pos, language: $lang})"
@@ -161,31 +158,36 @@ class Database:
         return {node: min(indices) for node, indices in nodes.items()}
 
     def nodes(
-        self, name: str, pos: t.Optional[casebase.POS]
+        self, names: t.Iterable[str], pos: t.Optional[casebase.POS]
     ) -> t.FrozenSet[ConceptnetNode]:
         if self.active:
             with self._driver.session() as session:
-                return session.read_transaction(self._nodes, name, pos.value, self.lang)
+                return session.read_transaction(
+                    self._nodes, names, pos.value, self.lang
+                )
 
         return frozenset()
 
     @staticmethod
     def _nodes(
         tx: neo4j.Session,
-        name: str,
+        names: t.Iterable[str],
         pos: t.Optional[str],
         lang: str,
     ) -> t.FrozenSet[ConceptnetNode]:
         # We follow all available 'FormOf' relations to simplify path construction
-        if config["conceptnet"]["node"]["root_form"]:
-            return frozenset(
-                Database._nodes_along_paths(tx, name, pos, lang, ["FormOf"])
-            )
+        found_nodes = set()
 
-        elif node := Database._node(tx, name, pos, lang):
-            return frozenset([node])
+        for name in names:
+            if config["conceptnet"]["node"]["follow_form_of"]:
+                found_nodes.update(
+                    Database._nodes_along_paths(tx, name, pos, lang, ["FormOf"])
+                )
 
-        return frozenset()
+            elif node := Database._node(tx, name, pos, lang):
+                found_nodes.add(node)
+
+        return frozenset(found_nodes)
 
     @staticmethod
     def _node(
@@ -219,8 +221,6 @@ class Database:
 
         return {}
 
-    # Currently, this function might return the same node that was given as input.
-    # To resolve this, we would need to fork the function _nodes_along_paths.
     @staticmethod
     def _hypernym_distances(
         tx: neo4j.Session,
@@ -332,7 +332,10 @@ class Database:
     # METRICS
 
     def metrics(
-        self, nodes1: t.Iterable[ConceptnetNode], nodes2: t.Iterable[ConceptnetNode], active: t.Callable[[str], bool]
+        self,
+        nodes1: t.Iterable[ConceptnetNode],
+        nodes2: t.Iterable[ConceptnetNode],
+        active: t.Callable[[str], bool],
     ) -> t.Dict[str, t.Optional[float]]:
         max_relations = config["nlp"]["max_distance"]
         relation_types = ["RelatedTo"]

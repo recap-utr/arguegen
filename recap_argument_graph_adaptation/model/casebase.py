@@ -48,15 +48,17 @@ class ArgumentNode(ag.Node):
         return hash(self.key)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class Concept:
     name: str
-    vector: spacy.Vector
+    vector: spacy.Vector = field(compare=False, repr=False)
     forms: t.FrozenSet[str]
     pos: t.Optional[POS]
     inodes: t.FrozenSet[ArgumentNode]
-    nodes: t.FrozenSet[graph.AbstractNode]
-    metrics: t.Dict[str, t.Optional[float]] = field(default_factory=empty_metrics)
+    nodes: t.FrozenSet[graph.AbstractNode] = field(compare=False)
+    metrics: t.Dict[str, t.Optional[float]] = field(
+        default_factory=empty_metrics, compare=False, repr=False
+    )
 
     def __str__(self):
         code = self.code
@@ -65,17 +67,6 @@ class Concept:
             code += f"/{set(inode.key for inode in self.inodes)}"
 
         return code
-
-    def __eq__(self, other: Concept) -> bool:
-        return (
-            self.name == other.name
-            and self.pos == other.pos
-            and self.forms == other.forms
-            and self.inodes == other.inodes
-        )
-
-    def __hash__(self) -> int:
-        return hash((self.name, self.pos, self.forms, self.inodes))
 
     def part_eq(self, other: Concept) -> bool:
         return self.pos == other.pos and self.inodes == other.inodes
@@ -163,22 +154,16 @@ class Rule:
         return f"({self.source})->({self.target})"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class UserQuery:
     text: str
-    vector: spacy.Vector
+    vector: spacy.Vector = field(repr=False, compare=False)
 
     def __str__(self) -> str:
         return self.text
 
-    def __eq__(self, other: UserQuery) -> bool:
-        return self.text == other.text
 
-    def __hash__(self) -> int:
-        return hash(self.text)
-
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=True)
 class Case:
     relative_path: Path
     user_query: UserQuery

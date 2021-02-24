@@ -77,28 +77,29 @@ def concepts(
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
-                name = hypernym.processed_name
-                pos = hypernym.pos
-                vector = spacy.vector(name)
-                nodes = frozenset([hypernym])
+                for lemma in hypernym.lemmas:
+                    name = graph.process_name(lemma)
+                    pos = hypernym.pos
+                    vector = spacy.vector(name)
+                    nodes = frozenset([hypernym])
 
-                candidate = casebase.Concept(
-                    name,
-                    vector,
-                    frozenset([name]),
-                    query.pos(pos),
-                    original_concept.inodes,
-                    nodes,
-                    query.concept_metrics(
-                        related_concepts,
-                        user_query,
-                        nodes,
+                    candidate = casebase.Concept(
+                        name,
                         vector,
-                        hypernym_level=hyp_distance,
-                    ),
-                )
+                        frozenset([name]),
+                        query.pos(pos),
+                        original_concept.inodes,
+                        nodes,
+                        query.concept_metrics(
+                            related_concepts,
+                            user_query,
+                            nodes,
+                            vector,
+                            hypernym_level=hyp_distance,
+                        ),
+                    )
 
-                adaptation_candidates.add(candidate)
+                    adaptation_candidates.add(candidate)
 
         all_candidates[original_concept] = adaptation_candidates
         adapted_concept = _filter_concepts(
@@ -147,39 +148,43 @@ def paths(
 
         for result in adaptation_results:
             hyp_distance = len(result)
-            name = result.end_node.processed_name
-            vector = spacy.vector(name)
-            end_nodes = frozenset([result.end_node])
-            pos = query.pos(result.end_node.pos)
-            related_concepts = {}
 
-            for rule in rules:
-                related_concepts.update(
-                    {
-                        rule.target: related_concept_weight["rule_target"] / len(rules),
-                        rule.source: related_concept_weight["rule_source"] / len(rules),
-                        original_concept: related_concept_weight["original_concept"]
-                        / len(rules),
-                    }
+            for lemma in result.end_node.lemmas:
+                name = graph.process_name(lemma)
+                vector = spacy.vector(name)
+                end_nodes = frozenset([result.end_node])
+                pos = query.pos(result.end_node.pos)
+                related_concepts = {}
+
+                for rule in rules:
+                    related_concepts.update(
+                        {
+                            rule.target: related_concept_weight["rule_target"]
+                            / len(rules),
+                            rule.source: related_concept_weight["rule_source"]
+                            / len(rules),
+                            original_concept: related_concept_weight["original_concept"]
+                            / len(rules),
+                        }
+                    )
+
+                candidate = casebase.Concept(
+                    name,
+                    vector,
+                    frozenset([name]),
+                    pos,
+                    original_concept.inodes,
+                    end_nodes,
+                    query.concept_metrics(
+                        related_concepts,
+                        user_query,
+                        end_nodes,
+                        vector,
+                        hypernym_level=hyp_distance,
+                    ),
                 )
 
-            candidate = casebase.Concept(
-                name,
-                vector,
-                frozenset([name]),
-                pos,
-                original_concept.inodes,
-                end_nodes,
-                query.concept_metrics(
-                    related_concepts,
-                    user_query,
-                    end_nodes,
-                    vector,
-                    hypernym_level=hyp_distance,
-                ),
-            )
-
-            _adaptation_candidates[str(candidate)].append(candidate)
+                _adaptation_candidates[str(candidate)].append(candidate)
 
         adaptation_candidates = set()
         candidate_occurences = {}
@@ -249,8 +254,8 @@ def _bfs_adaptation(
                             graph.AbstractPath.merge(current_path, path_extension)
                         )
 
-                # We still want these shorter paths, they can be filtered later
-                # TODO: Maybe we should add shorter paths.
+                # Shorter paths are removed.
+                # In case you want these, uncomment the following lines.
                 # else:
                 #     adapted_paths.add(current_path)
 
@@ -317,15 +322,15 @@ def _filter_paths(
     end_index = start_index + 1
 
     val_reference = _aggregate_features(
-        spacy.vector(reference_path.nodes[start_index].processed_name),
-        spacy.vector(reference_path.nodes[end_index].processed_name),
+        spacy.vector(graph.process_name(reference_path.nodes[start_index].name)),
+        spacy.vector(graph.process_name(reference_path.nodes[end_index].name)),
         selector,
     )
 
     for candidate in path_extensions:
         val_adapted = _aggregate_features(
-            spacy.vector(current_path.end_node.processed_name),
-            spacy.vector(candidate.end_node.processed_name),
+            spacy.vector(graph.process_name(current_path.end_node.name)),
+            spacy.vector(graph.process_name(candidate.end_node.name)),
             selector,
         )
         candidate_values[candidate] = _compare_features(
