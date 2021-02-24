@@ -77,8 +77,7 @@ def concepts(
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
-                for lemma in hypernym.lemmas:
-                    name = graph.process_name(lemma)
+                for name in hypernym.processed_names:
                     pos = hypernym.pos
                     vector = spacy.vector(name)
                     nodes = frozenset([hypernym])
@@ -149,8 +148,7 @@ def paths(
         for result in adaptation_results:
             hyp_distance = len(result)
 
-            for lemma in result.end_node.lemmas:
-                name = graph.process_name(lemma)
+            for name in result.end_node.processed_names:
                 vector = spacy.vector(name)
                 end_nodes = frozenset([result.end_node])
                 pos = query.pos(result.end_node.pos)
@@ -237,7 +235,7 @@ def _bfs_adaptation(
             next_paths = set()
 
             for current_path in current_paths:
-                path_extensions = query.hypernyms_as_paths(
+                path_extensions = query.direct_hypernyms(
                     current_path.end_node,
                     concept.inode_vectors,
                     config.tuning("adaptation", "min_synset_similarity"),

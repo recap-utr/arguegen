@@ -269,7 +269,7 @@ def _filter_nodes(
 
 # This function does not use the function _filter_nodes
 # Currently only used for determining all shortest paths.
-def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
+def inherited_hypernyms(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     hyp_paths = []
 
     for hyp_path in node.to_nltk().hypernym_paths():
@@ -286,7 +286,7 @@ def hypernym_paths(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
     return frozenset(hyp_paths)
 
 
-def hypernyms_as_paths(
+def direct_hypernyms(
     node: WordnetNode,
     comparison_vectors: t.Iterable[spacy.Vector],
     min_similarity: float,
@@ -302,7 +302,7 @@ def all_shortest_paths(
     all_paths = []
 
     for start_node, end_node in itertools.product(start_nodes, end_nodes):
-        path_candidates = hypernym_paths(start_node)
+        path_candidates = inherited_hypernyms(start_node)
 
         for path_candidate in path_candidates:
             if end_node in path_candidate.nodes:

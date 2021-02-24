@@ -149,10 +149,10 @@ class Database:
                         if end_node.pos != pos and (
                             best_node := Database._node(tx, end_node.name, pos, lang)
                         ):
-                            nodes[end_node].append(len(found_path.relationships))
+                            nodes[best_node].append(len(found_path.relationships))
 
                         if not only_end_nodes:
-                            for i, found_node in enumerate(found_path.nodes):
+                            for i, found_node in enumerate(found_path.nodes[:-1]):
                                 nodes[found_node].append(i)
 
         return {node: min(indices) for node, indices in nodes.items()}
@@ -239,7 +239,7 @@ class Database:
             only_longest_path=False,
         )
 
-    def hypernyms_as_paths(
+    def direct_hypernyms(
         self,
         node: ConceptnetNode,
     ) -> t.FrozenSet[ConceptnetPath]:
@@ -248,7 +248,7 @@ class Database:
         if self.active:
             with self._driver.session() as session:
                 return session.read_transaction(
-                    self._hypernyms_as_paths, node, relation_types, self.lang
+                    self._direct_hypernyms, node, relation_types, self.lang
                 )
 
         return frozenset()
@@ -256,7 +256,7 @@ class Database:
     # Currently, only the first node that returns a result is queried.
     # Could be updated if results are not satisfactory.
     @staticmethod
-    def _hypernyms_as_paths(
+    def _direct_hypernyms(
         tx: neo4j.Session,
         node: ConceptnetNode,
         relation_types: t.Collection[str],

@@ -128,18 +128,18 @@ def concept_metrics(
     return aggregated_metrics
 
 
-def hypernyms_as_paths(
+def direct_hypernyms(
     node: graph.AbstractNode,
     comparison_vectors: t.Iterable[spacy.Vector],
     min_similarity: float,
 ) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
-        return conceptnet.Database().hypernyms_as_paths(
+        return conceptnet.Database().direct_hypernyms(
             t.cast(conceptnet.ConceptnetNode, node)
         )
 
     elif kg_wn:
-        return wordnet.hypernyms_as_paths(
+        return wordnet.direct_hypernyms(
             t.cast(wordnet.WordnetNode, node), comparison_vectors, min_similarity
         )
 
@@ -150,12 +150,18 @@ def hypernym_distances(
     node: graph.AbstractNode,
 ) -> t.Dict[graph.AbstractNode, int]:
     if kg_cn:
-        return conceptnet.Database().hypernym_distances(
-            t.cast(conceptnet.ConceptnetNode, node)
+        return t.cast(
+            t.Dict[graph.AbstractNode, int],
+            conceptnet.Database().hypernym_distances(
+                t.cast(conceptnet.ConceptnetNode, node)
+            ),
         )
 
     elif kg_wn:
-        return t.cast(wordnet.WordnetNode, node).hypernym_distances()
+        return t.cast(
+            t.Dict[graph.AbstractNode, int],
+            t.cast(wordnet.WordnetNode, node).hypernym_distances(),
+        )
 
     raise kg_err
 

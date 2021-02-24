@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Add LaTeX tabular export option.
+# TODO: The current version does not use lemmas efficiently.
+# All lemmas of a synset share the definition/examples.
+# Selecting the correct lemma should be a separate step.
 
 
 def _init_child_process(lock_):

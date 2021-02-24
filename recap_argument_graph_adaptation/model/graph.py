@@ -5,6 +5,9 @@ import typing as t
 from dataclasses import dataclass
 
 from recap_argument_graph_adaptation.model import spacy
+from recap_argument_graph_adaptation.model.config import Config
+
+config = Config.instance()
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,13 @@ class AbstractNode(abc.ABC):
         self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
     ) -> t.Dict[AbstractNode, int]:
         pass
+
+    @property
+    def processed_names(self) -> t.Tuple[str]:
+        if config.tuning("node", "processed_names") == "lemmas":
+            return tuple(process_name(lemma) for lemma in self.lemmas)
+        else:
+            return (process_name(self.name),)
 
 
 def process_name(name: str):
