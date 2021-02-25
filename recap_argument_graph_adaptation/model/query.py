@@ -55,10 +55,17 @@ def concept_metrics(
     vector: spacy.Vector,
     weight: t.Optional[float] = None,
     hypernym_level: t.Optional[int] = None,
+    hypernym_proximity: t.Optional[float] = None,
     major_claim_distance: t.Optional[int] = None,
+    major_claim_proximity: t.Optional[float] = None,
 ) -> t.Dict[str, t.Optional[float]]:
     if isinstance(related_concepts, casebase.Concept):
         related_concepts = {related_concepts: 1.0}
+
+    if not (hypernym_level is None or hypernym_proximity is None) or not (
+        major_claim_distance is None or major_claim_proximity is None
+    ):
+        raise RuntimeError("Invalid combination of metric parameters")
 
     active_metrics = config.tuning("score").keys()
     active = lambda x: x in active_metrics
@@ -83,8 +90,9 @@ def concept_metrics(
             "keyword_weight": weight,
             "nodes_semantic_similarity": None,
             "concept_semantic_similarity": concept_semantic_similarity,
-            "hypernym_proximity": _dist2sim(hypernym_level),
-            "major_claim_proximity": _dist2sim(major_claim_distance),
+            "hypernym_proximity": hypernym_proximity or _dist2sim(hypernym_level),
+            "major_claim_proximity": major_claim_proximity
+            or _dist2sim(major_claim_distance),
             "nodes_path_similarity": None,
             "nodes_wup_similarity": None,
             "query_nodes_semantic_similarity": None,

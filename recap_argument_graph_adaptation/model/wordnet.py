@@ -57,7 +57,7 @@ class WordnetNode(graph.AbstractNode):
                 uri=code,
                 definition=s.definition() or "",
                 examples=tuple(s.examples()) or tuple(),
-                lemmas=tuple(lemma.name() for lemma in s.lemmas()),
+                _lemmas=frozenset(lemma.name() for lemma in s.lemmas()),
             )
 
         raise RuntimeError("The synset does not have a name!")

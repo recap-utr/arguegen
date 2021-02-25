@@ -109,12 +109,12 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         )
 
     graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode)
-    rules = _parse_rules(rules_path, graph)
-    query = _parse_query(query_path)
+    user_query = _parse_query(query_path)
+    rules = _parse_rules(rules_path, graph, user_query)
 
     return casebase.Case(
         path.relative_to(root_path),
-        query,
+        user_query,
         graph,
         rules,
     )
@@ -127,15 +127,17 @@ def _parse_query(path: Path) -> casebase.UserQuery:
     return casebase.UserQuery(text, spacy.vector(text))
 
 
-def _parse_rules(path: Path, graph: ag.Graph) -> t.Tuple[casebase.Rule]:
+def _parse_rules(
+    path: Path, graph: ag.Graph, user_query: casebase.UserQuery
+) -> t.Tuple[casebase.Rule]:
     rules = []
 
     with path.open() as file:
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            source = _parse_rule_concept(row[0], graph, path, None)
-            target = _parse_rule_concept(row[1], graph, path, source.inodes)
+            source = _parse_rule_concept(row[0], graph, user_query, path, None)
+            target = _parse_rule_concept(row[1], graph, user_query, path, source.inodes)
             rule = _postprocess_rule(source, target, path)
 
             rules.append(rule)
@@ -190,6 +192,7 @@ def _postprocess_rule(
 def _parse_rule_concept(
     rule: str,
     graph: ag.Graph,
+    user_query: casebase.UserQuery,
     path: Path,
     inodes: t.Optional[t.FrozenSet[casebase.ArgumentNode]],
 ) -> casebase.Concept:
@@ -250,5 +253,7 @@ def _parse_rule_concept(
         pos,
         inodes,
         nodes,
+        {},
+        user_query,
         {key: 1.0 for key in casebase.metric_keys},
     )

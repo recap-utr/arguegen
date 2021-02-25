@@ -56,6 +56,8 @@ class Concept:
     pos: t.Optional[POS]
     inodes: t.FrozenSet[ArgumentNode]
     nodes: t.FrozenSet[graph.AbstractNode] = field(compare=False)
+    related_concepts: t.Mapping[Concept, float] = field(compare=False)
+    user_query: UserQuery = field(compare=False)
     metrics: t.Dict[str, t.Optional[float]] = field(
         default_factory=empty_metrics, compare=False, repr=False
     )
@@ -110,15 +112,22 @@ class Concept:
         pos=None,
         inodes=None,
         nodes=None,
+        related_concepts=None,
+        user_query=None,
         metrics=None,
     ) -> Concept:
+        if vector is None:
+            vector = source.vector
+
         return cls(
             name or source.name,
-            vector or source.vector,
+            vector,
             forms or source.forms,
             pos or source.pos,
             inodes or source.inodes,
             nodes or source.nodes,
+            related_concepts or source.related_concepts,
+            user_query or source.user_query,
             metrics or source.metrics,
         )
 

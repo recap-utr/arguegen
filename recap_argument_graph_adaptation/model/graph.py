@@ -13,9 +13,13 @@ config = Config.instance()
 @dataclass(frozen=True)
 class AbstractNode(abc.ABC):
     name: str
-    lemmas: t.Tuple[str]
+    _lemmas: t.FrozenSet[str]
     pos: t.Optional[str]
     uri: str
+
+    @property
+    def lemmas(self) -> t.FrozenSet[str]:
+        return self._lemmas or frozenset([self.name])
 
     def __str__(self):
         if self.pos:
@@ -36,14 +40,15 @@ class AbstractNode(abc.ABC):
         pass
 
     @property
-    def processed_names(self) -> t.Tuple[str]:
-        if config.tuning("node", "processed_names") == "lemmas":
-            return tuple(process_name(lemma) for lemma in self.lemmas)
-        else:
-            return (process_name(self.name),)
+    def processed_name(self) -> str:
+        return process_name(self.name)
+
+    @property
+    def processed_lemmas(self) -> t.FrozenSet[str]:
+        return frozenset(process_name(lemma) for lemma in self.lemmas)
 
 
-def process_name(name: str):
+def process_name(name: str) -> str:
     return name.replace("_", " ").lower()
 
 

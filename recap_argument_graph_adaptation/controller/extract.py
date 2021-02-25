@@ -76,6 +76,8 @@ def keywords(
                 kw_pos,
                 frozenset(inodes),
                 kg_nodes,
+                related_concepts,
+                user_query,
                 query.concept_metrics(
                     related_concepts,
                     user_query,

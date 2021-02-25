@@ -77,37 +77,40 @@ def concepts(
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
-                for name in hypernym.processed_names:
-                    pos = hypernym.pos
-                    vector = spacy.vector(name)
-                    nodes = frozenset([hypernym])
+                name = hypernym.processed_name
+                pos = hypernym.pos
+                vector = spacy.vector(name)
+                nodes = frozenset([hypernym])
 
-                    candidate = casebase.Concept(
-                        name,
-                        vector,
-                        frozenset([name]),
-                        query.pos(pos),
-                        original_concept.inodes,
+                candidate = casebase.Concept(
+                    name,
+                    vector,
+                    frozenset([name]),
+                    query.pos(pos),
+                    original_concept.inodes,
+                    nodes,
+                    related_concepts,
+                    user_query,
+                    query.concept_metrics(
+                        related_concepts,
+                        user_query,
                         nodes,
-                        query.concept_metrics(
-                            related_concepts,
-                            user_query,
-                            nodes,
-                            vector,
-                            hypernym_level=hyp_distance,
-                        ),
-                    )
+                        vector,
+                        hypernym_level=hyp_distance,
+                    ),
+                )
 
-                    adaptation_candidates.add(candidate)
+                adaptation_candidates.add(candidate)
 
         all_candidates[original_concept] = adaptation_candidates
         adapted_concept = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
+        adapted_lemma = _filter_lemmas(adapted_concept)
 
-        if adapted_concept:
-            adapted_concepts[original_concept] = adapted_concept
-            log.debug(f"Adapt ({original_concept})->({adapted_concept}).")
+        if adapted_lemma:
+            adapted_concepts[original_concept] = adapted_lemma
+            log.debug(f"Adapt ({original_concept})->({adapted_lemma}).")
 
         else:
             log.debug(f"No adaptation for ({original_concept}).")
@@ -147,42 +150,41 @@ def paths(
 
         for result in adaptation_results:
             hyp_distance = len(result)
+            name = result.end_node.processed_name
+            vector = spacy.vector(name)
+            end_nodes = frozenset([result.end_node])
+            pos = query.pos(result.end_node.pos)
+            related_concepts = {}
 
-            for name in result.end_node.processed_names:
-                vector = spacy.vector(name)
-                end_nodes = frozenset([result.end_node])
-                pos = query.pos(result.end_node.pos)
-                related_concepts = {}
-
-                for rule in rules:
-                    related_concepts.update(
-                        {
-                            rule.target: related_concept_weight["rule_target"]
-                            / len(rules),
-                            rule.source: related_concept_weight["rule_source"]
-                            / len(rules),
-                            original_concept: related_concept_weight["original_concept"]
-                            / len(rules),
-                        }
-                    )
-
-                candidate = casebase.Concept(
-                    name,
-                    vector,
-                    frozenset([name]),
-                    pos,
-                    original_concept.inodes,
-                    end_nodes,
-                    query.concept_metrics(
-                        related_concepts,
-                        user_query,
-                        end_nodes,
-                        vector,
-                        hypernym_level=hyp_distance,
-                    ),
+            for rule in rules:
+                related_concepts.update(
+                    {
+                        rule.target: related_concept_weight["rule_target"] / len(rules),
+                        rule.source: related_concept_weight["rule_source"] / len(rules),
+                        original_concept: related_concept_weight["original_concept"]
+                        / len(rules),
+                    }
                 )
 
-                _adaptation_candidates[str(candidate)].append(candidate)
+            candidate = casebase.Concept(
+                name,
+                vector,
+                frozenset([name]),
+                pos,
+                original_concept.inodes,
+                end_nodes,
+                related_concepts,
+                user_query,
+                query.concept_metrics(
+                    related_concepts,
+                    user_query,
+                    end_nodes,
+                    vector,
+                    hypernym_level=hyp_distance,
+                ),
+            )
+
+            _adaptation_candidates[str(candidate)].append(candidate)
 
         adaptation_candidates = set()
         candidate_occurences = {}
@@ -206,6 +208,7 @@ def paths(
             candidate_occurences,
             candidate_length_diff,
         )
+        adapted_lemma = _filter_lemmas(adapted_concept)
 
         if adapted_concept:
             adapted_concepts[original_concept] = adapted_concept
@@ -306,6 +309,56 @@ def _filter_concepts(
         return sorted_concepts[0]
 
     return None
+
+
+def _filter_lemmas(
+    adapted_concept: t.Optional[casebase.Concept],
+) -> t.Optional[casebase.Concept]:
+    if adapted_concept is None:
+        return None
+
+    lemmas = defaultdict(list)
+
+    for node in adapted_concept.nodes:
+        for lemma in node.processed_lemmas:
+            lemmas[lemma].append(node)
+
+    if len(lemmas) == 0:
+        return adapted_concept
+
+    lemma_vectors = spacy.vectors(lemmas.keys())
+    lemma_sim = []
+    total_rel_weight = sum(adapted_concept.related_concepts.values())
+
+    for (lemma, nodes), vector in zip(lemmas.items(), lemma_vectors):
+        lemma_sim.append(
+            (
+                lemma,
+                vector,
+                nodes,
+                sum(
+                    spacy.similarity(rel_concept.vector, vector) * rel_weight
+                    for rel_concept, rel_weight in adapted_concept.related_concepts.items()
+                )
+                / total_rel_weight,
+            )
+        )
+
+    lemma_sim.sort(key=lambda x: x[3], reverse=True)
+    best_lemma = lemma_sim[0]
+
+    return casebase.Concept.from_concept(
+        adapted_concept,
+        name=best_lemma[0],
+        vector=best_lemma[1],
+        metrics=query.concept_metrics(
+            adapted_concept.related_concepts,
+            adapted_concept.user_query,
+            best_lemma[2],
+            best_lemma[1],
+            hypernym_proximity=adapted_concept.metrics["hypernym_proximity"],
+        ),
+    )
 
 
 def _filter_paths(
