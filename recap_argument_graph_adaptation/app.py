@@ -8,9 +8,16 @@ import pendulum
 import requests
 import typer
 
-from .controller import adapt, convert, evaluate, export, extract, load
-from .model import casebase, spacy, wordnet
-from .model.config import Config
+from recap_argument_graph_adaptation.controller import (
+    adapt,
+    convert,
+    evaluate,
+    export,
+    extract,
+    load,
+)
+from recap_argument_graph_adaptation.model import casebase, spacy, wordnet
+from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
 

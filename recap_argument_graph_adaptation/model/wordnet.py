@@ -320,7 +320,6 @@ def concept_synsets(
     comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
-    # https://github.com/nltk/nltk/blob/develop/nltk/wsd.py
     synsets = set()
 
     for name in names:

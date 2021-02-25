@@ -104,15 +104,20 @@ class Concept:
     def from_concept(
         cls,
         source: Concept,
-        nodes: t.Optional[t.FrozenSet[graph.AbstractNode]] = None,
-        metrics: t.Optional[t.Dict[str, t.Optional[float]]] = None,
+        name=None,
+        vector=None,
+        forms=None,
+        pos=None,
+        inodes=None,
+        nodes=None,
+        metrics=None,
     ) -> Concept:
         return cls(
-            source.name,
-            source.vector,
-            source.forms,
-            source.pos,
-            source.inodes,
+            name or source.name,
+            vector or source.vector,
+            forms or source.forms,
+            pos or source.pos,
+            inodes or source.inodes,
             nodes or source.nodes,
             metrics or source.metrics,
         )
