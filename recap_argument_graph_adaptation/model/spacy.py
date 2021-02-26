@@ -168,6 +168,9 @@ class Keyword:
 
 
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:
+    if not config.tuning("extraction", "keywords_per_adu"):
+        texts = [" ".join(texts)]
+
     weights_map = defaultdict(list)
     response = session.post(
         _url("keywords"),
@@ -178,10 +181,9 @@ def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keywor
     )
     _check_response(response)
 
-    for doc in response.json():
-        for raw_keyword in doc:
-            keyword = TemporaryKeyword.from_dict(raw_keyword)
-            weights_map[keyword].append(raw_keyword["weight"])
+    for raw_keyword in response.json():
+        keyword = TemporaryKeyword.from_dict(raw_keyword)
+        weights_map[keyword].append(raw_keyword["weight"])
 
     candidates = [
         Keyword.from_tmp(k, statistics.mean(weights))

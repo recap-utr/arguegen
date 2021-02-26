@@ -374,7 +374,7 @@ def query_nodes_similarity(
     synsets: t.Iterable[WordnetNode], query: casebase.UserQuery
 ) -> t.Optional[float]:
     similarities = []
-    synset_vectors = itertools.chain(*_nodes_vectors(synsets))
+    synset_vectors = itertools.chain.from_iterable(_nodes_vectors(synsets))
 
     for synset_vector in synset_vectors:
         similarities.append(spacy.similarity(synset_vector, query.vector))

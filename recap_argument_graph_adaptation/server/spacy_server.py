@@ -58,7 +58,7 @@ class FuzzyModel:
         return doc
 
     def vectors(self, obj):
-        return list(itertools.chain(t.vector for t in obj))
+        return list(itertools.chain(t.vector for t in obj))  # TODO: Check if correct
 
 
 if config["nlp"]["embeddings"] == "sbert":
@@ -196,8 +196,8 @@ def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
     return None
 
 
-@app.post("/keywords", response_model=t.Tuple[t.Tuple[KeywordResponse, ...], ...])
-def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]:
+@app.post("/keywords", response_model=t.Tuple[KeywordResponse, ...])
+def keywords(query: KeywordQuery) -> t.Tuple[KeywordResponse, ...]:
     unknown_texts = []
 
     for text in query.texts:
@@ -239,7 +239,9 @@ def keywords(query: KeywordQuery) -> t.Tuple[t.Tuple[KeywordResponse, ...], ...]
                 doc_keywords
             )  # tuple(dict.fromkeys(doc_keywords))
 
-    return tuple(_keyword_cache[text] for text in query.texts)
+    return tuple(
+        itertools.chain.from_iterable(_keyword_cache[text] for text in query.texts)
+    )
 
 
 @app.get("/")

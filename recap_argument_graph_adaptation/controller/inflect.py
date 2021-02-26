@@ -25,13 +25,15 @@ def _inflect(text: str, pos: str) -> t.Tuple[str, t.FrozenSet[str]]:
     lemma_prefix = " ".join(lemma_prefixes)
 
     inflections = frozenset(
-        itertools.chain(*lemminflect.getAllInflections(lemma_suffix, pos).values())
+        itertools.chain.from_iterable(
+            lemminflect.getAllInflections(lemma_suffix, pos).values()
+        )
     )
 
     if not inflections:
         inflections = frozenset(
-            itertools.chain(
-                *lemminflect.getAllInflectionsOOV(lemma_suffix, pos).values()
+            itertools.chain.from_iterable(
+                lemminflect.getAllInflectionsOOV(lemma_suffix, pos).values()
             )
         )
 

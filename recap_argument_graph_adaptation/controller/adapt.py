@@ -134,7 +134,7 @@ def paths(
 
     for original_concept, all_shortest_paths in reference_paths.items():
         start_nodes = (
-            itertools.chain(*[rule.target.nodes for rule in rules])
+            itertools.chain.from_iterable(rule.target.nodes for rule in rules)
             if config.tuning("bfs", "method") == "within"
             else original_concept.nodes
         )
@@ -144,7 +144,7 @@ def paths(
             for shortest_path in all_shortest_paths
         ]
 
-        adaptation_results = list(itertools.chain(*adaptation_results))
+        adaptation_results = list(itertools.chain.from_iterable(adaptation_results))
         adapted_paths[original_concept] = adaptation_results
         _adaptation_candidates = defaultdict(list)
 

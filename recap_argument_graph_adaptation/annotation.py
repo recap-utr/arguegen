@@ -35,22 +35,20 @@ def hypernyms():
             for wn_pos in wn_pos_tags:
                 synsets.extend(wn.synsets(concept, wn_pos))
 
-            hypernyms = itertools.chain(
-                *[
-                    hyp.lemmas()
-                    for synset in synsets
-                    for hyp, _ in synset.hypernym_distances()
-                    if not hyp.name().startswith(concept)
-                    and hyp.name()
-                    not in [
-                        "entity.n.01",
-                        "artifact.n.01",
-                        "causal_agent.n.01",
-                        "living_thing.n.01",
-                        "object.n.01",
-                        "physical_entity.n.01",
-                        "psychological_feature.n.01",
-                    ]
+            hypernyms = itertools.chain.from_iterable(
+                hyp.lemmas()
+                for synset in synsets
+                for hyp, _ in synset.hypernym_distances()
+                if not hyp.name().startswith(concept)
+                and hyp.name()
+                not in [
+                    "entity.n.01",
+                    "artifact.n.01",
+                    "causal_agent.n.01",
+                    "living_thing.n.01",
+                    "object.n.01",
+                    "physical_entity.n.01",
+                    "psychological_feature.n.01",
                 ]
             )
             lemmas = sorted(

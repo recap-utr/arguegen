@@ -163,14 +163,12 @@ def _postprocess_rule(
 
     if len(paths) == 0:
         synsets = [wn.synset(node.uri) for node in source.nodes]
-        hypernyms = itertools.chain(
-            *[
-                hyp.lemmas()
-                for synset in synsets
-                for hyp, _ in synset.hypernym_distances()
-                if not hyp.name().startswith(source.name)
-                and hyp.name() not in config["wordnet"]["hypernym_filter"]
-            ]
+        hypernyms = itertools.chain.from_iterable(
+            hyp.lemmas()
+            for synset in synsets
+            for hyp, _ in synset.hypernym_distances()
+            if not hyp.name().startswith(source.name)
+            and hyp.name() not in config["wordnet"]["hypernym_filter"]
         )
         lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
 
