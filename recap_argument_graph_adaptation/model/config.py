@@ -78,45 +78,30 @@ class Config(collections.MutableMapping):
         name: t.Optional[str] = None,
         postfix_overwrite: t.Optional[str] = None,
     ) -> t.Any:
-        # return filter_mapping(self._store["_tuning"], prefix, name)
-        if prefix:
-            prefix_store = self._store["_tuning"][prefix]
-
-            if name and postfix_overwrite:
-                if result := prefix_store.get(f"{name}_{postfix_overwrite}"):
-                    return result
-
-            if name:
-                return prefix_store[name]
-
-            return prefix_store
-
-        return self._store["_tuning"]
-
-    def set_tuning(self, params: t.Mapping[str, t.Any]) -> None:
-        self._store["_tuning"] = collections.defaultdict(collections.defaultdict)
-
-        for key, value in params.items():
-            head, tail = key.split("_", maxsplit=1)
-
-            self._store["_tuning"][head][tail] = value
+        return filter_mapping(self._store["_tuning"], prefix, name, postfix_overwrite)
 
 
 def filter_mapping(
     mapping: t.Mapping[str, t.Any],
-    prefix: t.Optional[str] = None,
-    name: t.Optional[str] = None,
+    prefix: t.Optional[str],
+    name: t.Optional[str],
+    postfix_overwrite: t.Optional[str],
 ) -> t.Any:
     if prefix:
-        prefix = f"{prefix}_"
+        if (
+            name
+            and postfix_overwrite
+            and (result := mapping.get("_".join([prefix, name, postfix_overwrite])))
+        ):
+            return result
 
         if name:
-            return mapping[prefix + name]
+            return mapping["_".join([prefix, name])]
 
         return {
-            key[len(prefix) :]: value
+            key[len(prefix) + 1 :]: value
             for key, value in mapping.items()
-            if key.startswith(prefix)
+            if key.startswith(f"{prefix}_")
         }
 
     return mapping

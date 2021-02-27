@@ -8,9 +8,14 @@ import pendulum
 import requests
 import typer
 
-from recap_argument_graph_adaptation.controller import (adapt, convert,
-                                                        evaluate, export,
-                                                        extract, load)
+from recap_argument_graph_adaptation.controller import (
+    adapt,
+    convert,
+    evaluate,
+    export,
+    extract,
+    load,
+)
 from recap_argument_graph_adaptation.model import casebase, spacy, wordnet
 from recap_argument_graph_adaptation.model.config import Config
 
@@ -83,7 +88,7 @@ def run():
 def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluation]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
-    config.set_tuning(args.params)
+    config["_tuning"] = args.params
     spacy.session = requests.Session()
     case = args.case
 

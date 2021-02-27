@@ -290,7 +290,7 @@ def _filter_concepts(
     filtered_concepts = {c for c in concepts if c not in filter_expr}
     filtered_concepts = casebase.filter_concepts(
         filtered_concepts,
-        config.tuning("threshold", "min_concept_score", "adaptation"),
+        config.tuning("threshold", "concept_score", "adaptation"),
         topn=None,
     )
 
