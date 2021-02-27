@@ -15,15 +15,17 @@ log = logging.getLogger(__name__)
 config = Config.instance()
 
 metric_keys = {
-    "keyword_weight",
-    "nodes_semantic_similarity",
+    "adus_semantic_similarity",
     "concept_semantic_similarity",
     "hypernym_proximity",
+    "keyword_weight",
     "major_claim_proximity",
     "nodes_path_similarity",
+    "nodes_semantic_similarity",
     "nodes_wup_similarity",
-    "query_nodes_semantic_similarity",
+    "query_adus_semantic_similarity",
     "query_concept_semantic_similarity",
+    "query_nodes_semantic_similarity",
 }
 empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
     key: None for key in metric_keys

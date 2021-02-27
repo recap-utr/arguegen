@@ -1,3 +1,5 @@
+import itertools
+import statistics
 import typing as t
 
 from recap_argument_graph_adaptation.model import (
@@ -51,6 +53,7 @@ def concept_nodes(
 def concept_metrics(
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
     user_query: casebase.UserQuery,
+    inodes: t.Iterable[casebase.ArgumentNode],
     nodes: t.Iterable[graph.AbstractNode],
     vector: spacy.Vector,
     weight: t.Optional[float] = None,
@@ -85,18 +88,35 @@ def concept_metrics(
             if active("query_concept_semantic_similarity")
             else None
         )
+        adus_semantic_similarity = (
+            statistics.mean(
+                spacy.similarity(inode2.vector, inode1.vector)
+                for inode1, inode2 in itertools.product(related_concept.inodes, inodes)
+            )
+            if active("adus_semantic_similarity")
+            else None
+        )
+        query_adus_semantic_similarity = (
+            statistics.mean(
+                spacy.similarity(user_query.vector, inode.vector) for inode in inodes
+            )
+            if active("query_adus_semantic_similarity")
+            else None
+        )
 
         metrics = {
-            "keyword_weight": weight,
-            "nodes_semantic_similarity": None,
+            "adus_semantic_similarity": adus_semantic_similarity,
             "concept_semantic_similarity": concept_semantic_similarity,
             "hypernym_proximity": hypernym_proximity or _dist2sim(hypernym_level),
+            "keyword_weight": weight,
             "major_claim_proximity": major_claim_proximity
             or _dist2sim(major_claim_distance),
             "nodes_path_similarity": None,
+            "nodes_semantic_similarity": None,
             "nodes_wup_similarity": None,
-            "query_nodes_semantic_similarity": None,
+            "query_adus_semantic_similarity": query_adus_semantic_similarity,
             "query_concept_semantic_similarity": query_concept_semantic_similarity,
+            "query_nodes_semantic_similarity": None,
         }
 
         assert metrics.keys() == casebase.metric_keys

@@ -94,6 +94,7 @@ def concepts(
                     query.concept_metrics(
                         related_concepts,
                         user_query,
+                        original_concept.inodes,
                         nodes,
                         vector,
                         hypernym_level=hyp_distance,
@@ -178,6 +179,7 @@ def paths(
                 query.concept_metrics(
                     related_concepts,
                     user_query,
+                    original_concept.inodes,
                     end_nodes,
                     vector,
                     hypernym_level=hyp_distance,
@@ -354,6 +356,7 @@ def _filter_lemmas(
         metrics=query.concept_metrics(
             adapted_concept.related_concepts,
             adapted_concept.user_query,
+            adapted_concept.inodes,
             best_lemma[2],
             best_lemma[1],
             hypernym_proximity=adapted_concept.metrics["hypernym_proximity"],

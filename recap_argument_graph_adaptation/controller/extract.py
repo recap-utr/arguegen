@@ -81,6 +81,7 @@ def keywords(
                 query.concept_metrics(
                     related_concepts,
                     user_query,
+                    inodes,
                     kg_nodes,
                     kw_vector,
                     weight=kw_weight,
