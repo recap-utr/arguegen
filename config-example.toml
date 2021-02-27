@@ -39,27 +39,29 @@ rules_limit = 1
 # [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 extraction_keyword_pos_tags = [
     ["NOUN"],
+    ["NOUN", "VERB", "ADJ"],
 ] # NOUN, PROPN (not in wordnet), VERB, ADJ, ADV
-extraction_max_keywords = [50]
-
-# Threshold for retrieving synsets based on the semantic similarity of their example/definition.
-extraction_min_synset_similarity = [0.5]
-adaptation_min_synset_similarity = [0.5]
+extraction_max_keywords = [5, 10]
+extraction_keywords_per_adu = [false]
 
 # Threshold for filtering concepts
-extraction_min_concept_score = [0.25]
-adaptation_min_concept_score = [0.5]
+threshold_concept_score = [0.0, 0.25, 0.5]
+
+# Threshold for assigning nodes to a concept based on their definition/examples
+threshold_synset_similarity = [0.0, 0.25, 0.5]
 
 # Of which metrics should the score consist
-score_keyword_weight = [1]
-# score_hypernym_proximity = [1]
-# score_major_claim_proximity = [1]
-# score_nodes_semantic_similarity = [1]
-score_concept_semantic_similarity = [2]
-score_nodes_path_similarity = [1]
-# score_nodes_wup_similarity = [0, 1]
-# score_query_nodes_semantic_similarity = [1]
-# score_query_concept_semantic_similarity = [1]
+score_adus_semantic_similarity = [0, 1]
+score_concept_semantic_similarity = [0, 1]
+score_hypernym_proximity = [0, 1]
+score_keyword_weight = [0, 1]
+score_major_claim_proximity = [0, 1]
+score_nodes_path_similarity = [0, 1]
+score_nodes_semantic_similarity = [1]
+score_nodes_wup_similarity = [0, 1]
+score_query_adus_semantic_similarity = [0, 1]
+score_query_concept_semantic_similarity = [0, 1]
+score_query_nodes_semantic_similarity = [0, 1]
 
 # From what concepts should the metrics be derived
 weight_original_concept = [3]
@@ -71,7 +73,7 @@ adaptation_method = ["direct"]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
-bfs_method = ["between"]
+bfs_method = ["between"] # within CANNOT be used for generalization!
 
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
@@ -87,21 +89,20 @@ fuzzymax = false
 
 [wordnet]
 hypernym_filter = [
-    "entity.n",
-    "abstraction.n",
-    "artifact.n",
-    "causal_agent.n",
-    "living_thing.n",
-    "object.n",
-    "physical_entity.n",
-    "psychological_feature.n",
-    "whole.n",
+    "entity.n.01",
+    "artifact.n.01",
+    "causal_agent.n.01",
+    "living_thing.n.01",
+    "object.n.01",
+    "physical_entity.n.01",
+    "psychological_feature.n.01",
 ]
+node_vector_components = ["examples", "definition"]
 
 
 [conceptnet]
 [conceptnet.node]
-root_form = true
+follow_form_of = false
 
 [conceptnet.relation]
 directed = true

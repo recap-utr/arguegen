@@ -65,7 +65,7 @@ def keywords(
             kw_forms,
             kw_pos,
             [inode.vector for inode in inodes],
-            config.tuning("extraction", "min_synset_similarity"),
+            config.tuning("threshold", "synset_similarity", "extraction"),
         )
 
         if len(kg_nodes) > 0:
@@ -104,7 +104,7 @@ def keywords(
         topn = int(round(len(candidates) * topn))
 
     concepts = casebase.filter_concepts(
-        candidates, config.tuning("extraction", "min_concept_score"), topn
+        candidates, config.tuning("threshold", "concept_score", "extraction"), topn
     )
 
     log.debug(

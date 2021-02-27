@@ -73,7 +73,7 @@ def concepts(
         for node in original_concept.nodes:
             hypernym_distances = node.hypernym_distances(
                 original_concept.inode_vectors,
-                config.tuning("adaptation", "min_synset_similarity"),
+                config.tuning("threshold", "synset_similarity", "adaptation"),
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
@@ -243,7 +243,7 @@ def _bfs_adaptation(
                 path_extensions = query.direct_hypernyms(
                     current_path.end_node,
                     concept.inode_vectors,
-                    config.tuning("adaptation", "min_synset_similarity"),
+                    config.tuning("threshold", "synset_similarity", "adaptation"),
                 )
 
                 # Here, paths that are shorter than the reference path are discarded.
@@ -289,7 +289,9 @@ def _filter_concepts(
 
     filtered_concepts = {c for c in concepts if c not in filter_expr}
     filtered_concepts = casebase.filter_concepts(
-        filtered_concepts, config.tuning("adaptation", "min_concept_score"), topn=None
+        filtered_concepts,
+        config.tuning("threshold", "min_concept_score", "adaptation"),
+        topn=None,
     )
 
     if filtered_concepts:
