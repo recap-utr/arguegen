@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import itertools
 import logging
 import re
+import statistics
 import typing as t
 from collections import defaultdict
+from dataclasses import dataclass, field
 
+import numpy as np
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
@@ -73,7 +79,7 @@ def concepts(
         for node in original_concept.nodes:
             hypernym_distances = node.hypernym_distances(
                 original_concept.inode_vectors,
-                config.tuning("threshold", "synset_similarity", "adaptation"),
+                config.tuning("threshold", "nodes_similarity", "adaptation"),
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
@@ -104,10 +110,14 @@ def concepts(
                 adaptation_candidates.add(candidate)
 
         all_candidates[original_concept] = adaptation_candidates
-        adapted_concept = _filter_concepts(
+        filtered_adaptations = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
-        adapted_lemma = _filter_lemmas(adapted_concept)
+        adapted_lemma = _filter_lemmas(
+            filtered_adaptations[: config.tuning("adaptation", "best_n_concepts")],
+            original_concept,
+            rules,
+        )
 
         if adapted_lemma:
             adapted_concepts[original_concept] = adapted_lemma
@@ -128,6 +138,7 @@ def paths(
     t.Dict[casebase.Concept, t.List[graph.AbstractPath]],
     t.Dict[casebase.Concept, t.Set[casebase.Concept]],
 ]:
+    bfs_method = "between"
     related_concept_weight = config.tuning("weight")
     adapted_concepts = {}
     adapted_paths = {}
@@ -136,7 +147,7 @@ def paths(
     for original_concept, all_shortest_paths in reference_paths.items():
         start_nodes = (
             itertools.chain.from_iterable(rule.target.nodes for rule in rules)
-            if config.tuning("bfs", "method") == "within"
+            if bfs_method == "within"
             else original_concept.nodes
         )
 
@@ -203,18 +214,22 @@ def paths(
 
         all_candidates[original_concept] = adaptation_candidates
 
-        adapted_concept = _filter_concepts(
+        filtered_adaptations = _filter_concepts(
             adaptation_candidates,
             original_concept,
             rules,
             candidate_occurences,
             candidate_length_diff,
         )
-        adapted_lemma = _filter_lemmas(adapted_concept)
+        adapted_lemma = _filter_lemmas(
+            filtered_adaptations[: config.tuning("adaptation", "best_n_concepts")],
+            original_concept,
+            rules,
+        )
 
-        if adapted_concept:
-            adapted_concepts[original_concept] = adapted_concept
-            log.debug(f"Adapt ({original_concept})->({adapted_concept}).")
+        if adapted_lemma:
+            adapted_concepts[original_concept] = adapted_lemma
+            log.debug(f"Adapt ({original_concept})->({adapted_lemma}).")
 
         else:
             log.debug(f"No adaptation for ({original_concept}).")
@@ -243,7 +258,7 @@ def _bfs_adaptation(
                 path_extensions = query.direct_hypernyms(
                     current_path.end_node,
                     concept.inode_vectors,
-                    config.tuning("threshold", "synset_similarity", "adaptation"),
+                    config.tuning("threshold", "nodes_similarity", "adaptation"),
                 )
 
                 # Here, paths that are shorter than the reference path are discarded.
@@ -282,7 +297,8 @@ def _filter_concepts(
     rules: t.Collection[casebase.Rule],
     occurences: t.Optional[t.Mapping[casebase.Concept, int]] = None,
     length_differences: t.Optional[t.Mapping[casebase.Concept, float]] = None,
-) -> t.Optional[casebase.Concept]:
+    limit: t.Optional[int] = None,
+) -> t.List[casebase.Concept]:
     # Remove the original adaptation source from the candidates
     filter_expr = {rule.source for rule in rules}
     filter_expr.add(original_concept)
@@ -310,59 +326,70 @@ def _filter_concepts(
                 reverse=True,
             )
 
-        return sorted_concepts[0]
+        if limit:
+            return sorted_concepts[:limit]
 
-    return None
+        return sorted_concepts
+
+    return []
+
+
+@dataclass(frozen=True)
+class Lemma:
+    name: str
+    pos: casebase.POS
+    nodes: t.FrozenSet[graph.AbstractNode]
+    concepts: t.FrozenSet[casebase.Concept]
+    vector: spacy.Vector = field(repr=False, compare=False)
 
 
 def _filter_lemmas(
-    adapted_concept: t.Optional[casebase.Concept],
+    adapted_concepts: t.Iterable[casebase.Concept],
+    retrieved_concept: casebase.Concept,
+    rules: t.Iterable[casebase.Rule],
 ) -> t.Optional[casebase.Concept]:
-    if adapted_concept is None:
+    if not adapted_concepts:
         return None
 
-    lemmas = defaultdict(list)
+    lemma_nodes = defaultdict(set)
+    lemma_concepts = defaultdict(set)
 
-    for node in adapted_concept.nodes:
-        for lemma in node.processed_lemmas:
-            lemmas[lemma].append(node)
+    for adapted_concept in adapted_concepts:
+        for node in adapted_concept.nodes:
+            for lemma in node.processed_lemmas:
+                lemma_nodes[(lemma, adapted_concept.pos)].add(node)
+                lemma_concepts[(lemma, adapted_concept.pos)].add(adapted_concept)
 
-    if len(lemmas) == 0:
-        return adapted_concept
+    assert lemma_nodes.keys() == lemma_concepts.keys()
 
-    lemma_vectors = spacy.vectors(lemmas.keys())
-    lemma_sim = []
-    total_rel_weight = sum(adapted_concept.related_concepts.values())
-
-    for (lemma, nodes), vector in zip(lemmas.items(), lemma_vectors):
-        lemma_sim.append(
-            (
-                lemma,
-                vector,
-                nodes,
-                sum(
-                    spacy.similarity(rel_concept.vector, vector) * rel_weight
-                    for rel_concept, rel_weight in adapted_concept.related_concepts.items()
-                )
-                / total_rel_weight,
-            )
+    lemma_vectors = spacy.vectors(
+        [lemma_tuple[0] for lemma_tuple in lemma_nodes.keys()]
+    )
+    lemmas = [
+        Lemma(name, pos, frozenset(nodes), frozenset(concepts), vector)
+        for ((name, pos), nodes), concepts, vector in zip(
+            lemma_nodes.items(), lemma_concepts.values(), lemma_vectors
         )
+    ]
 
-    lemma_sim.sort(key=lambda x: x[3], reverse=True)
-    best_lemma = lemma_sim[0]
+    best_lemma: Lemma = _prune(
+        lemmas,
+        retrieved_concept,
+        [(rule.source, rule.target) for rule in rules],
+        selector=config.tuning("adaptation", "pruning_selector"),
+        limit=1,
+    )[0]
 
-    return casebase.Concept.from_concept(
-        adapted_concept,
-        name=best_lemma[0],
-        vector=best_lemma[1],
-        metrics=query.concept_metrics(
-            adapted_concept.related_concepts,
-            adapted_concept.user_query,
-            adapted_concept.inodes,
-            best_lemma[2],
-            best_lemma[1],
-            hypernym_proximity=adapted_concept.metrics["hypernym_proximity"],
-        ),
+    return casebase.Concept(
+        name=best_lemma.name,
+        forms=frozenset([best_lemma.name]),
+        pos=best_lemma.pos,
+        inodes=retrieved_concept.inodes,
+        nodes=best_lemma.nodes,
+        related_concepts={},
+        user_query=retrieved_concept.user_query,
+        vector=best_lemma.vector,
+        metrics=casebase.empty_metrics(),
     )
 
 
@@ -371,39 +398,58 @@ def _filter_paths(
     path_extensions: t.Iterable[graph.AbstractPath],
     reference_path: graph.AbstractPath,
 ) -> t.List[graph.AbstractPath]:
-    selector = config.tuning("bfs", "selector")
-    candidate_values = {}
-
     start_index = len(current_path.relationships)
     end_index = start_index + 1
 
-    val_reference = _aggregate_features(
-        spacy.vector(graph.process_name(reference_path.nodes[start_index].name)),
-        spacy.vector(graph.process_name(reference_path.nodes[end_index].name)),
-        selector,
+    return _prune(
+        path_extensions,
+        current_path,
+        [(reference_path.nodes[start_index], reference_path.nodes[end_index])],
+        selector=config.tuning("adaptation", "pruning_selector"),
+        limit=config.tuning("adaptation", "bfs_node_limit"),
     )
 
-    for candidate in path_extensions:
-        val_adapted = _aggregate_features(
-            spacy.vector(graph.process_name(current_path.end_node.name)),
-            spacy.vector(graph.process_name(candidate.end_node.name)),
+
+def _prune(
+    adapted_items: t.Iterable[t.Any],
+    retrieved_item: t.Any,
+    reference_items: t.Iterable[t.Tuple[t.Any, t.Any]],
+    selector: str,
+    limit: t.Optional[int] = None,
+) -> t.List[t.Any]:
+    candidate_values = defaultdict(list)
+
+    for item in reference_items:
+        val_reference = _aggregate_features(
+            item[0].vector,
+            item[1].vector,
             selector,
         )
-        candidate_values[candidate] = _compare_features(
-            val_reference, val_adapted, selector
-        )
+
+        for adapted_item in adapted_items:
+            val_adapted = _aggregate_features(
+                retrieved_item.vector,
+                adapted_item.vector,
+                selector,
+            )
+            candidate_values[adapted_item].append(
+                _compare_features(val_reference, val_adapted, selector)
+            )
 
     sorted_candidate_tuples = sorted(
-        candidate_values.items(), key=lambda x: x[1], reverse=True
+        candidate_values.items(), key=lambda x: statistics.mean(x[1]), reverse=True
     )
     sorted_candidates = [x[0] for x in sorted_candidate_tuples]
 
-    return sorted_candidates[: config["adaptation"]["bfs_node_limit"]]
+    if limit:
+        return sorted_candidates[:limit]
+
+    return sorted_candidates
 
 
 def _aggregate_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
     if selector == "difference":
-        return abs(feat1 - feat2)
+        return 1 - abs(feat1 - feat2)
     elif selector == "similarity":
         return spacy.similarity(feat1, feat2)
 
@@ -414,6 +460,6 @@ def _compare_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
     if selector == "difference":
         return spacy.similarity(feat1, feat2)
     elif selector == "similarity":
-        return abs(feat1 - feat2)
+        return 1 - abs(feat1 - feat2)
 
     raise ValueError("Parameter 'selector' wrong.")

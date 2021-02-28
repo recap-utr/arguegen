@@ -191,7 +191,7 @@ class Case:
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:
-        rules_limit = config["adaptation"]["rules_limit"]
+        rules_limit = config.tuning("rules", "limit")
         slice = len(self._rules) if rules_limit == 0 else rules_limit
 
         return self._rules[:slice]

@@ -65,7 +65,7 @@ def keywords(
             kw_forms,
             kw_pos,
             [inode.vector for inode in inodes],
-            config.tuning("threshold", "synset_similarity", "extraction"),
+            config.tuning("threshold", "nodes_similarity", "extraction"),
         )
 
         if len(kg_nodes) > 0:
@@ -118,9 +118,9 @@ def paths(
     concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
 ) -> t.Dict[casebase.Concept, t.List[graph.AbstractPath]]:
     result = {}
-    method = config.tuning("bfs", "method")
+    bfs_method = "between"
 
-    if method == "within":
+    if bfs_method == "within":
         for concept in concepts:
             paths = []
 
@@ -138,7 +138,7 @@ def paths(
             if paths:
                 result[concept] = paths
 
-    elif method == "between":
+    elif bfs_method == "between":
         paths = []
 
         for rule in rules:
@@ -156,6 +156,6 @@ def paths(
                 result[concept] = paths
 
     else:
-        raise ValueError("The parameter 'method' is not set correctly.")
+        raise ValueError("The parameter 'bfs_method' is not set correctly.")
 
     return result
