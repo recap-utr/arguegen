@@ -175,7 +175,7 @@ def _json_dump(mapping: t.Mapping[str, t.Any], file: t.TextIO) -> None:
         file,
         ensure_ascii=False,
         indent=4,
-        sort_keys=True,
+        # sort_keys=True,
     )
 
 

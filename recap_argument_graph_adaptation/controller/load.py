@@ -201,6 +201,10 @@ def _parse_rule_concept(
             raise RuntimeError(
                 f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
             )
+    else:
+        raise RuntimeError(
+            f"You did not provide a pos for the rule '{name}' specified in '{str(path)}'."
+        )
 
     kw_name, kw_forms = inflect_concept(name, casebase.pos2spacy(pos))
     vector = spacy.vector(kw_name)

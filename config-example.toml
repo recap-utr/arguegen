@@ -34,7 +34,7 @@ knowledge_graph = "wordnet"
 
 adaptation_concept_candidates_limit = [5]
 adaptation_method = ["direct", "bfs"] # direct, bfs
-adaptation_pruning_bfs_limit = [4]
+adaptation_pruning_bfs_limit = [5]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
