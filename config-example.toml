@@ -31,53 +31,50 @@ export_graph = false
 export_single_stats = true
 export_grid_stats = true
 knowledge_graph = "wordnet"
-bfs_node_limit = 4
-rules_limit = 1
 
 
 [tuning]
-# [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+adaptation_concept_candidates_limit = [5]
+adaptation_method = ["direct", "bfs"] # direct, bfs
+adaptation_pruning_bfs_limit = [4]
+# How to prune the paths and/or lemmas of found concepts
+# difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
+# similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
+adaptation_pruning_selector = ["similarity"]
+
 extraction_keyword_pos_tags = [
     ["NOUN"],
-    ["NOUN", "VERB", "ADJ"],
-] # NOUN, PROPN (not in wordnet), VERB, ADJ, ADV
-extraction_max_keywords = [5, 10]
+] # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
 extraction_keywords_per_adu = [false]
+extraction_max_keywords = [10]
 
-# Threshold for filtering concepts
-threshold_concept_score = [0.0, 0.25, 0.5]
-
-# Threshold for assigning nodes to a concept based on their definition/examples
-threshold_synset_similarity = [0.0, 0.25, 0.5]
+rules_limit = [1]
 
 # Of which metrics should the score consist
-score_adus_semantic_similarity = [0, 1]
-score_concept_semantic_similarity = [0, 1]
-score_hypernym_proximity = [0, 1]
-score_keyword_weight = [0, 1]
-score_major_claim_proximity = [0, 1]
-score_nodes_path_similarity = [0, 1]
-score_nodes_semantic_similarity = [1]
-score_nodes_wup_similarity = [0, 1]
-score_query_adus_semantic_similarity = [0, 1]
-score_query_concept_semantic_similarity = [0, 1]
-score_query_nodes_semantic_similarity = [0, 1]
+# score_adus_semantic_similarity = [0, 1]
+score_concept_semantic_similarity = [1]
+score_hypernym_proximity = [1]
+score_keyword_weight = [1]
+score_major_claim_proximity = [1]
+score_nodes_path_similarity = [1]
+# score_nodes_semantic_similarity = [1]
+# score_nodes_wup_similarity = [0, 1]
+# score_query_adus_semantic_similarity = [0, 1]
+score_query_concept_semantic_similarity = [1]
+# score_query_nodes_semantic_similarity = [0, 1]
 
-# From what concepts should the metrics be derived
-weight_original_concept = [3]
+threshold_concept_score = [0.3] # Filtering concepts
+threshold_nodes_similarity = [0.5] # Assigning nodes
+
+# From what concepts should the score of adapted concepts be derived
+weight_original_concept = [2]
 weight_rule_source = [1]
 weight_rule_target = [1]
 
-# How to perform the adaptation: direct, bfs
-adaptation_method = ["direct"]
-
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
-bfs_method = ["between"] # within CANNOT be used for generalization!
-
-# difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
-# similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
-bfs_selector = ["similarity"]
+# bfs_method = ["between"] # within CANNOT be used for generalization!
 
 
 [nlp]

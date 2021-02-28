@@ -133,6 +133,7 @@ def grid_stats(
         "duration": duration,
         "param_results": mean_param_results,
         "case_results": best_case_results,
+        "global_config": config,
     }
 
     grid_stats_path.parent.mkdir(parents=True, exist_ok=True)
@@ -174,6 +175,7 @@ def _json_dump(mapping: t.Mapping[str, t.Any], file: t.TextIO) -> None:
         file,
         ensure_ascii=False,
         indent=4,
+        sort_keys=True,
     )
 
 

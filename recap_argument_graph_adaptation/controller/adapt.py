@@ -63,7 +63,7 @@ def concepts(
     related_concept_weight = config.tuning("weight")
 
     for original_concept in concepts:
-        adaptation_candidates = set()
+        adaptation_map = defaultdict(list)
         related_concepts = {
             original_concept: related_concept_weight["original_concept"]
         }
@@ -107,14 +107,19 @@ def concepts(
                     ),
                 )
 
-                adaptation_candidates.add(candidate)
+                adaptation_map[str(candidate)].append(candidate)
 
+        adaptation_candidates = {
+            max(candidates, key=lambda x: x.score)
+            for candidates in adaptation_map.values()
+        }
         all_candidates[original_concept] = adaptation_candidates
+
         filtered_adaptations = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
         adapted_lemma = _filter_lemmas(
-            filtered_adaptations[: config.tuning("adaptation", "best_n_concepts")],
+            filtered_adaptations[: config.tuning("adaptation", "concept_candidates_limit")],
             original_concept,
             rules,
         )
@@ -158,7 +163,7 @@ def paths(
 
         adaptation_results = list(itertools.chain.from_iterable(adaptation_results))
         adapted_paths[original_concept] = adaptation_results
-        _adaptation_candidates = defaultdict(list)
+        adaptation_map = defaultdict(list)
 
         for result in adaptation_results:
             hyp_distance = len(result)
@@ -197,32 +202,19 @@ def paths(
                 ),
             )
 
-            _adaptation_candidates[str(candidate)].append(candidate)
+            adaptation_map[str(candidate)].append(candidate)
 
-        adaptation_candidates = set()
-        candidate_occurences = {}
-        candidate_length_diff = {}
-
-        for candidates in _adaptation_candidates.values():
-            candidate = max(candidates, key=lambda x: x.score)
-
-            adaptation_candidates.add(candidate)
-            candidate_occurences[candidate] = len(candidates)
-            candidate_length_diff[candidate] = abs(
-                len(candidate.nodes) - len(all_shortest_paths[0].nodes)
-            )
-
+        adaptation_candidates = {
+            max(candidates, key=lambda x: x.score)
+            for candidates in adaptation_map.values()
+        }
         all_candidates[original_concept] = adaptation_candidates
 
         filtered_adaptations = _filter_concepts(
-            adaptation_candidates,
-            original_concept,
-            rules,
-            candidate_occurences,
-            candidate_length_diff,
+            adaptation_candidates, original_concept, rules
         )
         adapted_lemma = _filter_lemmas(
-            filtered_adaptations[: config.tuning("adaptation", "best_n_concepts")],
+            filtered_adaptations[: config.tuning("adaptation", "concept_candidates_limit")],
             original_concept,
             rules,
         )
@@ -284,19 +276,10 @@ def _bfs_adaptation(
     return adapted_paths
 
 
-def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
-    if distance is not None:
-        return 1 / (1 + distance)
-
-    return None
-
-
 def _filter_concepts(
     concepts: t.Set[casebase.Concept],
     original_concept: casebase.Concept,
     rules: t.Collection[casebase.Rule],
-    occurences: t.Optional[t.Mapping[casebase.Concept, int]] = None,
-    length_differences: t.Optional[t.Mapping[casebase.Concept, float]] = None,
     limit: t.Optional[int] = None,
 ) -> t.List[casebase.Concept]:
     # Remove the original adaptation source from the candidates
@@ -311,20 +294,11 @@ def _filter_concepts(
     )
 
     if filtered_concepts:
-        if occurences and length_differences:
-            sorted_concepts = sorted(
-                filtered_concepts,
-                key=lambda c: 0.75 * c.score
-                # + 0.25 * (_dist2sim(length_differences[c]) or 0.0)
-                + 0.25 * occurences[c],
-                reverse=True,
-            )
-        else:
-            sorted_concepts = sorted(
-                filtered_concepts,
-                key=lambda c: c.score,
-                reverse=True,
-            )
+        sorted_concepts = sorted(
+            filtered_concepts,
+            key=lambda c: c.score,
+            reverse=True,
+        )
 
         if limit:
             return sorted_concepts[:limit]
@@ -406,7 +380,7 @@ def _filter_paths(
         current_path,
         [(reference_path.nodes[start_index], reference_path.nodes[end_index])],
         selector=config.tuning("adaptation", "pruning_selector"),
-        limit=config.tuning("adaptation", "bfs_node_limit"),
+        limit=config.tuning("adaptation", "pruning_bfs_limit"),
     )
 
 
