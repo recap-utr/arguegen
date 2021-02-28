@@ -133,7 +133,7 @@ def grid_stats(
         "duration": duration,
         "param_results": mean_param_results,
         "case_results": best_case_results,
-        "global_config": config,
+        "global_config": dict(config),
     }
 
     grid_stats_path.parent.mkdir(parents=True, exist_ok=True)

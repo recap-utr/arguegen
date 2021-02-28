@@ -337,8 +337,9 @@ class Database:
         nodes2: t.Iterable[ConceptnetNode],
         active: t.Callable[[str], bool],
     ) -> t.Dict[str, t.Optional[float]]:
-        max_relations = config["nlp"]["max_distance"]
-        relation_types = ["RelatedTo"]
+        max_relations = config["conceptnet"]["path"]["max_length"]["metrics"]
+        relation_types = config["conceptnet"]["relation"]["generalization_types"]
+        # relation_types = ["RelatedTo"]
 
         if self.active:
             with self._driver.session() as session:
@@ -346,7 +347,7 @@ class Database:
                     self._metrics, nodes1, nodes2, active, relation_types, max_relations
                 )
 
-        return {"nodes_path_similarity": None}
+        return {"nodes_path_sim": None}
 
     @staticmethod
     def _metrics(
@@ -359,7 +360,7 @@ class Database:
     ) -> t.Dict[str, t.Optional[float]]:
         # If there is any node equal in both sequences, we return a distance of 0.
         # In this case, the shortest path algorithm does not work.
-        if active("nodes_path_similarity") and set(nodes1).isdisjoint(nodes2):
+        if active("nodes_path_sim") and set(nodes1).isdisjoint(nodes2):
             rel_query = _exclude_relations(relation_types)
             shortest_length = max_relations
 
@@ -380,9 +381,9 @@ class Database:
             if record:
                 shortest_length = min(record)
 
-            return {"nodes_path_similarity": _dist2sim(shortest_length)}
+            return {"nodes_path_sim": _dist2sim(shortest_length)}
 
-        return {"nodes_path_similarity": None}
+        return {"nodes_path_sim": None}
 
 
 def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:

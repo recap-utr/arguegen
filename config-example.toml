@@ -23,9 +23,6 @@ workers = 1
 
 # PUBLIC
 
-[loading]
-min_synset_similarity = 0.5
-
 [adaptation]
 export_graph = false
 export_single_stats = true
@@ -52,17 +49,17 @@ extraction_max_keywords = [10]
 rules_limit = [1]
 
 # Of which metrics should the score consist
-# score_adus_semantic_similarity = [0, 1]
-score_concept_semantic_similarity = [1]
-score_hypernym_proximity = [1]
+# score_adus_sem_sim = [0, 1]
+score_concept_sem_sim = [1]
+score_hypernym_prox = [1]
 score_keyword_weight = [1]
-score_major_claim_proximity = [1]
-score_nodes_path_similarity = [1]
-# score_nodes_semantic_similarity = [1]
-# score_nodes_wup_similarity = [0, 1]
-# score_query_adus_semantic_similarity = [0, 1]
-score_query_concept_semantic_similarity = [1]
-# score_query_nodes_semantic_similarity = [0, 1]
+score_major_claim_prox = [1]
+score_nodes_path_sim = [1]
+# score_nodes_sem_sim = [1]
+# score_nodes_wup_sim = [0, 1]
+# score_query_adus_sem_sim = [0, 1]
+score_query_concept_sem_sim = [1]
+# score_query_nodes_sem_sim = [0, 1]
 
 threshold_concept_score = [0.3] # Filtering concepts
 threshold_nodes_similarity = [0.5] # Assigning nodes
@@ -78,7 +75,6 @@ weight_rule_target = [1]
 
 
 [nlp]
-max_distance = 50
 lang = "en"
 embeddings = "integrated" # integrated, sbert, use
 fuzzymax = false
@@ -153,5 +149,6 @@ all_types = [
 
 [conceptnet.path]
 [conceptnet.path.max_length]
-shortest_path = 10
-generalization = 3
+shortest_path = 15
+generalization = 15
+metrics = 15

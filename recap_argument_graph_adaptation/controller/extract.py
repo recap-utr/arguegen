@@ -19,7 +19,7 @@ def keywords(
 
     candidates: t.List[casebase.Concept] = []
     mc = graph.major_claim
-    use_mc_proximity = "major_claim_proximity" in config.tuning("score")
+    use_mc_proximity = "major_claim_prox" in config.tuning("score")
 
     keywords = spacy.keywords(
         [node.plain_text.lower() for node in graph.inodes],

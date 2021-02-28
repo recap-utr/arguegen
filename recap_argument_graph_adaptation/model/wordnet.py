@@ -128,18 +128,18 @@ class WordnetNode(graph.AbstractNode):
 
         path_similarity = (
             (synset1.path_similarity(synset2) or 0.0)
-            if active("nodes_path_similarity")
+            if active("nodes_path_sim")
             else None
         )
         wup_similarity = (
             (synset1.wup_similarity(synset2) or 0.0)
-            if active("nodes_wup_similarity")
+            if active("nodes_wup_sim")
             else None
         )
 
         return {
-            "nodes_path_similarity": path_similarity,
-            "nodes_wup_similarity": wup_similarity,
+            "nodes_path_sim": path_similarity,
+            "nodes_wup_sim": wup_similarity,
         }
 
 
@@ -345,15 +345,13 @@ def metrics(
     active: t.Callable[[str], bool],
 ) -> t.Dict[str, t.Optional[float]]:
     nodes_semantic_similarity = (
-        _nodes_similarities(synsets1, synsets2)
-        if active("nodes_semantic_similarity")
-        else []
+        _nodes_similarities(synsets1, synsets2) if active("nodes_sem_sim") else []
     )
 
     tmp_results: t.Dict[str, t.List[float]] = {
-        "nodes_semantic_similarity": nodes_semantic_similarity,
-        "nodes_path_similarity": [],
-        "nodes_wup_similarity": [],
+        "nodes_sem_sim": nodes_semantic_similarity,
+        "nodes_path_sim": [],
+        "nodes_wup_sim": [],
     }
 
     for s1, s2 in itertools.product(synsets1, synsets2):

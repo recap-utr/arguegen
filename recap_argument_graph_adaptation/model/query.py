@@ -80,12 +80,12 @@ def concept_metrics(
         total_weight += related_concept_weight
         concept_semantic_similarity = (
             spacy.similarity(vector, related_concept.vector)
-            if active("concept_semantic_similarity")
+            if active("concept_sem_sim")
             else None
         )
         query_concept_semantic_similarity = (
             spacy.similarity(user_query.vector, vector)
-            if active("query_concept_semantic_similarity")
+            if active("query_concept_sem_sim")
             else None
         )
         adus_semantic_similarity = (
@@ -93,30 +93,30 @@ def concept_metrics(
                 spacy.similarity(inode2.vector, inode1.vector)
                 for inode1, inode2 in itertools.product(related_concept.inodes, inodes)
             )
-            if active("adus_semantic_similarity")
+            if active("adus_sem_sim")
             else None
         )
         query_adus_semantic_similarity = (
             statistics.mean(
                 spacy.similarity(user_query.vector, inode.vector) for inode in inodes
             )
-            if active("query_adus_semantic_similarity")
+            if active("query_adus_sem_sim")
             else None
         )
 
         metrics = {
-            "adus_semantic_similarity": adus_semantic_similarity,
-            "concept_semantic_similarity": concept_semantic_similarity,
-            "hypernym_proximity": hypernym_proximity or _dist2sim(hypernym_level),
+            "adus_sem_sim": adus_semantic_similarity,
+            "concept_sem_sim": concept_semantic_similarity,
+            "hypernym_prox": hypernym_proximity or _dist2sim(hypernym_level),
             "keyword_weight": weight,
-            "major_claim_proximity": major_claim_proximity
+            "major_claim_prox": major_claim_proximity
             or _dist2sim(major_claim_distance),
-            "nodes_path_similarity": None,
-            "nodes_semantic_similarity": None,
-            "nodes_wup_similarity": None,
-            "query_adus_semantic_similarity": query_adus_semantic_similarity,
-            "query_concept_semantic_similarity": query_concept_semantic_similarity,
-            "query_nodes_semantic_similarity": None,
+            "nodes_path_sim": None,
+            "nodes_sem_sim": None,
+            "nodes_wup_sim": None,
+            "query_adus_sem_sim": query_adus_semantic_similarity,
+            "query_concept_sem_sim": query_concept_semantic_similarity,
+            "query_nodes_sem_sim": None,
         }
 
         assert metrics.keys() == casebase.metric_keys
@@ -128,9 +128,9 @@ def concept_metrics(
             )
 
             metrics.update(wordnet.metrics(nodes, related_nodes, active))
-            metrics["query_nodes_semantic_similarity"] = (
+            metrics["query_nodes_sem_sim"] = (
                 wordnet.query_nodes_similarity(nodes, user_query)
-                if active("query_nodes_semantic_similarity")
+                if active("query_nodes_sem_sim")
                 else None
             )
 
