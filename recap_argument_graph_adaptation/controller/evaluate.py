@@ -89,25 +89,23 @@ def case(
     fn_score = 0.0
     fp_score = 0.0
 
-    if true_positives:
-        tp_score = sum(x.score * x.weight for x in true_positives) / sum(
-            x.weight for x in true_positives
-        )
+    tp_denominator = sum(x.weight for x in true_positives)
 
-    if false_negatives:
-        fn_score = sum(x.weight for x in false_negatives) / sum(benchmark_weights)
+    if tp_denominator > 0:
+        tp_score = sum(x.score * x.weight for x in true_positives) / tp_denominator
 
-    if false_positives:
-        fp_score = (
-            # fp_weight *
-            (sum(1 - x.score for x in false_positives))
-            / (
-                sum(
-                    1 - _compute_score(concept, adaptation, case.user_query)
-                    for concept, adaptation in computed_adaptations.items()
-                )
-            )
-        )
+    fn_denominator = sum(benchmark_weights)
+
+    if fn_denominator > 0:
+        fn_score = sum(x.weight for x in false_negatives) / fn_denominator
+
+    fp_denominator = sum(
+        1 - _compute_score(concept, adaptation, case.user_query)
+        for concept, adaptation in computed_adaptations.items()
+    )
+
+    if fp_denominator:
+        fp_score = (sum(1 - x.score for x in false_positives)) / fp_denominator
 
     eval_result = casebase.Evaluation(
         tp=true_positives,
@@ -137,21 +135,3 @@ def _compute_score(
             concept2, user_query, concept1.inodes, concept1.nodes, concept1.vector
         )
     )
-
-    # ---
-
-    # return spacy.similarity(concept1.vector, concept2.vector)
-
-    # ---
-
-    # scores = []
-
-    # for c1, c2 in ((concept1, concept2), (concept2, concept1)):
-    #     metrics = query.concept_metrics(
-    #         c2,
-    #         c1.nodes,
-    #         c1.vector,
-    #     )
-    #     scores.append(casebase.score(metrics))
-
-    # return max(scores)
