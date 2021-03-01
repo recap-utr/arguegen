@@ -88,12 +88,11 @@ def filter_mapping(
     postfix_overwrite: t.Optional[str],
 ) -> t.Any:
     if prefix:
-        if (
-            name
-            and postfix_overwrite
-            and (result := mapping.get("_".join([prefix, name, postfix_overwrite])))
-        ):
-            return result
+        if name and postfix_overwrite:
+            result = mapping.get("_".join([prefix, name, postfix_overwrite]))
+
+            if result is not None:
+                return result
 
         if name:
             return mapping["_".join([prefix, name])]
