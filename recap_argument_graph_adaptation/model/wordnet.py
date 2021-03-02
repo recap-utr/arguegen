@@ -15,6 +15,8 @@ from recap_argument_graph_adaptation.model.config import Config
 # from nltk.corpus import wordnet as wn
 
 config = Config.instance()
+_synset_cache = {}
+_synsets_cache = {}
 
 
 def init_reader():
@@ -64,7 +66,10 @@ class WordnetNode(graph.AbstractNode):
 
     def to_nltk(self) -> Synset:
         # with lock:
-        return wn.synset(self.uri)
+        if self.uri not in _synset_cache:
+            _synset_cache[self.uri] = wn.synset(self.uri)
+
+        return _synset_cache[self.uri]
 
     def __str__(self) -> str:
         return self.uri
@@ -194,10 +199,12 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     results = []
 
     for pos_tag in pos_tags:
-        # with lock:
-        new_synsets = wn.synsets(name, pos_tag)
+        cache_key = (name, pos_tag)
 
-        results.extend(new_synsets)
+        if cache_key not in _synsets_cache:
+            _synsets_cache[cache_key] = wn.synsets(name, pos_tag)
+
+        results.extend(_synsets_cache[cache_key])
 
     return results
 

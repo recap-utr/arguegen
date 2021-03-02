@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import statistics
 import typing as t
 from collections import defaultdict
@@ -167,28 +168,36 @@ class Keyword:
         )
 
 
+_keyword_cache = {}
+
+
 def keywords(texts: t.Iterable[str], pos_tags: t.Iterable[str]) -> t.List[Keyword]:
     if not config.tuning("extraction", "keywords_per_adu"):
         texts = [" ".join(texts)]
 
-    weights_map = defaultdict(list)
-    response = session.post(
-        _url("keywords"),
-        json={
-            "texts": texts,
-            "pos_tags": pos_tags,
-        },
-    )
-    _check_response(response)
+    key = (tuple(texts), tuple(pos_tags))
 
-    for raw_keyword in response.json():
-        keyword = TemporaryKeyword.from_dict(raw_keyword)
-        weights_map[keyword].append(raw_keyword["weight"])
+    if key not in _keyword_cache:
+        response = session.post(
+            _url("keywords"),
+            json={
+                "texts": texts,
+                "pos_tags": pos_tags,
+            },
+        )
+        _check_response(response)
+        weights_map = defaultdict(list)
 
-    candidates = [
-        Keyword.from_tmp(k, statistics.mean(weights))
-        for k, weights in weights_map.items()
-    ]
-    candidates.sort(key=lambda x: x.weight, reverse=True)
+        for raw_keyword in response.json():
+            keyword = TemporaryKeyword.from_dict(raw_keyword)
+            weights_map[keyword].append(raw_keyword["weight"])
 
-    return candidates
+        candidates = [
+            Keyword.from_tmp(k, statistics.mean(weights))
+            for k, weights in weights_map.items()
+        ]
+        candidates.sort(key=lambda x: x.weight, reverse=True)
+
+        _keyword_cache[key] = candidates
+
+    return _keyword_cache[key]

@@ -198,49 +198,49 @@ def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
 
 @app.post("/keywords", response_model=t.Tuple[KeywordResponse, ...])
 def keywords(query: KeywordQuery) -> t.Tuple[KeywordResponse, ...]:
-    unknown_texts = []
+    unknown_combinations = []
 
-    for text in query.texts:
-        if text not in _keyword_cache:
-            unknown_texts.append(text)
+    for text, pos in itertools.product(query.texts, query.pos_tags):
+        if (text, pos) not in _keyword_cache:
+            unknown_combinations.append((text, pos))
 
-    if unknown_texts:
-        docs: t.Iterable[t.Any] = nlp.pipe(unknown_texts)
+    if unknown_combinations:
+        docs: t.Iterable[t.Any] = nlp.pipe([x[0] for x in unknown_combinations])
 
-        for text, doc in zip(unknown_texts, docs):
+        for (text, pos_tag), doc in zip(unknown_combinations, docs):
             doc_keywords = []
 
-            for pos_tag in query.pos_tags:
-                # https://github.com/chartbeat-labs/textacy/blob/cdedd2351bf2a56e8773ec162e08c3188809d486/src/textacy/ke/yake.py#L137
-                # Textacy uses token.norm_ if normalize is None.
-                # This causes for example 'centres' to be extracted as 'centers'.
-                # To avoid this, we use 'lower' instead.
-                keywords = extractor(
-                    doc, include_pos=pos_tag, normalize="lower", topn=1.0
-                )
-                # processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
+            # https://github.com/chartbeat-labs/textacy/blob/cdedd2351bf2a56e8773ec162e08c3188809d486/src/textacy/ke/yake.py#L137
+            # Textacy uses token.norm_ if normalize is None.
+            # This causes for example 'centres' to be extracted as 'centers'.
+            # To avoid this, we use 'lower' instead.
+            keywords = extractor(doc, include_pos=pos_tag, normalize="lower", topn=1.0)
+            # processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
 
-                for kw_, score in keywords:
-                    lemma, forms = inflect_concept(kw_, pos_tag)
-                    vector = _vector(lemma)
+            for kw_, score in keywords:
+                lemma, forms = inflect_concept(kw_, pos_tag)
+                vector = _vector(lemma)
 
-                    if forms is not None:
-                        doc_keywords.append(
-                            KeywordResponse(
-                                keyword=lemma,
-                                vector=vector,
-                                forms=frozenset(forms),
-                                pos_tag=pos_tag,
-                                weight=_dist2sim(score),
-                            )
+                if forms is not None:
+                    doc_keywords.append(
+                        KeywordResponse(
+                            keyword=lemma,
+                            vector=vector,
+                            forms=frozenset(forms),
+                            pos_tag=pos_tag,
+                            weight=_dist2sim(score),
                         )
+                    )
 
-            _keyword_cache[text] = tuple(
+            _keyword_cache[(text, pos_tag)] = tuple(
                 doc_keywords
             )  # tuple(dict.fromkeys(doc_keywords))
 
     return tuple(
-        itertools.chain.from_iterable(_keyword_cache[text] for text in query.texts)
+        itertools.chain.from_iterable(
+            _keyword_cache[(text, pos)]
+            for text, pos in itertools.product(query.texts, query.pos_tags)
+        )
     )
 
 
