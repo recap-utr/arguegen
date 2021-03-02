@@ -58,7 +58,7 @@ def grid_stats(
     results = [entry for entry in results if entry is not None]
     case_results = defaultdict(list)
     param_combinations = [[] for _ in range(len(param_grid))]
-    param_results = defaultdict(list)
+    param_results = {key: defaultdict(list) for key in config["tuning"]}
     score_distribution = {}
 
     for case, i, eval in results:
@@ -66,7 +66,9 @@ def grid_stats(
         param_combinations[i].append(eval.score)
 
         for key in config["tuning"].keys():
-            param_results[key].append(eval.to_dict(compact=True))
+            param_results[key][str(param_grid[i][key])].append(
+                eval.to_dict(compact=True)
+            )
 
     best_case_results = {}
 
@@ -137,15 +139,20 @@ def grid_stats(
     mean_param_results = {}
 
     # https://stackoverflow.com/a/33046935
-    for param_key, eval_results in param_results.items():
-        current_result = {}
+    for param_key, param_values in param_results.items():
+        mean_param_results[param_key] = {}
 
-        for eval_key in eval_results[0].keys():
-            eval_values = [eval_result[eval_key] or 0.0 for eval_result in eval_results]
+        for param_value, eval_results in param_values.items():
+            current_result = {}
 
-            current_result[eval_key] = statistics.mean(eval_values)
+            for eval_key in eval_results[0].keys():
+                eval_values = [
+                    eval_result[eval_key] or 0.0 for eval_result in eval_results
+                ]
 
-        mean_param_results[param_key] = current_result
+                current_result[eval_key] = statistics.mean(eval_values)  # type: ignore
+
+            mean_param_results[param_key][param_value] = current_result
 
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
