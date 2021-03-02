@@ -23,25 +23,29 @@ workers = 1
 
 # PUBLIC
 
+[export]
+graph = false
+single_stats = true
+grid_stats = true
+relative_paths = true # in stat files, output paths relative to the workspace root
+
 [adaptation]
-export_graph = false
-export_single_stats = true
-export_grid_stats = true
 knowledge_graph = "wordnet"
 
 
 [tuning]
 
 adaptation_concept_candidates_limit = [5]
-adaptation_method = ["direct", "bfs"] # direct, bfs
+adaptation_method = ["direct"] # direct, bfs
 adaptation_pruning_bfs_limit = [5]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
-adaptation_pruning_selector = ["similarity"]
+adaptation_pruning_selector = ["difference"]
 
 extraction_keyword_pos_tags = [
-    ["NOUN"],
+    # ["NOUN"],
+    ["NOUN", "VERB", "ADJ"],
 ] # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
 extraction_keywords_per_adu = [false]
 extraction_max_keywords = [10]
@@ -51,22 +55,23 @@ rules_limit = [1]
 # Of which metrics should the score consist
 # score_adus_sem_sim = [0, 1]
 score_concept_sem_sim = [1]
-score_hypernym_prox = [1]
-score_keyword_weight = [1]
-score_major_claim_prox = [1]
-score_nodes_path_sim = [1]
-# score_nodes_sem_sim = [1]
-# score_nodes_wup_sim = [0, 1]
+# score_hypernym_prox = [0, 1]
+score_keyword_weight = [0, 1]
+# score_major_claim_prox = [0, 1]
+# score_nodes_path_sim = [0, 1]
+# score_nodes_sem_sim = [0, 1]
 # score_query_adus_sem_sim = [0, 1]
-score_query_concept_sem_sim = [1]
+# score_query_concept_sem_sim = [0, 1]
 # score_query_nodes_sem_sim = [0, 1]
 
-threshold_concept_score = [0.3] # Filtering concepts
-threshold_nodes_similarity = [0.5] # Assigning nodes
+threshold_concept_score_adaptation = [0.5] # Filtering concepts
+threshold_concept_score_extraction = [0.5] # Filtering concepts
+threshold_nodes_similarity_adaptation = [0.5] # Assigning nodes
+threshold_nodes_similarity_extraction = [0.5] # Assigning nodes
 
 # From what concepts should the score of adapted concepts be derived
-weight_original_concept = [2]
-weight_rule_source = [1]
+weight_original_concept = [1]
+weight_rule_source = [0]
 weight_rule_target = [1]
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
@@ -78,6 +83,9 @@ weight_rule_target = [1]
 lang = "en"
 embeddings = "integrated" # integrated, sbert, use
 fuzzymax = false
+
+[nlp.inflections]
+prove = ["proven"]
 
 
 [wordnet]

@@ -57,11 +57,16 @@ def grid_stats(
 
     results = [entry for entry in results if entry is not None]
     case_results = defaultdict(list)
-    param_results = [[] for _ in range(len(param_grid))]
+    param_combinations = [[] for _ in range(len(param_grid))]
+    param_results = defaultdict(list)
+    score_distribution = {}
 
     for case, i, eval in results:
         case_results[case].append((eval, i))
-        param_results[i].append(eval.score)
+        param_combinations[i].append(eval.score)
+
+        for key in config["tuning"].keys():
+            param_results[key].append(eval.to_dict(compact=True))
 
     best_case_results = {}
 
@@ -70,19 +75,20 @@ def grid_stats(
         _results = []
 
         for eval, i in eval_results:
-            current_path = nested_path(
-                out_path / case, len(param_grid), param_grid[i]
-            ).resolve()
+            current_path = nested_path(out_path / case, len(param_grid), param_grid[i])
 
             # Move the best results to the root folder for that case.
             if len(_results) == 0:
-                for file in ("case.json", "case.pdf", "stats.json"):
-                    try:
-                        shutil.copy(
-                            current_path / file, out_path / case / f"best_{file}"
-                        )
-                    except Exception:
-                        pass
+                copy_case_files(current_path, out_path / case, "best")
+                score_distribution["best"] = eval.score
+
+            elif len(_results) == len(eval_results) - 1:
+                copy_case_files(current_path, out_path / case, "worst")
+                score_distribution["worst"] = eval.score
+
+            elif len(_results) == len(eval_results) // 2:
+                copy_case_files(current_path, out_path / case, "median")
+                score_distribution["median"] = eval.score
 
             _results.append(
                 {
@@ -94,9 +100,9 @@ def grid_stats(
 
         best_case_results[case] = _results
 
-    mean_param_results = []
+    mean_param_combinations = []
 
-    for i, scores in enumerate(param_results):
+    for i, scores in enumerate(param_combinations):
         if scores:
             current_cases = {}
 
@@ -104,7 +110,7 @@ def grid_stats(
                 eval_result = next(filter(lambda x: x[1] == i, eval_results), None)
                 current_path = nested_path(
                     out_path / case, len(param_grid), param_grid[i]
-                ).resolve()
+                )
                 case_eval_output = None
 
                 if eval_result:
@@ -115,7 +121,7 @@ def grid_stats(
                     "files": _output_file_paths(current_path),
                 }
 
-            mean_param_results.append(
+            mean_param_combinations.append(
                 {
                     "mean_score": statistics.mean(scores),
                     "config": param_grid[i],
@@ -123,15 +129,30 @@ def grid_stats(
                 }
             )
 
-    mean_param_results.sort(
+    mean_param_combinations.sort(
         key=lambda x: x["mean_score"],
         reverse=True,
     )
 
+    mean_param_results = {}
+
+    # https://stackoverflow.com/a/33046935
+    for param_key, eval_results in param_results.items():
+        current_result = {}
+
+        for eval_key in eval_results[0].keys():
+            eval_values = [eval_result[eval_key] or 0.0 for eval_result in eval_results]
+
+            current_result[eval_key] = statistics.mean(eval_values)
+
+        mean_param_results[param_key] = current_result
+
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
         "duration": duration,
+        "score_distribution": score_distribution,
         "param_results": mean_param_results,
+        "param_combinations": mean_param_combinations,
         "case_results": best_case_results,
         "global_config": dict(config),
     }
@@ -150,9 +171,20 @@ def nested_path(
 
     if total_runs > 1:
         for tuning_key, tuning_value in nested_folders.items():
+            if isinstance(tuning_value, list):
+                tuning_value = "_".join(tuning_value)
+
             nested_path /= f"{tuning_key}_{tuning_value}"
 
     return nested_path
+
+
+def copy_case_files(source_path: Path, destination_path: Path, prefix: str) -> None:
+    for file in ("case.json", "case.pdf", "stats.json"):
+        try:
+            shutil.copy(source_path / file, destination_path / f"{prefix}_{file}")
+        except Exception:
+            pass
 
 
 def write_output(
@@ -160,12 +192,14 @@ def write_output(
 ) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
-    if config["adaptation"]["export_graph"] and adapted_graph:
+    if config["export"]["graph"] and adapted_graph:
         adapted_graph.save(path / "case.json")
         adapted_graph.render(path / "case.pdf")
 
-    if config["adaptation"]["export_single_stats"]:
-        with (path / "stats.json").open("w") as file:
+    if config["export"]["single_stats"]:
+        stats_path = path / "stats.json"
+
+        with stats_path.open("w") as file:
             _json_dump(stats, file)
 
 
@@ -183,10 +217,10 @@ def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
     paths = {}
     filenames = []
 
-    if config["adaptation"]["export_graph"]:
+    if config["export"]["graph"]:
         filenames.extend(("case.json", "case.pdf"))
 
-    if config["adaptation"]["export_single_stats"]:
+    if config["export"]["single_stats"]:
         filenames.append("stats.json")
 
         for filename in filenames:
@@ -196,4 +230,7 @@ def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
 
 
 def _file_path(path: Path) -> str:
-    return "file://" + str(path)
+    if config["export"]["relative_paths"]:
+        return str(path)
+
+    return "file://" + str(path.resolve())

@@ -26,11 +26,12 @@ log = logging.getLogger(__name__)
 
 
 # TODO: Add LaTeX tabular export option.
+# TODO: The replacements in the text can be achieved via the inflected forms.
+# Each form has a tag associated which can be used to replace it with a matching version.
 
 
-def _init_child_process(lock_):
+def _init_child_process():
     # https://stackoverflow.com/a/50379950/7626878
-    # wordnet.lock = lock_
     wordnet.wn = wordnet.init_reader()
 
 
@@ -61,10 +62,7 @@ def run():
         logging.getLogger(__package__).setLevel(logging.DEBUG)
         results = [_parametrized_run(run_arg) for run_arg in run_args]
     else:
-        local_lock = mp.Lock()
-        with mp.Pool(
-            processes, initializer=_init_child_process, initargs=(local_lock,)
-        ) as pool:
+        with mp.Pool(processes, initializer=_init_child_process) as pool:
             with typer.progressbar(
                 pool.imap(_parametrized_run, run_args),
                 length=len(run_args),
@@ -78,7 +76,7 @@ def run():
     end_time = timer()
     duration = end_time - start_time
 
-    if config["adaptation"]["export_grid_stats"] and len(run_args) > 1:
+    if config["export"]["grid_stats"] and len(run_args) > 1:
         export.grid_stats(results, duration, param_grid, out_path)
 
     log.info(f"Finished in {duration} sec.")
@@ -123,7 +121,7 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
             reference_paths, case.rules, args.case.user_query
         )
 
-    if config["adaptation"]["export_graph"]:
+    if config["export"]["graph"]:
         log.debug("Exporting graph.")
         adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
