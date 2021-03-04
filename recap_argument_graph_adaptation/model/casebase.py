@@ -250,7 +250,7 @@ class Evaluation:
 
     @classmethod
     def aggregate(
-        cls, objects: t.Iterable[Evaluation], metric: t.Optional[str] = None
+        cls, objects: t.Sequence[Evaluation], metric: t.Optional[str] = None
     ) -> t.Dict[str, t.Any]:
         metric_funcs = {
             "mean": statistics.mean,
@@ -258,7 +258,11 @@ class Evaluation:
             "max": max,
         }
 
-        if metric:
+        if len(objects) == 0:
+            return {}
+        elif len(objects) == 1:
+            return objects[0].to_dict(compact=True)
+        elif metric:
             if func := metric_funcs[metric]:
                 return {
                     key: func(getattr(object, key) or 0.0 for object in objects)

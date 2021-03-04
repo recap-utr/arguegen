@@ -61,11 +61,12 @@ def grid_stats(
     case_results = defaultdict(list)
     param_combinations = [[] for _ in range(len(param_grid))]
     param_results = {key: defaultdict(list) for key in config["tuning"]}
-    score_distribution = defaultdict(list)
+    score_distribution = []
 
     for case, i, eval in results:
         case_results[case].append((eval, i))
         param_combinations[i].append(eval)
+        score_distribution.append(eval)
 
         for key in config["tuning"].keys():
             param_results[key][str(param_grid[i][key])].append(eval)
@@ -82,15 +83,10 @@ def grid_stats(
             # Move the best results to the root folder for that case.
             if len(_results) == 0:
                 copy_case_files(current_path, out_path / case, "best")
-                score_distribution["best"].append(eval)
-
             elif len(_results) == len(eval_results) - 1:
                 copy_case_files(current_path, out_path / case, "worst")
-                score_distribution["worst"].append(eval)
-
             elif len(_results) == len(eval_results) // 2:
                 copy_case_files(current_path, out_path / case, "median")
-                score_distribution["median"].append(eval)
 
             _results.append(
                 {
@@ -126,7 +122,8 @@ def grid_stats(
 
             mean_param_combinations.append(
                 {
-                    "mean_score": eval_results_aggr["mean"]["score"],
+                    "mean_score": eval_results_aggr.get("score")
+                    or eval_results_aggr["mean"]["score"],
                     "eval_results": eval_results_aggr,
                     "config": param_grid[i],
                     "cases": current_cases,
@@ -152,10 +149,7 @@ def grid_stats(
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
         "duration": duration,
-        "score_distribution": {
-            key: casebase.Evaluation.aggregate(values)
-            for key, values in score_distribution.items()
-        },
+        "score_distribution": casebase.Evaluation.aggregate(score_distribution),
         "param_results": mean_param_results,
         "param_combinations": mean_param_combinations,
         "case_results": best_case_results,
