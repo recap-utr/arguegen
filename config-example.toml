@@ -35,18 +35,16 @@ knowledge_graph = "wordnet"
 
 [tuning]
 
-adaptation_concept_candidates_limit = [5]
-adaptation_method = ["direct"] # direct, bfs
-adaptation_pruning_bfs_limit = [5]
+adaptation_max_lemmas = [10]
+adaptation_method = ["direct", "bfs"] # direct, bfs
+adaptation_pruning_bfs_limit = [10]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 adaptation_pruning_selector = ["difference"]
 
-extraction_keyword_pos_tags = [
-    # ["NOUN"],
-    ["NOUN", "VERB", "ADJ"],
-] # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
+# NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
+extraction_keyword_pos_tags = [["NOUN"]]
 extraction_keywords_per_adu = [false]
 extraction_max_keywords = [10]
 
@@ -56,7 +54,7 @@ rules_limit = [1]
 # score_adus_sem_sim = [0, 1]
 score_concept_sem_sim = [1]
 # score_hypernym_prox = [0, 1]
-score_keyword_weight = [0, 1]
+# score_keyword_weight = [0, 1]
 # score_major_claim_prox = [0, 1]
 # score_nodes_path_sim = [0, 1]
 # score_nodes_sem_sim = [0, 1]
@@ -64,10 +62,10 @@ score_keyword_weight = [0, 1]
 # score_query_concept_sem_sim = [0, 1]
 # score_query_nodes_sem_sim = [0, 1]
 
-threshold_concept_score_adaptation = [0.5] # Filtering concepts
-threshold_concept_score_extraction = [0.5] # Filtering concepts
-threshold_nodes_similarity_adaptation = [0.5] # Assigning nodes
-threshold_nodes_similarity_extraction = [0.5] # Assigning nodes
+threshold_concept_score_adaptation = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
+threshold_concept_score_extraction = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
+threshold_nodes_similarity_adaptation = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
+threshold_nodes_similarity_extraction = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
 
 # From what concepts should the score of adapted concepts be derived
 weight_original_concept = [1]
@@ -85,7 +83,8 @@ embeddings = "integrated" # integrated, sbert, use
 fuzzymax = false
 
 [nlp.inflections]
-prove = ["proven"]
+[nlp.inflections.prove]
+proven = ["VBN"]
 
 
 [wordnet]

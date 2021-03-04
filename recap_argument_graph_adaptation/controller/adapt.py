@@ -116,11 +116,7 @@ def concepts(
         filtered_adaptations = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
-        adapted_lemma = _filter_lemmas(
-            filtered_adaptations[: config.tuning("adaptation", "concept_candidates_limit")],
-            original_concept,
-            rules,
-        )
+        adapted_lemma = _filter_lemmas(filtered_adaptations, original_concept, rules)
 
         if adapted_lemma:
             adapted_concepts[original_concept] = adapted_lemma
@@ -211,11 +207,7 @@ def paths(
         filtered_adaptations = _filter_concepts(
             adaptation_candidates, original_concept, rules
         )
-        adapted_lemma = _filter_lemmas(
-            filtered_adaptations[: config.tuning("adaptation", "concept_candidates_limit")],
-            original_concept,
-            rules,
-        )
+        adapted_lemma = _filter_lemmas(filtered_adaptations, original_concept, rules)
 
         if adapted_lemma:
             adapted_concepts[original_concept] = adapted_lemma
@@ -306,6 +298,10 @@ def _filter_concepts(
     return []
 
 
+class BreakLoop(Exception):
+    pass
+
+
 @dataclass(frozen=True)
 class Lemma:
     name: str
@@ -316,21 +312,28 @@ class Lemma:
 
 
 def _filter_lemmas(
-    adapted_concepts: t.Iterable[casebase.Concept],
+    adapted_concepts: t.Sequence[casebase.Concept],
     retrieved_concept: casebase.Concept,
     rules: t.Iterable[casebase.Rule],
 ) -> t.Optional[casebase.Concept]:
     if not adapted_concepts:
         return None
 
+    max_lemmas = config.tuning("adaptation", "max_lemmas")
     lemma_nodes = defaultdict(set)
     lemma_concepts = defaultdict(set)
 
-    for adapted_concept in adapted_concepts:
-        for node in adapted_concept.nodes:
-            for lemma in node.processed_lemmas:
-                lemma_nodes[(lemma, adapted_concept.pos)].add(node)
-                lemma_concepts[(lemma, adapted_concept.pos)].add(adapted_concept)
+    try:
+        for adapted_concept in adapted_concepts:
+            for node in adapted_concept.nodes:
+                for lemma in node.processed_lemmas:
+                    lemma_nodes[(lemma, adapted_concept.pos)].add(node)
+                    lemma_concepts[(lemma, adapted_concept.pos)].add(adapted_concept)
+
+                    if len(lemma_nodes) >= max_lemmas:
+                        raise BreakLoop
+    except BreakLoop:
+        pass
 
     assert lemma_nodes.keys() == lemma_concepts.keys()
 
@@ -405,7 +408,7 @@ def _prune(
                 selector,
             )
             candidate_values[adapted_item].append(
-                _compare_features(val_reference, val_adapted, selector)
+                _compare_features(val_reference, val_adapted)
             )
 
     sorted_candidate_tuples = sorted(
@@ -413,25 +416,30 @@ def _prune(
     )
     sorted_candidates = [x[0] for x in sorted_candidate_tuples]
 
-    if limit:
+    if limit and limit > 0:
         return sorted_candidates[:limit]
 
     return sorted_candidates
 
 
-def _aggregate_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
+def _aggregate_features(
+    vec1: spacy.Vector, vec2: spacy.Vector, selector: str
+) -> t.Union[float, spacy.Vector]:
     if selector == "difference":
-        return 1 - abs(feat1 - feat2)
+        return 1 - abs(vec1 - vec2)
     elif selector == "similarity":
-        return spacy.similarity(feat1, feat2)
+        return spacy.similarity(vec1, vec2)
 
     raise ValueError("Parameter 'selector' wrong.")
 
 
-def _compare_features(feat1: t.Any, feat2: t.Any, selector: str) -> t.Any:
-    if selector == "difference":
-        return spacy.similarity(feat1, feat2)
-    elif selector == "similarity":
-        return 1 - abs(feat1 - feat2)
+def _compare_features(
+    feat1: t.Union[float, spacy.Vector], feat2: t.Union[float, spacy.Vector]
+) -> float:
+    if type(feat1) == type(feat2):
+        if isinstance(feat1, float) and isinstance(feat2, float):
+            return 1 - abs(feat1 - feat2)
+        else:
+            return spacy.similarity(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
