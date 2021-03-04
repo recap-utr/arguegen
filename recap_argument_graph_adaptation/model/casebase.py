@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import statistics
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
@@ -225,29 +226,34 @@ class Evaluation:
     fn_score: float
     fp_score: float
 
-    def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
-        mapping = {
-            "score": self.score,
-            "tp_score": self.tp_score,
-            "fn_score": self.fn_score,
-            "fp_score": self.fp_score,
-            "precision": self.precision,
-            "recall": self.recall,
-            "accuracy": self.accuracy,
-            "balanced_accuracy": self.balanced_accuracy,
-            "f1": self.f1,
-        }
+    @staticmethod
+    def keys(compact: bool = False) -> t.List[str]:
+        k = [
+            "score",
+            "tp_score",
+            "fn_score",
+            "fp_score",
+            "precision",
+            "recall",
+            "accuracy",
+            "balanced_accuracy",
+            "f1",
+        ]
 
         if not compact:
-            mapping.update(
-                {
-                    "true_positives": convert.list_dict(self.tp),
-                    "false_positives": convert.list_dict(self.fp),
-                    "false_negatives": convert.list_dict(self.fn),
-                }
-            )
+            k.extend(["true_positives", "false_positives", "false_negatives"])
 
-        return mapping
+        return k
+
+    def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
+        return {key: getattr(self, key) for key in Evaluation.keys(compact)}
+
+    @classmethod
+    def mean(cls, *objects: Evaluation) -> t.Dict[str, float]:
+        return {
+            key: statistics.mean(getattr(object, key) or 0.0 for object in objects)
+            for key in cls.keys(compact=True)
+        }
 
     @property
     def score(self) -> float:
@@ -307,6 +313,18 @@ class Evaluation:
             return (tpr + tnr) / 2
 
         return None
+
+    @property
+    def true_positives(self):
+        return convert.list_dict(self.tp)
+
+    @property
+    def false_positives(self):
+        return convert.list_dict(self.fp)
+
+    @property
+    def false_negatives(self):
+        return convert.list_dict(self.fn)
 
     def __lt__(self, other):
         return self.score < other.score
