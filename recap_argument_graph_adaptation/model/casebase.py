@@ -249,9 +249,36 @@ class Evaluation:
         return {key: getattr(self, key) for key in Evaluation.keys(compact)}
 
     @classmethod
-    def mean(cls, *objects: Evaluation) -> t.Dict[str, float]:
+    def aggregate(
+        cls, objects: t.Iterable[Evaluation], metric: t.Optional[str] = None
+    ) -> t.Dict[str, t.Any]:
+        metric_funcs = {
+            "mean": statistics.mean,
+            "min": min,
+            "max": max,
+        }
+
+        if metric:
+            if func := metric_funcs[metric]:
+                return {
+                    key: func(getattr(object, key) or 0.0 for object in objects)
+                    for key in cls.keys(compact=True)
+                }
+            else:
+                raise ValueError(
+                    f"The given metric '{metric}' is unknown. Possible values are '{metric_funcs.keys()}'."
+                )
+
+        return {key: cls.aggregate(objects, key) for key in metric_funcs.keys()}
+
+    @classmethod
+    def _aggregate(
+        cls,
+        objects: t.Iterable[Evaluation],
+        func: t.Callable[[t.Iterable[float]], float],
+    ) -> t.Dict[str, float]:
         return {
-            key: statistics.mean(getattr(object, key) or 0.0 for object in objects)
+            key: func(getattr(object, key) or 0.0 for object in objects)
             for key in cls.keys(compact=True)
         }
 

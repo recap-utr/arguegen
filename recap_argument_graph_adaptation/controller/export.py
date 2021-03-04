@@ -122,12 +122,12 @@ def grid_stats(
                     "files": _output_file_paths(current_path),
                 }
 
-            mean_eval_results = casebase.Evaluation.mean(*eval_results)
+            eval_results_aggr = casebase.Evaluation.aggregate(eval_results)
 
             mean_param_combinations.append(
                 {
-                    "mean_score": mean_eval_results["score"],
-                    "mean_eval": mean_eval_results,
+                    "mean_score": eval_results_aggr["mean"]["score"],
+                    "eval_results": eval_results_aggr,
                     "config": param_grid[i],
                     "cases": current_cases,
                 }
@@ -145,15 +145,15 @@ def grid_stats(
         mean_param_results[param_key] = {}
 
         for param_value, eval_results in param_values.items():
-            mean_param_results[param_key][param_value] = casebase.Evaluation.mean(
-                *eval_results
+            mean_param_results[param_key][param_value] = casebase.Evaluation.aggregate(
+                eval_results
             )
 
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
         "duration": duration,
         "score_distribution": {
-            key: casebase.Evaluation.mean(*values)
+            key: casebase.Evaluation.aggregate(values)
             for key, values in score_distribution.items()
         },
         "param_results": mean_param_results,
