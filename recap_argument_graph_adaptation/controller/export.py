@@ -122,16 +122,14 @@ def grid_stats(
 
             mean_param_combinations.append(
                 {
-                    "mean_score": eval_results_aggr.get("score")
-                    or eval_results_aggr["mean"]["score"],
-                    "eval_results": eval_results_aggr,
+                    "evaluation": eval_results_aggr,
                     "config": param_grid[i],
                     "cases": current_cases,
                 }
             )
 
     mean_param_combinations.sort(
-        key=lambda x: x["mean_score"],
+        key=lambda x: x["evaluation"].get("score") or x["evaluation"]["mean"]["score"],
         reverse=True,
     )
 
