@@ -130,10 +130,10 @@ class Database:
             f"RETURN p ORDER BY length(p) DESC LIMIT {limit}"
         )
 
-        pos_tags = [pos]
+        pos_tags = [POS_OTHER]
 
         if pos:
-            pos_tags.append(POS_OTHER)  # type: ignore
+            pos_tags.append(pos)
 
         for pos_tag in pos_tags:
             records = tx.run(
@@ -160,7 +160,9 @@ class Database:
                             nodes[best_node].append(len(found_path.relationships))
 
                         if not only_end_nodes:
-                            for i, found_node in enumerate(found_path.nodes[:-1]):
+                            for i, found_node in enumerate(
+                                found_path.nodes[start_index:-1]
+                            ):
                                 nodes[found_node].append(i)
 
         return {node: min(indices) for node, indices in nodes.items()}
