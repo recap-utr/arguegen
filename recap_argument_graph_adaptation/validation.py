@@ -4,9 +4,10 @@ import typing as t
 from pathlib import Path
 
 import typer
-from nltk.metrics import agreement
+from nltk.metrics import agreement, masi_distance
 
 from recap_argument_graph_adaptation.controller import load
+from recap_argument_graph_adaptation.model import casebase
 
 app = typer.Typer()
 
@@ -16,8 +17,19 @@ def check_rules(path: Path) -> None:
     load.cases(path, ignore_errors=False)
 
 
-def _triples(name: str, value1: str, value2: str) -> t.List[t.Tuple[str, str, str]]:
-    return [("coder1", name, value1), ("coder2", name, value2)]
+def _triples(
+    name: str,
+    func: t.Callable[[casebase.Case], t.Iterable[str]],
+    case1: casebase.Case,
+    case2: casebase.Case,
+) -> t.List[t.Tuple[str, str, t.FrozenSet[t.Any]]]:
+    return [
+        ("coder1", name, frozenset(func(case1))),
+        ("coder2", name, frozenset(func(case2))),
+    ]
+
+
+# TODO: https://stats.stackexchange.com/a/460450
 
 
 @app.command()
@@ -27,8 +39,9 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
     source_triples = set()
     target_triples = set()
     source_target_triples = set()
-    common_target_triples = set()
     first_source_triples = set()
+    first_target_triples = set()
+    first_source_target_triples = set()
     total_rules = 0
     rules_per_case = []
     rule_code = lambda x: f"{x.source.code},{x.target.code}"
@@ -37,34 +50,65 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
         if c1.relative_path == c2.relative_path:
             name = str(c1.relative_path)
 
-            first_source_triples.update(
-                _triples(
-                    name,
-                    c1.benchmark_rules[0].source.code,
-                    c2.benchmark_rules[0].source.code,
-                )
-            )
-
             total_rules += len(c1.benchmark_rules) + len(c2.benchmark_rules)
             rules_per_case.extend((len(c1.benchmark_rules), len(c2.benchmark_rules)))
 
-            for r1, r2 in itertools.product(c1.benchmark_rules, c2.benchmark_rules):
-                source_triples.update(_triples(name, r1.source.code, r2.source.code))
-                source_target_triples.update(
-                    _triples(name, rule_code(r1), rule_code(r2))
+            first_source_triples.update(
+                _triples(
+                    name,
+                    lambda x: [x.benchmark_rules[0].source.code],
+                    c1,
+                    c2,
                 )
+            )
+            first_target_triples.update(
+                _triples(
+                    name,
+                    lambda x: [x.benchmark_rules[0].target.code],
+                    c1,
+                    c2,
+                )
+            )
+            first_source_target_triples.update(
+                _triples(
+                    name,
+                    lambda x: [rule_code(x.benchmark_rules[0])],
+                    c1,
+                    c2,
+                )
+            )
 
-                if r1.source == r2.source:
-                    common_target_triples.update(
-                        _triples(
-                            f"{name}_{r1.source.code}", r1.target.code, r2.target.code
-                        )
-                    )
+            source_triples.update(
+                _triples(
+                    name,
+                    lambda x: (rule.source.code for rule in x.benchmark_rules),
+                    c1,
+                    c2,
+                )
+            )
+            target_triples.update(
+                _triples(
+                    name,
+                    lambda x: (rule.target.code for rule in x.benchmark_rules),
+                    c1,
+                    c2,
+                )
+            )
+            source_target_triples.update(
+                _triples(
+                    name,
+                    lambda x: (rule_code(rule) for rule in x.benchmark_rules),
+                    c1,
+                    c2,
+                )
+            )
 
     _echo_task("only sources", source_triples, True)
+    _echo_task("only targets", target_triples, True)
     _echo_task("sources and targets", source_target_triples, True)
-    _echo_task("targets from common sources", common_target_triples, False)
     _echo_task("first source per case", first_source_triples, False)
+    _echo_task("first target per case", first_target_triples, False)
+    _echo_task("first source and target per case", first_source_target_triples, False)
 
     typer.echo(f"total rules: {total_rules}")
     typer.echo(f"average rules per case: {statistics.mean(rules_per_case)}")
@@ -73,17 +117,18 @@ def annotator_agreement(path1: Path, path2: Path) -> None:
 def _echo_task(
     message: str, triples: t.Collection[t.Tuple[str, str, str]], multi_assign: bool
 ) -> None:
-    task = agreement.AnnotationTask(triples)
+    task = agreement.AnnotationTask(triples, masi_distance)
     annotations = len(triples)
 
     typer.echo(f"{message.capitalize()}, {multi_assign=}, {annotations=}")
 
     typer.echo(f"\tKrippendorff's Alpha: {task.alpha()}")
 
-    if not multi_assign:
-        typer.echo(f"\tCohen's Kappa: {task.kappa()}")
-        typer.echo(f"\tFleiss's Kappa: {task.multi_kappa()}")
-        typer.echo(f"\tScott's Pi: {task.pi()}")
+    # if not multi_assign:
+    typer.echo(f"\tBennet's S: {task.S()}")
+    typer.echo(f"\tScott's Pi: {task.pi()}")
+    typer.echo(f"\tFleiss's Kappa: {task.multi_kappa()}")
+    typer.echo(f"\tCohen's Kappa: {task.kappa()}")
 
     typer.echo()
 
