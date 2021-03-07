@@ -36,7 +36,7 @@ knowledge_graph = "wordnet"
 [tuning]
 
 adaptation_max_lemmas = [10]
-adaptation_method = ["direct", "bfs"] # direct, bfs
+adaptation_method = ["direct"] # direct, bfs
 adaptation_pruning_bfs_limit = [10]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
@@ -46,7 +46,7 @@ adaptation_pruning_selector = ["difference"]
 # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
 extraction_keyword_pos_tags = [["NOUN"]]
 extraction_keywords_per_adu = [false]
-extraction_max_keywords = [10]
+extraction_max_concepts = [10]
 
 rules_limit = [1]
 
@@ -54,18 +54,20 @@ rules_limit = [1]
 # score_adus_sem_sim = [0, 1]
 score_concept_sem_sim = [1]
 # score_hypernym_prox = [0, 1]
-# score_keyword_weight = [0, 1]
+# score_keyword_weight = [1]
 # score_major_claim_prox = [0, 1]
-# score_nodes_path_sim = [0, 1]
+# score_nodes_path_sim = [1]
 # score_nodes_sem_sim = [0, 1]
 # score_query_adus_sem_sim = [0, 1]
-# score_query_concept_sem_sim = [0, 1]
+# score_query_concept_sem_sim = [1]
 # score_query_nodes_sem_sim = [0, 1]
 
-threshold_concept_score_adaptation = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
-threshold_concept_score_extraction = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
-threshold_nodes_similarity_adaptation = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
-threshold_nodes_similarity_extraction = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
+threshold_concept_score = [0.0, 0.33, 0.67] # Filtering concepts
+threshold_nodes_similarity = [0.0, 0.33, 0.67] # Assigning nodes
+# threshold_concept_score_adaptation = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
+# threshold_concept_score_extraction = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
+# threshold_nodes_similarity_adaptation = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
+# threshold_nodes_similarity_extraction = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
 
 # From what concepts should the score of adapted concepts be derived
 weight_original_concept = [1]
@@ -106,12 +108,7 @@ follow_form_of = false
 
 [conceptnet.relation]
 directed = true
-generalization_types = [
-    "DerivedFrom",
-    "IsA",
-    "PartOf",
-    # "HasA",
-]
+generalization_types = ["IsA"] # "HasA", "DerivedFrom", "IsA", "PartOf"
 all_types = [
     "Antonym",
     "AtLocation",
@@ -156,6 +153,6 @@ all_types = [
 
 [conceptnet.path]
 [conceptnet.path.max_length]
-shortest_path = 15
-generalization = 15
-metrics = 15
+shortest_path = 20
+generalization = 10
+metrics = 10

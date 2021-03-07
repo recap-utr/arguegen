@@ -96,7 +96,7 @@ def keywords(
     concepts = casebase.filter_concepts(
         candidates,
         config.tuning("threshold", "concept_score", "extraction"),
-        config.tuning("extraction", "max_keywords"),
+        config.tuning("extraction", "max_concepts"),
     )
 
     log.debug(

@@ -188,12 +188,13 @@ def score(metrics: t.Dict[str, t.Optional[float]]) -> float:
 def filter_concepts(
     concepts: t.Iterable[Concept], min_score: float, topn: t.Optional[int]
 ) -> t.Set[Concept]:
-    filtered = list(filter(lambda x: x.score > min_score, concepts))
+    sorted_concepts = sorted(concepts, key=lambda x: x.score, reverse=True)
+    filtered_concepts = list(filter(lambda x: x.score > min_score, sorted_concepts))
 
     if topn and topn > 0:
-        filtered = filtered[:topn]
+        filtered_concepts = filtered_concepts[:topn]
 
-    return set(filtered)
+    return set(filtered_concepts)
 
 
 @dataclass(frozen=True, eq=True)
