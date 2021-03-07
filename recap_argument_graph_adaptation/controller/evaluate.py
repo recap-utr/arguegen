@@ -132,6 +132,11 @@ def _compute_score(
 
     return casebase.score(
         query.concept_metrics(
-            concept2, user_query, concept1.inodes, concept1.nodes, concept1.vector
+            "evaluation",
+            concept2,
+            user_query,
+            concept1.inodes,
+            concept1.nodes,
+            concept1.vector,
         )
     )

@@ -79,6 +79,7 @@ def keywords(
                 related_concepts,
                 user_query,
                 query.concept_metrics(
+                    "extraction",
                     related_concepts,
                     user_query,
                     inodes,
@@ -92,19 +93,10 @@ def keywords(
             if candidate not in rule_sources and candidate not in rule_targets:
                 candidates.append(candidate)
 
-    topn = config.tuning("extraction", "max_keywords")
-
-    if isinstance(topn, float):
-        if not 0.0 < topn <= 1.0:
-            raise ValueError(
-                f"topn = {topn} is invalid; "
-                "must be an int, or a float between 0.0 and 1.0"
-            )
-
-        topn = int(round(len(candidates) * topn))
-
     concepts = casebase.filter_concepts(
-        candidates, config.tuning("threshold", "concept_score", "extraction"), topn
+        candidates,
+        config.tuning("threshold", "concept_score", "extraction"),
+        config.tuning("extraction", "max_keywords"),
     )
 
     log.debug(

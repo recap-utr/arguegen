@@ -7,7 +7,12 @@ from dataclasses import dataclass
 
 import neo4j
 import neo4j.data
-from recap_argument_graph_adaptation.model import casebase, conceptnet_helper, graph
+from recap_argument_graph_adaptation.model import (
+    casebase,
+    conceptnet_helper,
+    graph,
+    spacy,
+)
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -29,9 +34,12 @@ class ConceptnetNode(graph.AbstractNode):
             pos=obj["pos"],  # type: ignore
             uri=obj["uri"],  # type: ignore
             source=obj["source"],  # type: ignore
+            _lemmas=frozenset(),
         )
 
-    def hypernym_distances(self) -> t.Dict[ConceptnetNode, int]:
+    def hypernym_distances(
+        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
+    ) -> t.Dict[ConceptnetNode, int]:
         return Database().hypernym_distances(self)
 
 

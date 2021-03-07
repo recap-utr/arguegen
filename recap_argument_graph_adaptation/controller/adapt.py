@@ -96,6 +96,7 @@ def concepts(
                     related_concepts,
                     user_query,
                     query.concept_metrics(
+                        "adaptation",
                         related_concepts,
                         user_query,
                         original_concept.inodes,
@@ -187,6 +188,7 @@ def paths(
                 related_concepts,
                 user_query,
                 query.concept_metrics(
+                    "adaptation",
                     related_concepts,
                     user_query,
                     original_concept.inodes,
@@ -426,7 +428,7 @@ def _aggregate_features(
     vec1: spacy.Vector, vec2: spacy.Vector, selector: str
 ) -> t.Union[float, spacy.Vector]:
     if selector == "difference":
-        return 1 - abs(vec1 - vec2)
+        return 1 - abs(vec1 - vec2)  # type: ignore
     elif selector == "similarity":
         return spacy.similarity(vec1, vec2)
 
@@ -440,6 +442,6 @@ def _compare_features(
         if isinstance(feat1, float) and isinstance(feat2, float):
             return 1 - abs(feat1 - feat2)
         else:
-            return spacy.similarity(feat1, feat2)
+            return spacy.similarity(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")

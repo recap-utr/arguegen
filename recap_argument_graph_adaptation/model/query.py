@@ -51,6 +51,7 @@ def concept_nodes(
 
 
 def concept_metrics(
+    stage: str,
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
     user_query: casebase.UserQuery,
     inodes: t.Iterable[casebase.ArgumentNode],
@@ -70,8 +71,10 @@ def concept_metrics(
     ):
         raise RuntimeError("Invalid combination of metric parameters")
 
+    assert stage in casebase.metrics_per_stage.keys()
+
     active_metrics = config.tuning("score").keys()
-    active = lambda x: x in active_metrics
+    active = lambda x: x in active_metrics and x in casebase.metrics_per_stage[stage]
 
     total_weight = 0
     metrics_map = {key: [] for key in casebase.metric_keys}
@@ -174,24 +177,24 @@ def direct_hypernyms(
     raise kg_err
 
 
-def hypernym_distances(
-    node: graph.AbstractNode,
-) -> t.Dict[graph.AbstractNode, int]:
-    if kg_cn:
-        return t.cast(
-            t.Dict[graph.AbstractNode, int],
-            conceptnet.Database().hypernym_distances(
-                t.cast(conceptnet.ConceptnetNode, node)
-            ),
-        )
+# def hypernym_distances(
+#     node: graph.AbstractNode,
+# ) -> t.Dict[graph.AbstractNode, int]:
+#     if kg_cn:
+#         return t.cast(
+#             t.Dict[graph.AbstractNode, int],
+#             conceptnet.Database().hypernym_distances(
+#                 t.cast(conceptnet.ConceptnetNode, node)
+#             ),
+#         )
 
-    elif kg_wn:
-        return t.cast(
-            t.Dict[graph.AbstractNode, int],
-            t.cast(wordnet.WordnetNode, node).hypernym_distances(),
-        )
+#     elif kg_wn:
+#         return t.cast(
+#             t.Dict[graph.AbstractNode, int],
+#             t.cast(wordnet.WordnetNode, node).hypernym_distances(),
+#         )
 
-    raise kg_err
+#     raise kg_err
 
 
 def all_shortest_paths(

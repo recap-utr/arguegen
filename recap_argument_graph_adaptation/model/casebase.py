@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import logging
 import statistics
 import typing as t
@@ -15,6 +16,37 @@ from recap_argument_graph_adaptation.model.config import Config
 log = logging.getLogger(__name__)
 config = Config.instance()
 
+metrics_per_stage = {
+    "extraction": {
+        "adus_sem_sim",
+        "concept_sem_sim",
+        "keyword_weight",
+        "nodes_path_sim",
+        "nodes_sem_sim",
+        "nodes_wup_sim",
+        "query_adus_sem_sim",
+        "query_concept_sem_sim",
+        "query_nodes_sem_sim",
+    },
+    "adaptation": {
+        "concept_sem_sim",
+        "hypernym_prox",
+        "major_claim_prox",
+        "nodes_path_sim",
+        "nodes_sem_sim",
+        "nodes_wup_sim",
+        "query_adus_sem_sim",
+        "query_concept_sem_sim",
+        "query_nodes_sem_sim",
+    },
+    "evaluation": {
+        "concept_sem_sim",
+        "nodes_path_sim",
+        "nodes_sem_sim",
+        "nodes_wup_sim",
+    },
+}
+
 metric_keys = {
     "adus_sem_sim",
     "concept_sem_sim",
@@ -28,6 +60,8 @@ metric_keys = {
     "query_concept_sem_sim",
     "query_nodes_sem_sim",
 }
+
+assert metric_keys == set(itertools.chain.from_iterable(metrics_per_stage.values()))
 empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
     key: None for key in metric_keys
 }
@@ -156,7 +190,7 @@ def filter_concepts(
 ) -> t.Set[Concept]:
     filtered = list(filter(lambda x: x.score > min_score, concepts))
 
-    if topn:
+    if topn and topn > 0:
         filtered = filtered[:topn]
 
     return set(filtered)
