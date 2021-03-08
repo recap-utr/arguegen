@@ -122,13 +122,14 @@ def _echo_task(
 
     typer.echo(f"{message.capitalize()}, {multi_assign=}, {annotations=}")
 
-    typer.echo(f"\tKrippendorff's Alpha: {task.alpha()}")
+    if not multi_assign:
+        typer.echo(f"\tBennet's S: {task.S()}")
+        typer.echo(f"\tScott's Pi: {task.pi()}")
+        typer.echo(f"\tFleiss's Kappa: {task.multi_kappa()}")
+        typer.echo(f"\tCohen's Kappa: {task.kappa()}")
 
-    # if not multi_assign:
-    typer.echo(f"\tBennet's S: {task.S()}")
-    typer.echo(f"\tScott's Pi: {task.pi()}")
-    typer.echo(f"\tFleiss's Kappa: {task.multi_kappa()}")
-    typer.echo(f"\tCohen's Kappa: {task.kappa()}")
+    typer.echo(f"\tCohen's Weighted Kappa: {task.weighted_kappa()}")
+    typer.echo(f"\tKrippendorff's Alpha: {task.alpha()}")
 
     typer.echo()
 
