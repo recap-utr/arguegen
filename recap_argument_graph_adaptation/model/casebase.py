@@ -275,9 +275,6 @@ class Evaluation:
             "accuracy",
             "balanced_accuracy",
             "error_rate",
-            "sensitivity",
-            "specificity",
-            "geometric_mean",
             "retrieved_sim",
             "adapted_sim",
             "sim_improvement",
@@ -371,17 +368,8 @@ class Evaluation:
 
     @property
     def balanced_accuracy(self) -> t.Optional[float]:
-        tpr = None
-        tnr = None
-
-        tpr_den = len(self.tp) + len(self.fn)
-        tnr_den = len(self.tn) + len(self.fp)
-
-        if tpr_den > 0:
-            tpr = len(self.tp) / tpr_den
-
-        if tnr_den > 0:
-            tnr = len(self.tn) / tnr_den
+        tpr = self.sensitivity
+        tnr = self.specificity
 
         if tnr and tpr:
             return (tpr + tnr) / 2
@@ -399,12 +387,7 @@ class Evaluation:
 
     @property
     def sensitivity(self) -> t.Optional[float]:
-        den = len(self.tp) + len(self.fn)
-
-        if den > 0:
-            return len(self.tp) / den
-
-        return None
+        return self.recall
 
     @property
     def specificity(self) -> t.Optional[float]:
