@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 import statistics
 import typing as t
 from dataclasses import dataclass, field
@@ -270,9 +271,13 @@ class Evaluation:
             "fp_score",
             "precision",
             "recall",
+            "f1",
             "accuracy",
             "balanced_accuracy",
-            "f1",
+            "error_rate",
+            "sensitivity",
+            "specificity",
+            "geometric_mean",
             "retrieved_sim",
             "adapted_sim",
             "sim_improvement",
@@ -382,6 +387,37 @@ class Evaluation:
             return (tpr + tnr) / 2
 
         return None
+
+    @property
+    def error_rate(self) -> t.Optional[float]:
+        den = len(self.tp) + len(self.tn) + len(self.fp) + len(self.fn)
+
+        if den > 0:
+            return (len(self.fp) + len(self.fn)) / den
+
+        return None
+
+    @property
+    def sensitivity(self) -> t.Optional[float]:
+        den = len(self.tp) + len(self.fn)
+
+        if den > 0:
+            return len(self.tp) / den
+
+        return None
+
+    @property
+    def specificity(self) -> t.Optional[float]:
+        den = len(self.tn) + len(self.fp)
+
+        if den > 0:
+            return len(self.tn) / den
+
+        return None
+
+    @property
+    def geometric_mean(self) -> float:
+        return math.sqrt(len(self.tp) * len(self.tn))
 
     @property
     def true_positives(self):
