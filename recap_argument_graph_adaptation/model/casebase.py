@@ -16,35 +16,33 @@ from recap_argument_graph_adaptation.model.config import Config
 log = logging.getLogger(__name__)
 config = Config.instance()
 
+global_metrics = {
+    "concept_sem_sim",
+    "nodes_path_sim",
+    "nodes_sem_sim",
+    "nodes_wup_sim",
+}
+
+extraction_adaptation_metrics = {
+    "query_concept_sem_sim",
+    "query_nodes_sem_sim",
+}
+
 metrics_per_stage = {
     "extraction": {
+        *global_metrics,
+        *extraction_adaptation_metrics,
         "adus_sem_sim",
-        "concept_sem_sim",
-        "keyword_weight",
-        "nodes_path_sim",
-        "nodes_sem_sim",
-        "nodes_wup_sim",
         "query_adus_sem_sim",
-        "query_concept_sem_sim",
-        "query_nodes_sem_sim",
+        "major_claim_prox",
+        "keyword_weight",
     },
     "adaptation": {
-        "concept_sem_sim",
+        *global_metrics,
+        *extraction_adaptation_metrics,
         "hypernym_prox",
-        "major_claim_prox",
-        "nodes_path_sim",
-        "nodes_sem_sim",
-        "nodes_wup_sim",
-        "query_adus_sem_sim",
-        "query_concept_sem_sim",
-        "query_nodes_sem_sim",
     },
-    "evaluation": {
-        "concept_sem_sim",
-        "nodes_path_sim",
-        "nodes_sem_sim",
-        "nodes_wup_sim",
-    },
+    "evaluation": {*global_metrics},
 }
 
 metric_keys = {
