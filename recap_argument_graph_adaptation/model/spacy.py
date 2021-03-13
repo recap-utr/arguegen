@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import statistics
 import typing as t
 from collections import defaultdict

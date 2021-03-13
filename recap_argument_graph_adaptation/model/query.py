@@ -35,6 +35,7 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
     raise kg_err
 
 
+# TODO: Currently, all metrics that do not depend on the related concepts are computed multiple times.
 def concept_nodes(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
@@ -80,75 +81,79 @@ def concept_metrics(
     metrics_map = {key: [] for key in casebase.metric_keys}
 
     for related_concept, related_concept_weight in related_concepts.items():
-        total_weight += related_concept_weight
-        concept_semantic_similarity = (
-            spacy.similarity(vector, related_concept.vector)
-            if active("concept_sem_sim")
-            else None
-        )
-        query_concept_semantic_similarity = (
-            spacy.similarity(user_query.vector, vector)
-            if active("query_concept_sem_sim")
-            else None
-        )
-        adus_semantic_similarity = (
-            statistics.mean(
-                spacy.similarity(inode2.vector, inode1.vector)
-                for inode1, inode2 in itertools.product(related_concept.inodes, inodes)
+        if related_concept_weight > 0:
+            total_weight += related_concept_weight
+            concept_semantic_similarity = (
+                spacy.similarity(vector, related_concept.vector)
+                if active("concept_sem_sim")
+                else None
             )
-            if active("adus_sem_sim")
-            else None
-        )
-        query_adus_semantic_similarity = (
-            statistics.mean(
-                spacy.similarity(user_query.vector, inode.vector) for inode in inodes
+            query_concept_semantic_similarity = (
+                spacy.similarity(user_query.vector, vector)
+                if active("query_concept_sem_sim")
+                else None
             )
-            if active("query_adus_sem_sim")
-            else None
-        )
-
-        metrics = {
-            "adus_sem_sim": adus_semantic_similarity,
-            "concept_sem_sim": concept_semantic_similarity,
-            "hypernym_prox": hypernym_proximity or _dist2sim(hypernym_level),
-            "keyword_weight": weight,
-            "major_claim_prox": major_claim_proximity
-            or _dist2sim(major_claim_distance),
-            "nodes_path_sim": None,
-            "nodes_sem_sim": None,
-            "nodes_wup_sim": None,
-            "query_adus_sem_sim": query_adus_semantic_similarity,
-            "query_concept_sem_sim": query_concept_semantic_similarity,
-            "query_nodes_sem_sim": None,
-        }
-
-        assert metrics.keys() == casebase.metric_keys
-
-        if kg_wn:
-            nodes = t.cast(t.Iterable[wordnet.WordnetNode], nodes)
-            related_nodes = t.cast(
-                t.Iterable[wordnet.WordnetNode], related_concept.nodes
+            adus_semantic_similarity = (
+                statistics.mean(
+                    spacy.similarity(inode2.vector, inode1.vector)
+                    for inode1, inode2 in itertools.product(
+                        related_concept.inodes, inodes
+                    )
+                )
+                if active("adus_sem_sim")
+                else None
             )
-
-            metrics.update(wordnet.metrics(nodes, related_nodes, active))
-            metrics["query_nodes_sem_sim"] = (
-                wordnet.query_nodes_similarity(nodes, user_query)
-                if active("query_nodes_sem_sim")
+            query_adus_semantic_similarity = (
+                statistics.mean(
+                    spacy.similarity(user_query.vector, inode.vector)
+                    for inode in inodes
+                )
+                if active("query_adus_sem_sim")
                 else None
             )
 
-        elif kg_cn:
-            db = conceptnet.Database()
-            nodes = t.cast(t.Iterable[conceptnet.ConceptnetNode], nodes)
-            related_nodes = t.cast(
-                t.Iterable[conceptnet.ConceptnetNode], related_concept.nodes
-            )
+            metrics = {
+                "adus_sem_sim": adus_semantic_similarity,
+                "concept_sem_sim": concept_semantic_similarity,
+                "hypernym_prox": hypernym_proximity or _dist2sim(hypernym_level),
+                "keyword_weight": weight,
+                "major_claim_prox": major_claim_proximity
+                or _dist2sim(major_claim_distance),
+                "nodes_path_sim": None,
+                "nodes_sem_sim": None,
+                "nodes_wup_sim": None,
+                "query_adus_sem_sim": query_adus_semantic_similarity,
+                "query_concept_sem_sim": query_concept_semantic_similarity,
+                "query_nodes_sem_sim": None,
+            }
 
-            metrics.update(db.metrics(nodes, related_nodes, active))
+            assert metrics.keys() == casebase.metric_keys
 
-        for key, value in metrics.items():
-            if value is not None:
-                metrics_map[key].append(value * related_concept_weight)
+            if kg_wn:
+                nodes = t.cast(t.Iterable[wordnet.WordnetNode], nodes)
+                related_nodes = t.cast(
+                    t.Iterable[wordnet.WordnetNode], related_concept.nodes
+                )
+
+                metrics.update(wordnet.metrics(nodes, related_nodes, active))
+                metrics["query_nodes_sem_sim"] = (
+                    wordnet.query_nodes_similarity(nodes, user_query)
+                    if active("query_nodes_sem_sim")
+                    else None
+                )
+
+            elif kg_cn:
+                db = conceptnet.Database()
+                nodes = t.cast(t.Iterable[conceptnet.ConceptnetNode], nodes)
+                related_nodes = t.cast(
+                    t.Iterable[conceptnet.ConceptnetNode], related_concept.nodes
+                )
+
+                metrics.update(db.metrics(nodes, related_nodes, active))
+
+            for key, value in metrics.items():
+                if value is not None:
+                    metrics_map[key].append(value * related_concept_weight)
 
     # No weight normalization required as given related concepts are available.
     aggregated_metrics = {

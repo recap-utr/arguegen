@@ -227,7 +227,7 @@ class Case:
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:
-        rules_limit = config.tuning("rules", "limit")
+        rules_limit = config.tuning("global", "rule_limit")
         slice = len(self._rules) if rules_limit == 0 else rules_limit
 
         return self._rules[:slice]
@@ -260,6 +260,8 @@ class Evaluation:
     tp_score: float
     fn_score: float
     fp_score: float
+    retrieved_sim: t.Optional[float]
+    adapted_sim: t.Optional[float]
 
     @staticmethod
     def keys(compact: bool = False) -> t.List[str]:
@@ -273,6 +275,9 @@ class Evaluation:
             "accuracy",
             "balanced_accuracy",
             "f1",
+            "retrieved_sim",
+            "adapted_sim",
+            "sim_improvement",
         ]
 
         if not compact:
@@ -391,6 +396,13 @@ class Evaluation:
     @property
     def false_negatives(self):
         return convert.list_dict(self.fn)
+
+    @property
+    def sim_improvement(self):
+        if self.adapted_sim and self.retrieved_sim:
+            return (self.adapted_sim / self.retrieved_sim) - 1
+
+        return None
 
     def __lt__(self, other):
         return self.score < other.score

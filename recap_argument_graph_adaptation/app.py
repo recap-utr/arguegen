@@ -37,6 +37,14 @@ def _init_child_process():
 
 def run():
     log.info("Initializing.")
+
+    # Add some hyperparameters
+    config["tuning"]["global_embeddings"] = [config["nlp"]["embeddings"]]
+    config["tuning"]["global_fuzzymax"] = [config["nlp"]["fuzzymax"]]
+    config["tuning"]["global_knowledge_graph"] = [
+        config["adaptation"]["knowledge_graph"]
+    ]
+
     start_time = timer()
     processes = (
         mp.cpu_count() - 1
@@ -121,12 +129,15 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
             reference_paths, case.rules, args.case.user_query
         )
 
-    if config["export"]["graph"]:
-        log.debug("Exporting graph.")
+    if (
+        config["export"]["retrieval_improvement"]
+        or config["export"]["graph_json"]
+        or config["export"]["graph_pdf"]
+    ):
         adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
     log.debug("Evaluating adaptations.")
-    eval_results = evaluate.case(case, adapted_concepts, all_concepts)
+    eval_results = evaluate.case(case, adapted_concepts, all_concepts, adapted_graph)
 
     end_time = timer()
 

@@ -16,7 +16,7 @@ config = Config.instance()
 
 
 _models = {
-    "en-integrated": "en_core_web_lg",
+    "en-glove": "en_core_web_lg",
     "en-sbert": "roberta-large-nli-stsb-mean-tokens",
     "en-use": "https://tfhub.dev/google/universal-sentence-encoder-large/5",
 }
@@ -32,7 +32,7 @@ def spacy_nlp():
     model_name = f"{lang}-{embeddings}"
 
     spacy_model_name = (
-        _models[model_name] if embeddings == "integrated" else _backup_models[lang]
+        _models[model_name] if embeddings == "glove" else _backup_models[lang]
     )
 
     model = spacy.load(
@@ -40,7 +40,7 @@ def spacy_nlp():
     )  # parser needed for noun chunks
     model.add_pipe(model.create_pipe("sentencizer"))
 
-    if embeddings == "integrated" and fuzzymax:
+    if embeddings == "glove" and fuzzymax:
         model.add_pipe(FuzzyModel(), first=True)
     if embeddings == "sbert":
         model.add_pipe(TransformerModel(model_name), first=True)
@@ -58,7 +58,7 @@ class FuzzyModel:
         return doc
 
     def vectors(self, obj):
-        return list(itertools.chain(t.vector for t in obj))  # TODO: Check if correct
+        return [t.vector for t in obj]  # TODO: Check if correct
 
 
 if config["nlp"]["embeddings"] == "sbert":

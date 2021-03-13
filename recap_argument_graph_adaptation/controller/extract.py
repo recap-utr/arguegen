@@ -65,7 +65,7 @@ def keywords(
             kw_forms,
             kw_pos,
             [inode.vector for inode in inodes],
-            config.tuning("threshold", "nodes_similarity", "extraction"),
+            config.tuning("threshold", "node_similarity", "extraction"),
         )
 
         if len(kg_nodes) > 0:

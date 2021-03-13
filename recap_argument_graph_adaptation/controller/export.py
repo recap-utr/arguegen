@@ -1,7 +1,6 @@
 import json
 import logging
 import shutil
-import statistics
 import typing as t
 from collections import defaultdict
 from pathlib import Path
@@ -47,8 +46,6 @@ def statistic(
     return out
 
 
-# TODO: The score distribution does not make sense currently
-# TODO: Add the whole eval object to the param_combinations, otherwise only the mean score will be exported
 def grid_stats(
     results: t.Iterable[t.Tuple[str, int, casebase.Evaluation]],
     duration: float,
@@ -189,9 +186,12 @@ def write_output(
 ) -> None:
     path.mkdir(parents=True, exist_ok=True)
 
-    if config["export"]["graph"] and adapted_graph:
-        adapted_graph.save(path / "case.json")
-        adapted_graph.render(path / "case.pdf")
+    if adapted_graph:
+        if config["export"]["graph_json"]:
+            adapted_graph.save(path / "case.json")
+
+        if config["export"]["graph_pdf"]:
+            adapted_graph.render(path / "case.pdf")
 
     if config["export"]["single_stats"]:
         stats_path = path / "stats.json"
@@ -214,8 +214,11 @@ def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
     paths = {}
     filenames = []
 
-    if config["export"]["graph"]:
-        filenames.extend(("case.json", "case.pdf"))
+    if config["export"]["graph_json"]:
+        filenames.append("case.json")
+
+    if config["export"]["graph_pdf"]:
+        filenames.append("case.pdf")
 
     if config["export"]["single_stats"]:
         filenames.append("stats.json")

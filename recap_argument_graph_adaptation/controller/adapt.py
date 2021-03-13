@@ -22,30 +22,26 @@ def argument_graph(
     rules: t.Collection[casebase.Rule],
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> ag.Graph:
-    substitutions = {
-        concept.name: adapted_concept.name
-        for concept, adapted_concept in adapted_concepts.items()
-    }
-    for rule in rules:
-        substitutions[rule.source.name] = rule.target.name
-
     adapted_graph = original_graph.copy()
 
-    for node in adapted_graph.inodes:
-        node.text = _replace(node.plain_text, substitutions)
-        # node.text = pr.proofread(node.text)
+    substitutions = {**adapted_concepts}
+    substitutions.update({rule.source: rule.target for rule in rules})
+    sources = sorted(substitutions.keys(), key=lambda x: len(x.name), reverse=True)
+
+    for source in sources:
+        pattern = re.compile(source.name, re.IGNORECASE)
+
+        for mapped_node in source.inodes:
+            graph_node = adapted_graph.inode_mappings[mapped_node.key]
+
+            graph_node.text = pattern.sub(
+                substitutions[source].name, graph_node.plain_text
+            )
+
+    # for node in adapted_graph.inodes:
+    #     node.text = pr.proofread(node.text)
 
     return adapted_graph
-
-
-def _replace(text: str, substitutions: t.Mapping[str, str]):
-    substrings = sorted(substitutions.keys(), key=len, reverse=True)
-
-    for substring in substrings:
-        pattern = re.compile(substring, re.IGNORECASE)
-        text = pattern.sub(substitutions[substring], text)
-
-    return text
 
 
 def concepts(
@@ -58,7 +54,7 @@ def concepts(
 ]:
     all_candidates = {}
     adapted_concepts = {}
-    related_concept_weight = config.tuning("weight")
+    related_concept_weight = config.tuning("adaptation_weight")
 
     for original_concept in concepts:
         adaptation_map = defaultdict(list)
@@ -69,15 +65,17 @@ def concepts(
         for rule in rules:
             related_concepts.update(
                 {
-                    rule.target: related_concept_weight["rule_target"] / len(rules),
-                    rule.source: related_concept_weight["rule_source"] / len(rules),
+                    rule.target: related_concept_weight.get("rule_target", 0.0)
+                    / len(rules),
+                    rule.source: related_concept_weight.get("rule_source", 0.0)
+                    / len(rules),
                 }
             )
 
         for node in original_concept.nodes:
             hypernym_distances = node.hypernym_distances(
                 original_concept.inode_vectors,
-                config.tuning("threshold", "nodes_similarity", "adaptation"),
+                config.tuning("threshold", "node_similarity", "adaptation"),
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
@@ -139,7 +137,7 @@ def paths(
     t.Dict[casebase.Concept, t.Set[casebase.Concept]],
 ]:
     bfs_method = "between"
-    related_concept_weight = config.tuning("weight")
+    related_concept_weight = config.tuning("adaptation_weight")
     adapted_concepts = {}
     adapted_paths = {}
     all_candidates = {}
@@ -166,14 +164,16 @@ def paths(
             vector = spacy.vector(name)
             end_nodes = frozenset([result.end_node])
             pos = query.pos(result.end_node.pos)
-            related_concepts = {}
+            related_concepts = {
+                original_concept: related_concept_weight.get("original_concept", 0.0)
+            }
 
             for rule in rules:
                 related_concepts.update(
                     {
-                        rule.target: related_concept_weight["rule_target"] / len(rules),
-                        rule.source: related_concept_weight["rule_source"] / len(rules),
-                        original_concept: related_concept_weight["original_concept"]
+                        rule.target: related_concept_weight.get("rule_target", 0.0)
+                        / len(rules),
+                        rule.source: related_concept_weight.get("rule_source", 0.0)
                         / len(rules),
                     }
                 )
@@ -242,13 +242,13 @@ def _bfs_adaptation(
                 path_extensions = query.direct_hypernyms(
                     current_path.end_node,
                     concept.inode_vectors,
-                    config.tuning("threshold", "nodes_similarity", "adaptation"),
+                    config.tuning("threshold", "node_similarity", "adaptation"),
                 )
 
                 # Here, paths that are shorter than the reference path are discarded.
                 if path_extensions:
                     path_extensions = _filter_paths(
-                        current_path, path_extensions, shortest_path
+                        path_extensions, current_path, shortest_path
                     )
 
                     for path_extension in path_extensions:
@@ -256,8 +256,7 @@ def _bfs_adaptation(
                             graph.AbstractPath.merge(current_path, path_extension)
                         )
 
-                # Shorter paths are removed.
-                # In case you want these, uncomment the following lines.
+                # In case you want shorter paths, uncomment the following lines.
                 # else:
                 #     adapted_paths.add(current_path)
 
@@ -321,7 +320,7 @@ def _filter_lemmas(
     if not adapted_concepts:
         return None
 
-    max_lemmas = config.tuning("adaptation", "max_lemmas")
+    max_lemmas = config.tuning("adaptation", "lemma_limit")
     lemma_nodes = defaultdict(set)
     lemma_concepts = defaultdict(set)
 
@@ -353,7 +352,6 @@ def _filter_lemmas(
         lemmas,
         retrieved_concept,
         [(rule.source, rule.target) for rule in rules],
-        selector=config.tuning("adaptation", "pruning_selector"),
         limit=1,
     )[0]
 
@@ -371,8 +369,8 @@ def _filter_lemmas(
 
 
 def _filter_paths(
-    current_path: graph.AbstractPath,
     path_extensions: t.Iterable[graph.AbstractPath],
+    current_path: graph.AbstractPath,
     reference_path: graph.AbstractPath,
 ) -> t.List[graph.AbstractPath]:
     start_index = len(current_path.relationships)
@@ -382,7 +380,6 @@ def _filter_paths(
         path_extensions,
         current_path,
         [(reference_path.nodes[start_index], reference_path.nodes[end_index])],
-        selector=config.tuning("adaptation", "pruning_selector"),
         limit=config.tuning("adaptation", "pruning_bfs_limit"),
     )
 
@@ -391,10 +388,10 @@ def _prune(
     adapted_items: t.Iterable[t.Any],
     retrieved_item: t.Any,
     reference_items: t.Iterable[t.Tuple[t.Any, t.Any]],
-    selector: str,
     limit: t.Optional[int] = None,
 ) -> t.List[t.Any]:
     candidate_values = defaultdict(list)
+    selector = "similarity"  # config.tuning("adaptation", "pruning_selector")
 
     for item in reference_items:
         val_reference = _aggregate_features(

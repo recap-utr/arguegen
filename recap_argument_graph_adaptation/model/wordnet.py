@@ -283,10 +283,7 @@ def inherited_hypernyms(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
         hyp_sequence = []
 
         for hyp in reversed(hyp_path[:-1]):  # The last element is the queried node
-            hyp_node = WordnetNode.from_nltk(hyp)
-
-            if hyp_node.name not in config["wordnet"]["hypernym_filter"]:
-                hyp_sequence.append(hyp_node)
+            hyp_sequence.append(WordnetNode.from_nltk(hyp))
 
         hyp_paths.append(WordnetPath.from_nodes(hyp_sequence))
 
