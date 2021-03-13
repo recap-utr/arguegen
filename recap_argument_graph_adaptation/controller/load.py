@@ -154,30 +154,35 @@ def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:
 def _postprocess_rule(
     source: casebase.Concept, target: casebase.Concept, path: Path
 ) -> casebase.Rule:
-    paths = query.all_shortest_paths(source.nodes, target.nodes)
+    if config["loading"]["enforce_node_paths"]:
+        paths = query.all_shortest_paths(source.nodes, target.nodes)
 
-    if len(paths) == 0:
-        synsets = [wn.synset(node.uri) for node in source.nodes]
-        hypernyms = itertools.chain.from_iterable(
-            hyp.lemmas()
-            for synset in synsets
-            for hyp, _ in synset.hypernym_distances()
-            if not hyp.name().startswith(source.name)
-            and hyp.name() not in config["wordnet"]["hypernym_filter"]
-        )
-        lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
+        if len(paths) == 0:
+            err = (
+                f"The given rule '{str(source)}->{str(target)}' specified in '{path}' is invalid. "
+                "No path to connect the concepts could be found in the knowledge graph. "
+            )
 
-        raise RuntimeError(
-            f"The given rule '{str(source)}->{str(target)}' specified in '{path}' is invalid. "
-            "No path to connect the concepts could be found in the knowledge graph. "
-            f"The following hypernyms are permitted: {sorted(lemmas)}"
-        )
+            if config["adaptation"]["knowledge_graph"] == "wordnet":
+                synsets = [wn.synset(node.uri) for node in source.nodes]
+                hypernyms = itertools.chain.from_iterable(
+                    hyp.lemmas()
+                    for synset in synsets
+                    for hyp, _ in synset.hypernym_distances()
+                    if not hyp.name().startswith(source.name)
+                    and hyp.name() not in config["wordnet"]["hypernym_filter"]
+                )
+                lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
 
-    source_nodes = frozenset(path.start_node for path in paths)
-    target_nodes = frozenset(path.end_node for path in paths)
+                err += f"The following hypernyms are permitted: {sorted(lemmas)}"
 
-    source = casebase.Concept.from_concept(source, nodes=source_nodes)
-    target = casebase.Concept.from_concept(target, nodes=target_nodes)
+            raise RuntimeError(err)
+
+        source_nodes = frozenset(path.start_node for path in paths)
+        target_nodes = frozenset(path.end_node for path in paths)
+
+        source = casebase.Concept.from_concept(source, nodes=source_nodes)
+        target = casebase.Concept.from_concept(target, nodes=target_nodes)
 
     return casebase.Rule(source, target)
 
@@ -236,7 +241,10 @@ def _parse_rule_concept(
     else:
         found_forms.add(name)
 
-    nodes = query.concept_nodes(kw_forms, pos)
+    if config["loading"]["enforce_node_paths"]:
+        nodes = query.concept_nodes(kw_forms, pos)
+    else:
+        nodes = query.concept_nodes(kw_forms, pos, [inode.vector for inode in inodes])
 
     if not nodes:
         raise RuntimeError(
