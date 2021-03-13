@@ -5,6 +5,7 @@ version = "3.3"
 
 [resources]
 processes = 0
+relative_paths = false # in stat files, output paths relative to the workspace root
 
 [resources.cases]
 input = "data/input"
@@ -27,7 +28,6 @@ workers = 1
 graph_json = false
 graph_pdf = false
 grid_stats = true
-relative_paths = true # in stat files, output paths relative to the workspace root
 retrieval_improvement = false
 single_stats = true
 

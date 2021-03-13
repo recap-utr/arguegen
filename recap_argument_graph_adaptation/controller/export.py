@@ -230,7 +230,7 @@ def _output_file_paths(parent_folder: Path) -> t.Dict[str, str]:
 
 
 def _file_path(path: Path) -> str:
-    if config["export"]["relative_paths"]:
+    if config["resources"]["relative_paths"]:
         return str(path)
 
     return "file://" + str(path.resolve())
