@@ -252,6 +252,7 @@ class WeightedScore:
 
 @dataclass(frozen=True)
 class Evaluation:
+    duration: float
     tp: t.List[WeightedScore]
     tn: t.Set[Concept]
     fp: t.List[WeightedScore]
@@ -265,6 +266,7 @@ class Evaluation:
     @staticmethod
     def keys(compact: bool = False) -> t.List[str]:
         k = [
+            "duration",
             "score",
             "tp_score",
             "fn_score",
@@ -348,14 +350,21 @@ class Evaluation:
 
         return None
 
-    @property
-    def f1(self) -> t.Optional[float]:
-        den = 2 * len(self.tp) + len(self.fp) + len(self.fn)
+    def f_score(self, beta: float) -> t.Optional[float]:
+        prec = self.precision
+        rec = self.recall
 
-        if den > 0:
-            return (2 * len(self.tp)) / (den)
+        if prec and rec:
+            num = (1 + pow(beta, 2)) * prec * rec
+            den = pow(beta, 2) * prec + rec
+
+            return num / den
 
         return None
+
+    @property
+    def f1(self) -> t.Optional[float]:
+        return self.f_score(1)
 
     @property
     def accuracy(self) -> t.Optional[float]:

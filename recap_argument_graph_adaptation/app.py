@@ -136,16 +136,18 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
     ):
         adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
 
-    log.debug("Evaluating adaptations.")
-    eval_results = evaluate.case(case, adapted_concepts, all_concepts, adapted_graph)
-
     end_time = timer()
+    duration = end_time - start_time
+
+    log.debug("Evaluating adaptations.")
+    eval_results = evaluate.case(
+        case, adapted_concepts, all_concepts, adapted_graph, duration
+    )
 
     log.debug("Exporting statistics.")
     stats_export = {
         "path": str(Path(config["resources"]["cases"]["input"]) / case.relative_path),
         "evaluation": eval_results.to_dict(),
-        "time": end_time - start_time,
         "rules": {
             "benchmark_rules": convert.list_str(case.benchmark_rules),
             "case_rules": convert.list_str(case.rules),

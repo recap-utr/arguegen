@@ -13,6 +13,7 @@ def case(
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
     all_concepts: t.List[casebase.Concept],
     adapted_graph: t.Optional[ag.Graph],
+    duration: float,
 ) -> casebase.Evaluation:
     case_rules = case.rules
     benchmark_rules = case.benchmark_rules
@@ -117,6 +118,7 @@ def case(
         adapted_sim = _graph_similarity(case.user_query, adapted_graph)
 
     eval_result = casebase.Evaluation(
+        duration=duration,
         tp=true_positives,
         tn=true_negatives,
         fp=false_positives,
