@@ -354,7 +354,7 @@ class Evaluation:
         prec = self.precision
         rec = self.recall
 
-        if prec and rec:
+        if prec is not None and rec is not None:
             num = (1 + pow(beta, 2)) * prec * rec
             den = pow(beta, 2) * prec + rec
 
@@ -380,7 +380,7 @@ class Evaluation:
         tpr = self.sensitivity
         tnr = self.specificity
 
-        if tnr and tpr:
+        if tnr is not None and tpr is not None:
             return (tpr + tnr) / 2
 
         return None
