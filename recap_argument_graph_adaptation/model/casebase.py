@@ -358,7 +358,10 @@ class Evaluation:
             num = (1 + pow(beta, 2)) * prec * rec
             den = pow(beta, 2) * prec + rec
 
-            return num / den
+            if den > 0:
+                return num / den
+
+            return None
 
         return None
 
