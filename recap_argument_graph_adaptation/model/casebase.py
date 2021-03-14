@@ -311,30 +311,10 @@ class Evaluation:
 
                 out["latex"] = " & ".join(
                     (
-                        "$%s$"
-                        % (
-                            "%s"
-                            % float(
-                                "%.3g"
-                                % (
-                                    func(
-                                        getattr(object, key) or 0.0
-                                        for object in objects
-                                    )
-                                )
-                            )
-                        ).lstrip("0")
-                        for key in [
-                            "duration",
-                            "precision",
-                            "recall",
-                            "f1",
-                            "balanced_accuracy",
-                            "tp_score",
-                            "fn_score",
-                            "fp_score",
-                            "score",
-                        ]
+                        Evaluation._latex_format(
+                            (func(getattr(object, key) or 0.0 for object in objects))
+                        )
+                        for key in Evaluation._latex_keys()
                     )
                 )
 
@@ -357,19 +337,27 @@ class Evaluation:
     @property
     def latex(self) -> str:
         return " & ".join(
-            "%s" % float("%.3g" % (getattr(self, key) or 0.0))
-            for key in [
-                "duration",
-                "precision",
-                "recall",
-                "f1",
-                "balanced_accuracy",
-                "tp_score",
-                "fn_score",
-                "fp_score",
-                "score",
-            ]
+            Evaluation._latex_format(getattr(self, key) or 0.0)
+            for key in Evaluation._latex_keys()
         )
+
+    @staticmethod
+    def _latex_format(value: float) -> str:
+        return "$%s$" % ("%s" % float("%.3g" % value)).lstrip("0")
+
+    @staticmethod
+    def _latex_keys() -> t.List[str]:
+        return [
+            "duration",
+            "precision",
+            "recall",
+            "f1",
+            "balanced_accuracy",
+            "tp_score",
+            "fn_score",
+            "fp_score",
+            "score",
+        ]
 
     @property
     def score(self) -> float:
