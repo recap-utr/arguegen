@@ -266,6 +266,7 @@ class Evaluation:
     @staticmethod
     def keys(compact: bool = False) -> t.List[str]:
         k = [
+            "latex",
             "duration",
             "score",
             "tp_score",
@@ -306,10 +307,46 @@ class Evaluation:
             return objects[0].to_dict(compact=True)
         elif metric:
             if func := metric_funcs[metric]:
-                return {
-                    key: func(getattr(object, key) or 0.0 for object in objects)
-                    for key in cls.keys(compact=True)
-                }
+                out = {}
+
+                out["latex"] = " & ".join(
+                    (
+                        "$%s$"
+                        % (
+                            "%s"
+                            % float(
+                                "%.3g"
+                                % (
+                                    func(
+                                        getattr(object, key) or 0.0
+                                        for object in objects
+                                    )
+                                )
+                            )
+                        ).lstrip("0")
+                        for key in [
+                            "duration",
+                            "precision",
+                            "recall",
+                            "f1",
+                            "balanced_accuracy",
+                            "tp_score",
+                            "fn_score",
+                            "fp_score",
+                            "score",
+                        ]
+                    )
+                )
+
+                out.update(
+                    {
+                        key: func(getattr(object, key) or 0.0 for object in objects)
+                        for key in cls.keys(compact=True)
+                        if key != "latex"
+                    }
+                )
+
+                return out
             else:
                 raise ValueError(
                     f"The given metric '{metric}' is unknown. Possible values are '{metric_funcs.keys()}'."
@@ -317,16 +354,22 @@ class Evaluation:
 
         return {key: cls.aggregate(objects, key) for key in metric_funcs.keys()}
 
-    @classmethod
-    def _aggregate(
-        cls,
-        objects: t.Iterable[Evaluation],
-        func: t.Callable[[t.Iterable[float]], float],
-    ) -> t.Dict[str, float]:
-        return {
-            key: func(getattr(object, key) or 0.0 for object in objects)
-            for key in cls.keys(compact=True)
-        }
+    @property
+    def latex(self) -> str:
+        return " & ".join(
+            "%s" % float("%.3g" % (getattr(self, key) or 0.0))
+            for key in [
+                "duration",
+                "precision",
+                "recall",
+                "f1",
+                "balanced_accuracy",
+                "tp_score",
+                "fn_score",
+                "fp_score",
+                "score",
+            ]
+        )
 
     @property
     def score(self) -> float:
