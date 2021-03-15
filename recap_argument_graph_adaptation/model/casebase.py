@@ -343,7 +343,7 @@ class Evaluation:
 
     @staticmethod
     def _latex_format(value: float) -> str:
-        return "$%s$" % ("%s" % float("%.3g" % value)).lstrip("0")
+        return "$%s$" % ("%s" % float("%.3g" % value)).lstrip("-0")
 
     @staticmethod
     def _latex_keys() -> t.List[str]:
@@ -357,6 +357,7 @@ class Evaluation:
             "fn_score",
             "fp_score",
             "score",
+            "sim_improvement",
         ]
 
     @property
