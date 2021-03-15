@@ -98,7 +98,11 @@ def dynamax_jaccard(x, y):
 
     m_inter = np.sum(np.minimum(m_x, m_y))
     m_union = np.sum(np.maximum(m_x, m_y))
-    return m_inter / m_union
+
+    if m_union > 0:
+        return m_inter / m_union
+
+    return 0.0
 
 
 def similarity(
