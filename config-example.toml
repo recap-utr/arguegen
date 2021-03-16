@@ -48,7 +48,7 @@ adaptation_weight_rule_target = [1]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
-# adaptation_pruning_selector = ["difference"]
+adaptation_pruning_selector = ["difference"]
 
 # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
 extraction_keyword_pos_tags = [["NOUN"]]

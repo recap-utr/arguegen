@@ -391,7 +391,10 @@ def _prune(
     limit: t.Optional[int] = None,
 ) -> t.List[t.Any]:
     candidate_values = defaultdict(list)
-    selector = "similarity"  # config.tuning("adaptation", "pruning_selector")
+    selector = config.tuning("adaptation", "pruning_selector")
+
+    if config["nlp"]["fuzzymax"]:
+        selector = "similarity"
 
     for item in reference_items:
         val_reference = _aggregate_features(
@@ -425,7 +428,7 @@ def _aggregate_features(
     vec1: spacy.Vector, vec2: spacy.Vector, selector: str
 ) -> t.Union[float, spacy.Vector]:
     if selector == "difference":
-        return 1 - abs(vec1 - vec2)  # type: ignore
+        return vec1 - vec2  # type: ignore
     elif selector == "similarity":
         return spacy.similarity(vec1, vec2)
 
