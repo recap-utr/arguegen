@@ -29,6 +29,7 @@ tensorflow = "~2.3"
 spacy = "^2.3.5"
 lemminflect = "^0.2.1"
 bert-score = "^0.3.8"
+torch = "~1.7"
 
 [tool.poetry.dev-dependencies]
 
