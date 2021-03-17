@@ -104,37 +104,44 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
         args.out_path / case.relative_path, args.total_params, config["_tuning"]
     )
 
+    relevant_concepts = set()
+    all_concepts = []
     adapted_concepts = {}
     reference_paths = {}
     adapted_paths = {}
     adapted_concept_candidates = {}
     adapted_graph = None
 
-    log.debug("Extracting keywords.")
-    relevant_concepts, all_concepts = extract.keywords(
-        case.graph, case.rules, case.user_query
-    )
-
-    log.debug("Adapting concepts.")
-    adaptation_method = config.tuning("adaptation", "method")
-
-    if adaptation_method == "direct":
-        adapted_concepts, adapted_concept_candidates = adapt.concepts(
-            relevant_concepts, case.rules, args.case.user_query
+    if len(case.rules) > 0:
+        log.debug("Extracting keywords.")
+        relevant_concepts, all_concepts = extract.keywords(
+            case.graph, case.rules, case.user_query
         )
 
-    elif adaptation_method == "bfs":
-        reference_paths = extract.paths(relevant_concepts, case.rules)
-        adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
-            reference_paths, case.rules, args.case.user_query
-        )
+        log.debug("Adapting concepts.")
+        adaptation_method = config.tuning("adaptation", "method")
 
-    if (
-        config["export"]["retrieval_improvement"]
-        or config["export"]["graph_json"]
-        or config["export"]["graph_pdf"]
-    ):
-        adapted_graph = adapt.argument_graph(case.graph, case.rules, adapted_concepts)
+        if adaptation_method == "direct":
+            adapted_concepts, adapted_concept_candidates = adapt.concepts(
+                relevant_concepts, case.rules, args.case.user_query
+            )
+
+        elif adaptation_method == "bfs":
+            reference_paths = extract.paths(relevant_concepts, case.rules)
+            adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
+                reference_paths, case.rules, args.case.user_query
+            )
+
+        if (
+            config["export"]["retrieval_improvement"]
+            or config["export"]["graph_json"]
+            or config["export"]["graph_pdf"]
+        ):
+            adapted_graph = adapt.argument_graph(
+                case.graph, case.rules, adapted_concepts
+            )
+    else:
+        adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}
 
     end_time = timer()
     duration = end_time - start_time

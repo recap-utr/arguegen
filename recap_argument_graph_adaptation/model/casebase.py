@@ -226,8 +226,9 @@ class Case:
 
     @property
     def rules(self) -> t.Tuple[Rule, ...]:
-        rules_limit = config.tuning("global", "rule_limit")
-        slice = len(self._rules) if rules_limit == 0 else rules_limit
+        slice = config.tuning("global", "rule_limit")
+        # rules_limit = config.tuning("global", "rule_limit")
+        # slice = len(self._rules) if rules_limit == 0 else rules_limit
 
         return self._rules[:slice]
 
@@ -357,7 +358,7 @@ class Evaluation:
             "fn_score",
             "fp_score",
             "score",
-            "sim_improvement",
+            # "sim_improvement",
         ]
 
     @property
