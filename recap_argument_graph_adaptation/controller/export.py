@@ -47,12 +47,13 @@ def statistic(
 
 
 def grid_stats(
-    results: t.Iterable[t.Tuple[str, int, casebase.Evaluation]],
+    results: t.Iterable[t.Tuple[str, int, casebase.EvaluationTuple]],
     duration: float,
     param_grid: t.Sequence[t.Mapping[str, t.Any]],
     out_path: Path,
 ) -> None:
     log.info("Exporting grid stats.")
+    # TODO: Update for new evaluation tuple!
 
     results = [entry for entry in results if entry is not None]
     case_results = defaultdict(list)

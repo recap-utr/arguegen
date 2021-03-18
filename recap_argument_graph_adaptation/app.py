@@ -91,7 +91,9 @@ def run():
     log.info(f"Average duration per run: {duration / len(run_args)}")
 
 
-def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluation]:
+def _parametrized_run(
+    args: load.RunArgs,
+) -> t.Tuple[str, int, casebase.EvaluationTuple]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params

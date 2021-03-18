@@ -14,7 +14,7 @@ def case(
     all_concepts: t.Iterable[casebase.Concept],
     adapted_graph: t.Optional[ag.Graph],
     duration: float,
-) -> casebase.Evaluation:
+) -> casebase.EvaluationTuple:
     case_rules = case.rules
     benchmark_rules = case.benchmark_rules
 
@@ -31,64 +31,141 @@ def case(
     only_benchmark = {k for k in benchmark_keys - computed_keys}
     only_computed = {k for k in computed_keys - benchmark_keys}
 
+    tn = {x for x in all_concepts if x not in benchmark_keys and x not in computed_keys}
+
     log.debug(f"Common adaptations: {convert.list_str(benchmark_and_computed)}")
     log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")
     log.debug(f"Only computed adaptations: {convert.list_str(only_computed)}")
 
-    true_positives = []
-    true_positives_benchmark = []
-    false_negatives = []
-    false_positives = []
-    fp_weight = 1 / len(benchmark_rules)
+    tp, fn, fp = _eval_sets(
+        computed_adaptations, benchmark_adaptations, benchmark_weights, case.user_query
+    )
+    tp_score, fn_score, fp_score = _eval_scores(
+        tp,
+        fn,
+        fp,
+        benchmark_weights,
+        computed_adaptations,
+    )
 
-    true_negatives = {
-        x for x in all_concepts if x not in benchmark_keys and x not in computed_keys
-    }
+    retrieved_sim = None
+    adapted_sim = None
+
+    if adapted_graph:
+        retrieved_sim = _graph_similarity(case.user_query, case.graph)
+        adapted_sim = _graph_similarity(case.user_query, adapted_graph)
+
+    eval_result = casebase.Evaluation(
+        duration=duration,
+        tp=tp,
+        tn=tn,
+        fp=fp,
+        fn=fn,
+        tp_score=tp_score,
+        fn_score=fn_score,
+        fp_score=fp_score,
+        retrieved_sim=retrieved_sim,
+        adapted_sim=adapted_sim,
+    )
+
+    log.debug(f"Finished with global score of {eval_result.score}.")
+
+    baseline_adaptations = {concept: concept for concept in computed_adaptations}
+
+    tp_baseline, fn_baseline, fp_baseline = _eval_sets(
+        baseline_adaptations, benchmark_adaptations, benchmark_weights, case.user_query
+    )
+    tp_score_baseline, fn_score_baseline, fp_score_baseline = _eval_scores(
+        tp_baseline,
+        fn_baseline,
+        fp_baseline,
+        benchmark_weights,
+        baseline_adaptations,
+    )
+
+    baseline_result = casebase.Evaluation(
+        duration=0,
+        tp=tp_baseline,
+        tn=set(),
+        fp=fp_baseline,
+        fn=fn_baseline,
+        tp_score=tp_score_baseline,
+        fn_score=fn_score_baseline,
+        fp_score=fp_score_baseline,
+        retrieved_sim=retrieved_sim,
+        adapted_sim=retrieved_sim,
+    )
+
+    return casebase.EvaluationTuple(eval_result, baseline_result)
+
+
+def _eval_sets(
+    computed_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
+    benchmark_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
+    benchmark_weights: t.Iterable[int],
+    user_query: casebase.UserQuery,
+) -> t.Tuple[
+    t.List[casebase.WeightedScore],
+    t.List[casebase.WeightedScore],
+    t.List[casebase.WeightedScore],
+]:
+    tp = []
+    fn = []
+    fp = []
+    tp_baseline = []
 
     for weight, (original_concept, benchmark_adaptation) in zip(
         benchmark_weights, benchmark_adaptations.items()
     ):
         if computed_adaptation := computed_adaptations.get(original_concept):
-            true_positives.append(
+            tp.append(
                 casebase.WeightedScore(
                     original_concept,
                     _compute_score(
-                        benchmark_adaptation, computed_adaptation, case.user_query
+                        benchmark_adaptation, computed_adaptation, user_query
                     ),
                     weight,
                 )
             )
-            true_positives_benchmark.append(
+            tp_baseline.append(
                 casebase.WeightedScore(
                     original_concept,
-                    _compute_score(
-                        benchmark_adaptation, original_concept, case.user_query
-                    ),
+                    _compute_score(benchmark_adaptation, original_concept, user_query),
                     weight,
                 )
             )
         else:
-            false_negatives.append(
-                casebase.WeightedScore(original_concept, 0.0, weight)
-            )
+            fn.append(casebase.WeightedScore(original_concept, 0.0, weight))
 
     for original_concept, computed_adaptation in computed_adaptations.items():
         if original_concept not in benchmark_adaptations:
             # Here, benchmark_adaptation == original_concept
-            false_positives.append(
+            fp.append(
                 casebase.WeightedScore(
                     original_concept,
-                    _compute_score(
-                        original_concept, computed_adaptation, case.user_query
-                    ),
-                    fp_weight,
+                    _compute_score(original_concept, computed_adaptation, user_query),
+                    1,
                 )
             )
 
-    tp_score = _tp_score(true_positives)
-    benchmark_tp_score = _tp_score(true_positives_benchmark)
+    return tp, fn, fp
+
+
+def _eval_scores(
+    true_positives: t.Iterable[casebase.WeightedScore],
+    false_negatives: t.Iterable[casebase.WeightedScore],
+    false_positives: t.Iterable[casebase.WeightedScore],
+    benchmark_weights: t.Iterable[int],
+    computed_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
+) -> t.Tuple[float, float, float]:
+    tp_score = 0.0
     fn_score = 0.0
     fp_score = 0.0
+
+    tp_denominator = sum(x.weight for x in true_positives)
+
+    if tp_denominator > 0:
+        tp_score = sum(x.score * x.weight for x in true_positives) / tp_denominator
 
     fn_denominator = sum(benchmark_weights)
 
@@ -103,39 +180,7 @@ def case(
     if fp_denominator:
         fp_score = (sum(1 - x.score for x in false_positives)) / fp_denominator
 
-    retrieved_sim = None
-    adapted_sim = None
-
-    if adapted_graph:
-        retrieved_sim = _graph_similarity(case.user_query, case.graph)
-        adapted_sim = _graph_similarity(case.user_query, adapted_graph)
-
-    eval_result = casebase.Evaluation(
-        duration=duration,
-        tp=true_positives,
-        tn=true_negatives,
-        fp=false_positives,
-        fn=false_negatives,
-        tp_score=tp_score,
-        fn_score=fn_score,
-        fp_score=fp_score,
-        retrieved_sim=retrieved_sim,
-        adapted_sim=adapted_sim,
-        benchmark_tp_score=benchmark_tp_score,
-    )
-
-    log.debug(f"Finished with global score of {eval_result.score}.")
-
-    return eval_result
-
-
-def _tp_score(true_positives: t.Iterable[casebase.WeightedScore]) -> float:
-    tp_denominator = sum(x.weight for x in true_positives)
-
-    if tp_denominator > 0:
-        return sum(x.score * x.weight for x in true_positives) / tp_denominator
-
-    return 0.0
+    return tp_score, fn_score, fp_score
 
 
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:

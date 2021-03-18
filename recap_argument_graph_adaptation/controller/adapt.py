@@ -324,17 +324,11 @@ def _filter_lemmas(
     lemma_nodes = defaultdict(set)
     lemma_concepts = defaultdict(set)
 
-    try:
-        for adapted_concept in adapted_concepts:
-            for node in adapted_concept.nodes:
-                for lemma in node.processed_lemmas:
-                    lemma_nodes[(lemma, adapted_concept.pos)].add(node)
-                    lemma_concepts[(lemma, adapted_concept.pos)].add(adapted_concept)
-
-                    if len(lemma_nodes) >= max_lemmas:
-                        raise BreakLoop
-    except BreakLoop:
-        pass
+    for adapted_concept in adapted_concepts[:max_lemmas]:
+        for node in adapted_concept.nodes:
+            for lemma in node.processed_lemmas:
+                lemma_nodes[(lemma, adapted_concept.pos)].add(node)
+                lemma_concepts[(lemma, adapted_concept.pos)].add(adapted_concept)
 
     assert lemma_nodes.keys() == lemma_concepts.keys()
 

@@ -252,6 +252,11 @@ class WeightedScore:
 
 
 @dataclass(frozen=True)
+class EvaluationTuple:
+    case_eval: Evaluation
+    baseline_eval: Evaluation
+
+@dataclass(frozen=True)
 class Evaluation:
     duration: float
     tp: t.List[WeightedScore]
@@ -261,7 +266,7 @@ class Evaluation:
     tp_score: float
     fn_score: float
     fp_score: float
-    benchmark_tp_score: float
+    # baseline_tp_score: float
     retrieved_sim: t.Optional[float]
     adapted_sim: t.Optional[float]
 
@@ -274,10 +279,8 @@ class Evaluation:
             "tp_score",
             "fn_score",
             "fp_score",
-            "benchmark_score",
-            "benchmark_score_improvement",
-            "benchmark_tp_score",
-            "benchmark_tp_score_improvement",
+            # "baseline_tp_score",
+            # "baseline_tp_score_improvement",
             "precision",
             "recall",
             "f1",
@@ -363,30 +366,30 @@ class Evaluation:
             "fn_score",
             "fp_score",
             "score",
-            "benchmark_score_improvement",
+            # "baseline_tp_score_improvement",
         ]
 
     @property
     def score(self) -> float:
         return (1 / 3) * (2 + self.tp_score - self.fn_score - self.fp_score)
 
-    @property
-    def benchmark_score(self) -> float:
-        return (1 / 3) * (2 + self.benchmark_tp_score - self.fn_score)
+    # @property
+    # def baseline_score(self) -> float:
+    #     return (1 / 3) * (2 + self.baseline_tp_score - self.fn_score)
 
     @property
-    def benchmark_tp_score_improvement(self) -> float:
-        if self.benchmark_tp_score > 0:
-            return (self.tp_score / self.benchmark_tp_score) - 1
+    def baseline_tp_score_improvement(self) -> float:
+        if self.baseline_tp_score > 0:
+            return (self.tp_score / self.baseline_tp_score) - 1
 
         return 0.0
 
-    @property
-    def benchmark_score_improvement(self) -> float:
-        if self.benchmark_score > 0:
-            return (self.score / self.benchmark_score) - 1
+    # @property
+    # def baseline_score_improvement(self) -> float:
+    #     if self.baseline_score > 0:
+    #         return (self.score / self.baseline_score) - 1
 
-        return 0.0
+    #     return 0.0
 
     @property
     def precision(self) -> t.Optional[float]:
