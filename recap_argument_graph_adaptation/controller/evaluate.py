@@ -29,7 +29,7 @@ def case(
 
     benchmark_and_computed = {k for k in benchmark_keys if k in computed_keys}
     only_benchmark = {k for k in benchmark_keys - computed_keys}
-    # only_computed = {k for k in computed_keys - benchmark_keys}
+    only_computed = {k for k in computed_keys - benchmark_keys}
 
     # If 'tuition fees' and 'fees' are computed, but only 'tuition fees' is in the benchmark adaptations,
     # we should not decrease the score because of this additional adaptation.
@@ -38,13 +38,13 @@ def case(
     # To improve, one could during the extraction check if the subset concept 'fees' only occurs
     # as a part of the superset 'tuition fees'. If this is the case, remove it from the candidates.
     # Otherwise, add it and evaluate it like any other concept (i.e., get rid of the following workaround).
-    only_computed = {
-        k
-        for k in computed_keys - benchmark_keys
-        if not any(
-            k.name in other.name and k.part_eq(other) for other in benchmark_keys
-        )
-    }
+    # only_computed = {
+    #     k
+    #     for k in computed_keys - benchmark_keys
+    #     if not any(
+    #         k.name in other.name and k.part_eq(other) for other in benchmark_keys
+    #     )
+    # }
 
     log.debug(f"Common adaptations: {convert.list_str(benchmark_and_computed)}")
     log.debug(f"Only benchmark adaptations: {convert.list_str(only_benchmark)}")

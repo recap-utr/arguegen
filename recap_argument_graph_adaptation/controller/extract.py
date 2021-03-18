@@ -1,3 +1,4 @@
+import itertools
 import logging
 import re
 import typing as t
@@ -17,7 +18,7 @@ def keywords(
     rule_sources = {rule.source for rule in rules}
     rule_targets = {rule.target for rule in rules}
 
-    candidates: t.List[casebase.Concept] = []
+    candidates = set()
     mc = graph.major_claim
     use_mc_proximity = "major_claim_prox" in config.tuning("score")
 
@@ -91,7 +92,19 @@ def keywords(
             )
 
             if candidate not in rule_sources and candidate not in rule_targets:
-                candidates.append(candidate)
+                candidates.add(candidate)
+
+    graph_text = " ".join(inode.plain_text for inode in graph.inodes)
+    occurences = {x: graph_text.count(x.name) for x in candidates}
+
+    for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
+        # 'tuition' in 'tuition fees'
+        if (
+            c1 != c2
+            and (c2.name.startswith(c1.name) or c2.name.endswith(c1.name))
+            and o1 == o2
+        ):
+            candidates.difference_update([c1])
 
     concepts = casebase.filter_concepts(
         candidates,

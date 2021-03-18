@@ -141,7 +141,8 @@ def _parametrized_run(args: load.RunArgs) -> t.Tuple[str, int, casebase.Evaluati
                 case.graph, case.rules, adapted_concepts
             )
     else:
-        adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}
+        # adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}
+        raise RuntimeError("You have to provide at least one rule.")
 
     end_time = timer()
     duration = end_time - start_time
