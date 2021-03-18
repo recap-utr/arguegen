@@ -56,9 +56,15 @@ def grid_stats(
     # TODO: Update for new evaluation tuple!
 
     results = [entry for entry in results if entry is not None]
-    case_results = defaultdict(list)
-    param_combinations = [[] for _ in range(len(param_grid))]
-    param_results = {key: defaultdict(list) for key in config["tuning"]}
+    case_results: t.Dict[
+        str, t.List[t.Tuple[casebase.EvaluationTuple, int]]
+    ] = defaultdict(list)
+    param_combinations: t.List[t.List[casebase.EvaluationTuple]] = [
+        [] for _ in range(len(param_grid))
+    ]
+    param_results: t.Dict[str, t.Dict[str, t.List[casebase.EvaluationTuple]]] = {
+        key: defaultdict(list) for key in config["tuning"]
+    }
     score_distribution = []
 
     for case, i, eval in results:
@@ -71,24 +77,24 @@ def grid_stats(
 
     best_case_results = {}
 
-    for case, eval_results in case_results.items():
-        eval_results.sort(key=lambda x: x[0].score, reverse=True)
+    for case, eval_tuples in case_results.items():
+        eval_tuples.sort(key=lambda x: x[0].case.score, reverse=True)
         _results = []
 
-        for eval, i in eval_results:
+        for eval_tuple, i in eval_tuples:
             current_path = nested_path(out_path / case, len(param_grid), param_grid[i])
 
             # Move the best results to the root folder for that case.
             if len(_results) == 0:
                 copy_case_files(current_path, out_path / case, "best")
-            elif len(_results) == len(eval_results) - 1:
+            elif len(_results) == len(eval_tuples) - 1:
                 copy_case_files(current_path, out_path / case, "worst")
-            elif len(_results) == len(eval_results) // 2:
+            elif len(_results) == len(eval_tuples) // 2:
                 copy_case_files(current_path, out_path / case, "median")
 
             _results.append(
                 {
-                    "evaluation": eval.to_dict(compact=True),
+                    "evaluation": eval_tuple.to_dict(compact=True),
                     "files": _output_file_paths(current_path),
                     "config": param_grid[i],
                 }
@@ -98,25 +104,25 @@ def grid_stats(
 
     mean_param_combinations = []
 
-    for i, eval_results in enumerate(param_combinations):
-        if eval_results:
+    for i, eval_tuples in enumerate(param_combinations):
+        if eval_tuples:
             current_cases = {}
 
-            for case, case_evals in case_results.items():
-                case_eval, _ = next(
-                    filter(lambda x: x[1] == i, case_evals), (None, None)
+            for case, case_eval_tuples in case_results.items():
+                case_eval_tuple, _ = next(
+                    filter(lambda x: x[1] == i, case_eval_tuples), (None, None)
                 )
                 current_path = nested_path(
                     out_path / case, len(param_grid), param_grid[i]
                 )
                 current_cases[case] = {
-                    "evaluation": case_eval.to_dict(compact=True)
-                    if case_eval
+                    "evaluation": case_eval_tuple.to_dict(compact=True)
+                    if case_eval_tuple
                     else None,
                     "files": _output_file_paths(current_path),
                 }
 
-            eval_results_aggr = casebase.Evaluation.aggregate(eval_results)
+            eval_results_aggr = casebase.aggregate_eval(eval_tuples)
 
             mean_param_combinations.append(
                 {
@@ -127,7 +133,8 @@ def grid_stats(
             )
 
     mean_param_combinations.sort(
-        key=lambda x: x["evaluation"].get("score") or x["evaluation"]["mean"]["score"],
+        key=lambda x: x["evaluation"]["case"].get("score")
+        or x["evaluation"]["case"]["mean"]["score"],
         reverse=True,
     )
 
@@ -138,14 +145,14 @@ def grid_stats(
         mean_param_results[param_key] = {}
 
         for param_value, eval_results in param_values.items():
-            mean_param_results[param_key][param_value] = casebase.Evaluation.aggregate(
+            mean_param_results[param_key][param_value] = casebase.aggregate_eval(
                 eval_results
             )
 
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
         "duration": duration,
-        "score_distribution": casebase.Evaluation.aggregate(score_distribution),
+        "score_distribution": casebase.aggregate_eval(score_distribution),
         "param_results": mean_param_results,
         "param_combinations": mean_param_combinations,
         "case_results": best_case_results,

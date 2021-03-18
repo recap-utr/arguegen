@@ -41,11 +41,7 @@ def case(
         computed_adaptations, benchmark_adaptations, benchmark_weights, case.user_query
     )
     tp_score, fn_score, fp_score = _eval_scores(
-        tp,
-        fn,
-        fp,
-        benchmark_weights,
-        computed_adaptations,
+        tp, fn, fp, benchmark_weights, computed_adaptations, case.user_query
     )
 
     retrieved_sim = None
@@ -81,6 +77,7 @@ def case(
         fp_baseline,
         benchmark_weights,
         baseline_adaptations,
+        case.user_query,
     )
 
     baseline_result = casebase.Evaluation(
@@ -157,6 +154,7 @@ def _eval_scores(
     false_positives: t.Iterable[casebase.WeightedScore],
     benchmark_weights: t.Iterable[int],
     computed_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
+    user_query: casebase.UserQuery,
 ) -> t.Tuple[float, float, float]:
     tp_score = 0.0
     fn_score = 0.0
@@ -173,7 +171,7 @@ def _eval_scores(
         fn_score = sum(x.weight for x in false_negatives) / fn_denominator
 
     fp_denominator = sum(
-        1 - _compute_score(concept, adaptation, case.user_query)
+        1 - _compute_score(concept, adaptation, user_query)
         for concept, adaptation in computed_adaptations.items()
     )
 

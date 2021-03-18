@@ -7,6 +7,7 @@ import statistics
 import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
+from multiprocessing import Value
 from pathlib import Path
 
 import recap_argument_graph as ag
@@ -251,10 +252,70 @@ class WeightedScore:
         }
 
 
+def aggregate_eval(
+    objects: t.Sequence[t.Union[Evaluation, EvaluationTuple]],
+    metric: t.Optional[str] = None,
+) -> t.Dict[str, t.Any]:
+    if all(isinstance(obj, Evaluation) for obj in objects):
+        metric_funcs = {
+            "mean": statistics.mean,
+            "min": min,
+            "max": max,
+        }
+
+        if len(objects) == 0:
+            return {}
+        elif len(objects) == 1:
+            return objects[0].to_dict(compact=True)
+        elif metric:
+            if func := metric_funcs[metric]:
+                out = {}
+
+                out["latex"] = " & ".join(
+                    (
+                        Evaluation._latex_format(
+                            (func(getattr(object, key) or 0.0 for object in objects))
+                        )
+                        for key in Evaluation._latex_keys()
+                    )
+                )
+
+                out.update(
+                    {
+                        key: func(getattr(object, key) or 0.0 for object in objects)
+                        for key in Evaluation.keys(compact=True)
+                        if key != "latex"
+                    }
+                )
+
+                return out
+            else:
+                raise ValueError(
+                    f"The given metric '{metric}' is unknown. Possible values are '{metric_funcs.keys()}'."
+                )
+
+        return {key: aggregate_eval(objects, key) for key in metric_funcs.keys()}
+
+    elif all(isinstance(obj, EvaluationTuple) for obj in objects):
+        return {
+            key: aggregate_eval([getattr(obj, key) for obj in objects])
+            for key in export_keys
+        }
+
+    raise ValueError("All evaluation objects must have the same type.")
+
+
+export_keys = ["case", "baseline"] if config["export"]["baseline"] else ["case"]
+
+
 @dataclass(frozen=True)
 class EvaluationTuple:
-    case_eval: Evaluation
-    baseline_eval: Evaluation
+    case: Evaluation
+    baseline: Evaluation
+
+    def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
+        return {key: getattr(self, key).to_dict(compact) for key in export_keys}
+
 
 @dataclass(frozen=True)
 class Evaluation:
@@ -299,49 +360,6 @@ class Evaluation:
 
     def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
         return {key: getattr(self, key) for key in Evaluation.keys(compact)}
-
-    @classmethod
-    def aggregate(
-        cls, objects: t.Sequence[Evaluation], metric: t.Optional[str] = None
-    ) -> t.Dict[str, t.Any]:
-        metric_funcs = {
-            "mean": statistics.mean,
-            "min": min,
-            "max": max,
-        }
-
-        if len(objects) == 0:
-            return {}
-        elif len(objects) == 1:
-            return objects[0].to_dict(compact=True)
-        elif metric:
-            if func := metric_funcs[metric]:
-                out = {}
-
-                out["latex"] = " & ".join(
-                    (
-                        Evaluation._latex_format(
-                            (func(getattr(object, key) or 0.0 for object in objects))
-                        )
-                        for key in Evaluation._latex_keys()
-                    )
-                )
-
-                out.update(
-                    {
-                        key: func(getattr(object, key) or 0.0 for object in objects)
-                        for key in cls.keys(compact=True)
-                        if key != "latex"
-                    }
-                )
-
-                return out
-            else:
-                raise ValueError(
-                    f"The given metric '{metric}' is unknown. Possible values are '{metric_funcs.keys()}'."
-                )
-
-        return {key: cls.aggregate(objects, key) for key in metric_funcs.keys()}
 
     @property
     def latex(self) -> str:
