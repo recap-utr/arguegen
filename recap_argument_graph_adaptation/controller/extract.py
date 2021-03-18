@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 def keywords(
     graph: ag.Graph, rules: t.Collection[casebase.Rule], user_query: casebase.UserQuery
-) -> t.Tuple[t.Set[casebase.Concept], t.List[casebase.Concept]]:
+) -> t.Tuple[t.Set[casebase.Concept], t.Set[casebase.Concept]]:
     related_concepts = {rule.source: 1 / len(rules) for rule in rules}
     rule_sources = {rule.source for rule in rules}
     rule_targets = {rule.target for rule in rules}
