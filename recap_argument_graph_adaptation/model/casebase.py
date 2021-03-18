@@ -257,7 +257,7 @@ def aggregate_eval(
     metric: t.Optional[str] = None,
 ) -> t.Dict[str, t.Any]:
     if all(isinstance(obj, Evaluation) for obj in objects):
-        metric_funcs = {
+        aggr_funcs = {
             "mean": statistics.mean,
             "min": min,
             "max": max,
@@ -268,7 +268,7 @@ def aggregate_eval(
         elif len(objects) == 1:
             return objects[0].to_dict(compact=True)
         elif metric:
-            if func := metric_funcs[metric]:
+            if func := aggr_funcs[metric]:
                 out = {}
 
                 out["latex"] = " & ".join(
@@ -291,10 +291,14 @@ def aggregate_eval(
                 return out
             else:
                 raise ValueError(
-                    f"The given metric '{metric}' is unknown. Possible values are '{metric_funcs.keys()}'."
+                    f"The given metric '{metric}' is unknown. Possible values are '{aggr_funcs.keys()}'."
                 )
 
-        return {key: aggregate_eval(objects, key) for key in metric_funcs.keys()}
+        return {
+            key: aggregate_eval(objects, key)
+            for key in aggr_funcs.keys()
+            if key in config["export"]["aggr_funcs"]
+        }
 
     elif all(isinstance(obj, EvaluationTuple) for obj in objects):
         return {

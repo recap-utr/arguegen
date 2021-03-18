@@ -25,10 +25,12 @@ workers = 1
 # PUBLIC
 
 [export]
-graph_json = false
+graph_json = true
 graph_pdf = false
 grid_stats = true
-retrieval_improvement = false
+baseline = true
+aggr_funcs = ["mean"]
+retrieval_improvement = true
 single_stats = true
 
 [adaptation]
