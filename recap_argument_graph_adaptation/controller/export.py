@@ -133,8 +133,7 @@ def grid_stats(
             )
 
     mean_param_combinations.sort(
-        key=lambda x: x["evaluation"]["synthesis"].get("score")
-        or x["evaluation"]["synthesis"]["mean"]["score"],
+        key=_param_sorter,
         reverse=True,
     )
 
@@ -164,6 +163,13 @@ def grid_stats(
         _json_dump(grid_stats, file)
 
     log.info(f"Grid stats exported to {str(grid_stats_path)}")
+
+
+def _param_sorter(x: t.Mapping[str, t.Any]) -> float:
+    if (val := x["evaluation"]["synthesis"].get("score")) is not None:
+        return val
+
+    return x["evaluation"]["synthesis"]["mean"]["score"]
 
 
 def nested_path(
