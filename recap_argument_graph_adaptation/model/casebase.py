@@ -313,8 +313,8 @@ export_keys = ["case", "baseline"] if config["export"]["baseline"] else ["case"]
 
 @dataclass(frozen=True)
 class EvaluationTuple:
-    adapted: Evaluation
-    baseline: Evaluation
+    synthesis: Evaluation
+    deliberation: Evaluation
 
     def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
         return {key: getattr(self, key).to_dict(compact) for key in export_keys}
