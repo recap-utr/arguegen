@@ -52,8 +52,8 @@ adaptation_weight_rule_target = [1]
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 adaptation_pruning_selector = ["similarity"]
 
-# NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
-extraction_keyword_pos_tags = [["NOUN", "ADJ"]]
+# NOUN, PROPN (not in WordNet), VERB
+extraction_keyword_pos_tags = [["NOUN", "VERB"]]
 extraction_keywords_per_adu = [false]
 extraction_max_concepts = [10000]
 
