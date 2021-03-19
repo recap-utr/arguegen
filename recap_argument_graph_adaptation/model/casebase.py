@@ -308,7 +308,9 @@ def aggregate_eval(
     raise ValueError("All evaluation objects must have the same type.")
 
 
-export_keys = ["case", "baseline"] if config["export"]["baseline"] else ["case"]
+export_keys = (
+    ["synthesis", "deliberation"] if config["export"]["deliberation"] else ["synthesis"]
+)
 
 
 @dataclass(frozen=True)
