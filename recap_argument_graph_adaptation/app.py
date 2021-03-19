@@ -151,7 +151,12 @@ def _parametrized_run(
 
     log.debug("Evaluating adaptations.")
     eval_results = evaluate.case(
-        case, adapted_concepts, all_concepts, adapted_graph, duration
+        case,
+        adapted_concepts,
+        adapted_concept_candidates,
+        all_concepts,
+        adapted_graph,
+        duration,
     )
 
     log.debug("Exporting statistics.")

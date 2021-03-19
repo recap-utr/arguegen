@@ -11,6 +11,9 @@ log = logging.getLogger(__name__)
 def case(
     case: casebase.Case,
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
+    adapted_concept_candidates: t.Mapping[
+        casebase.Concept, t.AbstractSet[casebase.Concept]
+    ],
     all_concepts: t.Iterable[casebase.Concept],
     adapted_graph: t.Optional[ag.Graph],
     duration: float,
@@ -51,7 +54,7 @@ def case(
         retrieved_sim = _graph_similarity(case.user_query, case.graph)
         adapted_sim = _graph_similarity(case.user_query, adapted_graph)
 
-    eval_result = casebase.Evaluation(
+    synthesis_eval = casebase.Evaluation(
         duration=duration,
         tp=tp,
         tn=tn,
@@ -64,23 +67,28 @@ def case(
         adapted_sim=adapted_sim,
     )
 
-    log.debug(f"Finished with global score of {eval_result.score}.")
+    log.debug(f"Finished with global score of {synthesis_eval.score}.")
 
-    baseline_adaptations = {concept: concept for concept in computed_adaptations}
+    deliberation_adaptations = {
+        concept: concept for concept in adapted_concept_candidates
+    }
 
     tp_baseline, fn_baseline, fp_baseline = _eval_sets(
-        baseline_adaptations, benchmark_adaptations, benchmark_weights, case.user_query
+        deliberation_adaptations,
+        benchmark_adaptations,
+        benchmark_weights,
+        case.user_query,
     )
     tp_score_baseline, fn_score_baseline, fp_score_baseline = _eval_scores(
         tp_baseline,
         fn_baseline,
         fp_baseline,
         benchmark_weights,
-        baseline_adaptations,
+        deliberation_adaptations,
         case.user_query,
     )
 
-    baseline_result = casebase.Evaluation(
+    deliberation_eval = casebase.Evaluation(
         duration=0,
         tp=tp_baseline,
         tn=tn,
@@ -93,7 +101,7 @@ def case(
         adapted_sim=retrieved_sim,
     )
 
-    return casebase.EvaluationTuple(eval_result, baseline_result)
+    return casebase.EvaluationTuple(synthesis_eval, deliberation_eval)
 
 
 def _eval_sets(

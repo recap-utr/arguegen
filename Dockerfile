@@ -1,7 +1,7 @@
 # https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker
 
 FROM python:3.8-slim
-ENV POETRY_VERSION=1.1.4
+ENV POETRY_VERSION=1.1.5
 
 WORKDIR /app
 
