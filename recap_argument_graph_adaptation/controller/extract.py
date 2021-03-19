@@ -96,8 +96,9 @@ def keywords(
 
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
     occurences = {
-        x: len(re.findall(f"\\b({x.name})\\b", graph_text, re.IGNORECASE))
+        x: len(re.findall(f"\\b({form})\\b", graph_text, re.IGNORECASE))
         for x in candidates
+        for form in x.forms
     }
 
     for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
