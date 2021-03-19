@@ -108,7 +108,7 @@ class WordnetNode(graph.AbstractNode):
             if (
                 hyp != self
                 and dist > 0
-                and hyp.name not in config["wordnet"]["hypernym_filter"]
+                and hyp.uri not in config["wordnet"]["hypernym_filter"]
             ):
                 distances_map[hyp].append(dist)
 

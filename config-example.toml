@@ -73,11 +73,7 @@ score_concept_sem_sim = [1]
 # score_query_nodes_sem_sim = [0, 1]
 
 threshold_concept_score = [0.0] # Filtering concepts
-threshold_node_similarity = [1.0] # Assigning nodes
-# threshold_concept_score_adaptation = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
-# threshold_concept_score_extraction = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
-# threshold_node_similarity_adaptation = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
-# threshold_node_similarity_extraction = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
+threshold_node_similarity = [0.0] # Assigning nodes
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
 # within: Try to transfer the concept path from (adaptation origin, current concept) to (adaptation destination, adapted concept).
@@ -96,13 +92,16 @@ proven = ["VBN"]
 
 [wordnet]
 hypernym_filter = [
-    "entity.n.01",
+    "abstraction.n.06",
     "artifact.n.01",
     "causal_agent.n.01",
+    "entity.n.01",
     "living_thing.n.01",
+    "mental_object.n.01",
     "object.n.01",
     "physical_entity.n.01",
     "psychological_feature.n.01",
+    "thing.n.08",
 ]
 node_vector_components = ["examples", "definition"]
 
