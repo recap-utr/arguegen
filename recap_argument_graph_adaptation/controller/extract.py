@@ -95,7 +95,10 @@ def keywords(
                 candidates.add(candidate)
 
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
-    occurences = {x: graph_text.count(x.name) for x in candidates}
+    occurences = {
+        x: len(re.findall(f"\\b({x.name})\\b", graph_text, re.IGNORECASE))
+        for x in candidates
+    }
 
     for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
         # 'tuition' in 'tuition fees'

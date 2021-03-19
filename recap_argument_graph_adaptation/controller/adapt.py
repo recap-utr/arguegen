@@ -29,7 +29,7 @@ def argument_graph(
     sources = sorted(substitutions.keys(), key=lambda x: len(x.name), reverse=True)
 
     for source in sources:
-        pattern = re.compile(source.name, re.IGNORECASE)
+        pattern = re.compile(f"\\b({source.name})\\b", re.IGNORECASE)
 
         for mapped_node in source.inodes:
             graph_node = adapted_graph.inode_mappings[mapped_node.key]
