@@ -270,15 +270,14 @@ def aggregate_eval(
         elif metric:
             if func := aggr_funcs[metric]:
                 out = {}
-
-                out["latex"] = " & ".join(
-                    (
-                        Evaluation._latex_format(
-                            (func(getattr(object, key) or 0.0 for object in objects))
-                        )
-                        for key in Evaluation._latex_keys()
+                latex_elements = (
+                    Evaluation._latex_format(
+                        (func(getattr(object, key) or 0.0 for object in objects))
                     )
+                    for key in Evaluation._latex_keys()
                 )
+
+                out["latex"] = " & ".join(itertools.chain([metric], latex_elements))
 
                 out.update(
                     {
@@ -314,7 +313,7 @@ export_keys = ["case", "baseline"] if config["export"]["baseline"] else ["case"]
 
 @dataclass(frozen=True)
 class EvaluationTuple:
-    case: Evaluation
+    adapted: Evaluation
     baseline: Evaluation
 
     def to_dict(self, compact: bool = False) -> t.Dict[str, t.Any]:
@@ -374,7 +373,23 @@ class Evaluation:
 
     @staticmethod
     def _latex_format(value: float) -> str:
-        return "$%s$" % ("%s" % float("%.3g" % value)).lstrip("-0")
+        prefix = str(abs(int(value)))
+        num_negative = True if value < 0 else False
+
+        if value < 1 and value > -1:
+            num_digits = 3
+        elif len(prefix) > 3:
+            num_digits = 0
+        else:
+            num_digits = 3 - len(prefix)
+
+        pattern = f"{{:.{num_digits}f}}"
+        num_formatted = pattern.format(value).lstrip("-0")
+
+        if num_negative:
+            num_formatted += "-"
+
+        return f"${num_formatted}$"
 
     @staticmethod
     def _latex_keys() -> t.List[str]:

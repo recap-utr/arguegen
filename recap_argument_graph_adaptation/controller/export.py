@@ -78,7 +78,7 @@ def grid_stats(
     best_case_results = {}
 
     for case, eval_tuples in case_results.items():
-        eval_tuples.sort(key=lambda x: x[0].case.score, reverse=True)
+        eval_tuples.sort(key=lambda x: x[0].adapted.score, reverse=True)
         _results = []
 
         for eval_tuple, i in eval_tuples:
@@ -133,8 +133,8 @@ def grid_stats(
             )
 
     mean_param_combinations.sort(
-        key=lambda x: x["evaluation"]["case"].get("score")
-        or x["evaluation"]["case"]["mean"]["score"],
+        key=lambda x: x["evaluation"]["adapted"].get("score")
+        or x["evaluation"]["adapted"]["mean"]["score"],
         reverse=True,
     )
 

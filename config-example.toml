@@ -55,7 +55,7 @@ adaptation_pruning_selector = ["similarity"]
 # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
 extraction_keyword_pos_tags = [["NOUN", "ADJ"]]
 extraction_keywords_per_adu = [false]
-extraction_max_concepts = [8]
+extraction_max_concepts = [10000]
 
 global_rule_limit = [1]
 
