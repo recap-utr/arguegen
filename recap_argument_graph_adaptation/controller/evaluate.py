@@ -83,7 +83,7 @@ def case(
     baseline_result = casebase.Evaluation(
         duration=0,
         tp=tp_baseline,
-        tn=set(),
+        tn=tn,
         fp=fp_baseline,
         fn=fn_baseline,
         tp_score=tp_score_baseline,
