@@ -241,13 +241,13 @@ def _nodes_similarities(
 
 
 def _filter_nodes(
-    synsets: t.Iterable[WordnetNode],
+    synsets: t.AbstractSet[WordnetNode],
     comparison_vectors: t.Iterable[spacy.Vector],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetNode]:
     synsets_vectors = _nodes_vectors(synsets)
 
-    synset_tuples = []
+    synset_map = {}
 
     for synset, synset_vectors in zip(synsets, synsets_vectors):
         similarities = []
@@ -255,23 +255,24 @@ def _filter_nodes(
         for v1, v2 in itertools.product(synset_vectors, comparison_vectors):
             similarities.append(spacy.similarity(v1, v2))
 
-        synset_tuples.append((synset, statistics.mean(similarities)))
-
-    synset_tuples.sort(key=lambda item: item[1])
+        synset_map[synset] = statistics.mean(similarities)
 
     # Check if the best result has a higher similarity than demanded.
     # If true, only include the synsets with higher similarity.
     # Otherwise, include only the best one (regardless of the similarity).
-    if best_synset_tuple := next(iter(synset_tuples), None):
-        if best_synset_tuple[1] > min_similarity:
-            synset_tuples = filter(
-                lambda x: x[1] > min_similarity,
-                synset_tuples,
-            )
-        else:
-            synset_tuples = (best_synset_tuple,)
+    if len(synset_map) > 0:
+        max_similarity = max(synset_map.values())
 
-    return frozenset({synset for synset, _ in synset_tuples})
+        if min_similarity < max_similarity:
+            synset_map = {
+                c: sim for c, sim in synset_map.items() if sim > min_similarity
+            }
+        else:
+            synset_map = {
+                c: sim for c, sim in synset_map.items() if sim == max_similarity
+            }
+
+    return frozenset(synset_map.keys())
 
 
 # This function does not use the function _filter_nodes

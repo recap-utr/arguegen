@@ -399,12 +399,12 @@ class Evaluation:
     # def baseline_score(self) -> float:
     #     return (1 / 3) * (2 + self.baseline_tp_score - self.fn_score)
 
-    @property
-    def baseline_tp_score_improvement(self) -> float:
-        if self.baseline_tp_score > 0:
-            return (self.tp_score / self.baseline_tp_score) - 1
+    # @property
+    # def baseline_tp_score_improvement(self) -> float:
+    #     if self.baseline_tp_score > 0:
+    #         return (self.tp_score / self.baseline_tp_score) - 1
 
-        return 0.0
+    #     return 0.0
 
     # @property
     # def baseline_score_improvement(self) -> float:

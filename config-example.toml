@@ -34,28 +34,28 @@ retrieval_improvement = true
 single_stats = true
 
 [adaptation]
-knowledge_graph = "conceptnet"
+knowledge_graph = "wordnet"
 
 [loading]
 # only set to true if the user-defined rules do NOT represent a path in the KG
-enforce_node_paths = false
+enforce_node_paths = true
 
 
 [tuning]
-adaptation_lemma_limit = [5]
+adaptation_lemma_limit = [1]
 adaptation_method = ["direct"] # direct, bfs
-adaptation_pruning_bfs_limit = [10]
+adaptation_pruning_bfs_limit = [10000]
 adaptation_weight_original_concept = [1]
 adaptation_weight_rule_target = [1]
 # How to prune the paths and/or lemmas of found concepts
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
-adaptation_pruning_selector = ["difference"]
+adaptation_pruning_selector = ["similarity"]
 
 # NOUN, PROPN (not in WordNet), VERB, ADJ, ADV
-extraction_keyword_pos_tags = [["NOUN"]]
+extraction_keyword_pos_tags = [["NOUN", "ADJ"]]
 extraction_keywords_per_adu = [false]
-extraction_max_concepts = [1000]
+extraction_max_concepts = [8]
 
 global_rule_limit = [1]
 
@@ -63,16 +63,17 @@ global_rule_limit = [1]
 # score_adus_sem_sim = [0, 1]
 score_concept_sem_sim = [1]
 # score_hypernym_prox = [0, 1]
-# score_keyword_weight = [1]
+# score_keyword_weight = [0, 1]
 # score_major_claim_prox = [0, 1]
-score_nodes_path_sim = [0, 1]
+# score_nodes_path_sim = [0, 1]
 # score_nodes_sem_sim = [0, 1]
+# score_nodes_wup_sim = [0, 1]
 # score_query_adus_sem_sim = [0, 1]
-# score_query_concept_sem_sim = [1]
+# score_query_concept_sem_sim = [0, 1]
 # score_query_nodes_sem_sim = [0, 1]
 
 threshold_concept_score = [0.0] # Filtering concepts
-threshold_node_similarity = [0.0] # Assigning nodes
+threshold_node_similarity = [1.0] # Assigning nodes
 # threshold_concept_score_adaptation = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
 # threshold_concept_score_extraction = [0.0, 0.3, 0.6, 0.9] # Filtering concepts
 # threshold_node_similarity_adaptation = [0.0, 0.33, 0.67, 1.0] # Assigning nodes
