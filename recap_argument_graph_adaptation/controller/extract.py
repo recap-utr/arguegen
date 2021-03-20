@@ -2,6 +2,7 @@ import itertools
 import logging
 import re
 import typing as t
+from collections import defaultdict
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
@@ -94,12 +95,14 @@ def keywords(
             if candidate not in rule_sources and candidate not in rule_targets:
                 candidates.add(candidate)
 
-    graph_text = " ".join(inode.plain_text for inode in graph.inodes)
-    occurences = {
-        x: len(re.findall(f"\\b({form})\\b", graph_text, re.IGNORECASE))
-        for x in candidates
-        for form in x.forms
-    }
+    occurences = defaultdict(int)
+
+    for c in candidates:
+        for form in c.forms:
+            pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+
+            for adu in c.inodes:
+                occurences[c] += len(re.findall(pattern, adu.plain_text))
 
     for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
         # 'tuition' in 'tuition fees'
