@@ -29,14 +29,15 @@ def argument_graph(
     sources = sorted(substitutions.keys(), key=lambda x: len(x.name), reverse=True)
 
     for source in sources:
-        pattern = re.compile(f"\\b({source.name})\\b", re.IGNORECASE)
+        for form in source.forms:
+            pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
-        for mapped_node in source.inodes:
-            graph_node = adapted_graph.inode_mappings[mapped_node.key]
+            for mapped_node in source.inodes:
+                graph_node = adapted_graph.inode_mappings[mapped_node.key]
 
-            graph_node.text = pattern.sub(
-                substitutions[source].name, graph_node.plain_text
-            )
+                graph_node.text = pattern.sub(
+                    substitutions[source].name, graph_node.plain_text
+                )
 
     # for node in adapted_graph.inodes:
     #     node.text = pr.proofread(node.text)
