@@ -31,7 +31,7 @@ Then, place the following files in that folder:
 
 - `graph.json`: Argument graph that should be adapted.
 - `query.txt`: Query for the imaginary retrieval.
-- `rules.csv`: Adaptation rules for all concepts in `graph.json` in the form `source:pos,target:pos`.
+- `rules.csv`: Adaptation rules for all concepts in `graph.json` in the form `source_concept/pos,target_concpept/pos`.
 
 ## Output Folder
 
