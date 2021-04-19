@@ -30,15 +30,15 @@ def keywords(
 
     for k in keywords:
         kw = k.keyword
-        kw_forms = k.forms
+        kw_form2pos = k.form2pos
+        kw_pos2form = k.pos2form
         kw_vector = k.vector
         kw_pos = casebase.spacy2pos(k.pos_tag)
         kw_weight = k.weight
 
-        found_forms = set()
         inodes = set()
 
-        for kw_form in kw_forms:
+        for kw_form in kw_form2pos:
             pattern = re.compile(f"\\b({kw_form})\\b")
 
             for inode in graph.inodes:
@@ -46,7 +46,6 @@ def keywords(
 
                 if pattern.search(node_txt):
                     inodes.add(t.cast(casebase.ArgumentNode, inode))
-                    found_forms.add(kw_form)
 
         if len(inodes) == 0:
             continue
@@ -64,7 +63,7 @@ def keywords(
                 mc_distance = min(mc_distances)
 
         kg_nodes = query.concept_nodes(
-            kw_forms,
+            kw_form2pos.keys(),
             kw_pos,
             [inode.vector for inode in inodes],
             config.tuning("threshold", "node_similarity", "extraction"),
@@ -74,7 +73,8 @@ def keywords(
             candidate = casebase.Concept(
                 kw.lower(),
                 kw_vector,
-                frozenset(found_forms),
+                kw_form2pos,
+                kw_pos2form,
                 kw_pos,
                 frozenset(inodes),
                 kg_nodes,

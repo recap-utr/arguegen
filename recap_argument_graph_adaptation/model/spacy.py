@@ -5,8 +5,10 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 
+import immutables
 import numpy as np
 import requests
+from recap_argument_graph_adaptation.controller.inflect import make_immutable
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 
@@ -51,12 +53,8 @@ def vector(text: str) -> Vector:
 
 
 # This function does not use the cache!
-def vectors(texts: t.Iterable[str]) -> t.Tuple[Vector]:
-    unknown_texts = []
-
-    for text in texts:
-        if text not in _vector_cache:
-            unknown_texts.append(text)
+def vectors(texts: t.Iterable[str]) -> t.Tuple[Vector, ...]:
+    unknown_texts = [text for text in texts if text not in _vector_cache]
 
     if unknown_texts:
         response = session.post(_url("vectors"), json={"texts": unknown_texts})
@@ -132,31 +130,38 @@ def similarity(
 class TemporaryKeyword:
     keyword: str
     vector: t.Union[t.Tuple[float, ...], t.Tuple[t.Tuple[float, ...], ...]]
-    forms: t.FrozenSet[str]
+    form2pos: immutables.Map[str, t.Tuple[str, ...]]
+    pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos_tag: str
 
     @classmethod
     def from_dict(cls, x: t.Mapping[str, t.Any]) -> TemporaryKeyword:
         return cls(
-            x["keyword"], tuple(x["vector"]), frozenset(x["forms"]), x["pos_tag"]
+            x["keyword"],
+            tuple(x["vector"]),
+            make_immutable(x["form2pos"], False),
+            make_immutable(x["pos2form"], False),
+            x["pos_tag"],
         )
 
     def __eq__(self, other) -> bool:
         return (
             self.keyword == other.keyword
-            and self.forms == other.forms
+            and self.form2pos == other.form2pos
+            and self.pos2form == other.pos2form
             and self.pos_tag == other.pos_tag
         )
 
     def __hash__(self) -> int:
-        return hash((self.keyword, self.forms, self.pos_tag))
+        return hash((self.keyword, self.form2pos, self.pos2form, self.pos_tag))
 
 
 @dataclass(frozen=True)
 class Keyword:
     keyword: str
     vector: Vector
-    forms: t.FrozenSet[str]
+    form2pos: immutables.Map[str, t.Tuple[str, ...]]
+    pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos_tag: str
     weight: float
 
@@ -165,7 +170,8 @@ class Keyword:
         return cls(
             obj.keyword,
             _convert_vector(obj.vector),
-            obj.forms,
+            obj.form2pos,
+            obj.pos2form,
             obj.pos_tag,
             weight,
         )

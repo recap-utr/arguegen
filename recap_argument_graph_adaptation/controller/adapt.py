@@ -9,8 +9,11 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 
 import recap_argument_graph as ag
+from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
+
+# from spacy.matcher import PhraseMatcher
 
 config = Config.instance()
 
@@ -23,21 +26,45 @@ def argument_graph(
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> ag.Graph:
     adapted_graph = original_graph.copy()
+    # nlp = spacylib.load(config["nlp"]["local_model"])
 
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
     sources = sorted(substitutions.keys(), key=lambda x: len(x.name), reverse=True)
 
     for source in sources:
-        for form in source.forms:
+        for form, pos_tags in source.form2pos.items():
             pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
             for mapped_node in source.inodes:
                 graph_node = adapted_graph.inode_mappings[mapped_node.key]
+                sub_candidates = substitutions[source].pos2form[pos_tags[0]]
 
-                graph_node.text = pattern.sub(
-                    substitutions[source].name, graph_node.plain_text
-                )
+                graph_node.text = pattern.sub(sub_candidates[0], graph_node.plain_text)
+
+    # for source in sources:
+    #     for mapped_node in source.inodes:
+    #         graph_node = adapted_graph.inode_mappings[mapped_node.key]
+
+    #         for form in source.forms:
+    #             matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
+    #             pattern = nlp.make_doc(form)
+    #             matcher.add("MATCH", [pattern])
+    #             doc = nlp.make_doc(graph_node.plain_text)
+
+    #             for id, start, end in matcher(doc):
+    #                 pos = doc[end].pos_
+
+    #                 sub_name = substitutions[source].name
+    #                 sub_parts = [t for t in nlp.make_doc(sub_name)]
+    #                 inflected_end = lemminflect.getInflection(sub_parts[-1], pos)
+
+    #                 substitution = sub_parts[:-1]
+    #                 substitution.append(inflected_end)
+
+    #                 graph_node.text = pattern.sub(
+    #                     , graph_node.plain_text
+    #                 )
 
     # for node in adapted_graph.inodes:
     #     node.text = pr.proofread(node.text)
@@ -81,15 +108,19 @@ def concepts(
 
             for hypernym, hyp_distance in hypernym_distances.items():
                 name = hypernym.processed_name
-                pos = hypernym.pos
+                pos = query.pos(hypernym.pos)
                 vector = spacy.vector(name)
                 nodes = frozenset([hypernym])
+                lemma, form2pos, pos2form = inflect_concept(
+                    name, casebase.pos2spacy(pos)
+                )
 
                 candidate = casebase.Concept(
-                    name,
+                    lemma,
                     vector,
-                    frozenset([name]),
-                    query.pos(pos),
+                    form2pos,
+                    pos2form,
+                    pos,
                     original_concept.inodes,
                     nodes,
                     related_concepts,
@@ -168,6 +199,7 @@ def paths(
             related_concepts = {
                 original_concept: related_concept_weight.get("original_concept", 0.0)
             }
+            lemma, form2pos, pos2form = inflect_concept(name, casebase.pos2spacy(pos))
 
             for rule in rules:
                 related_concepts.update(
@@ -180,9 +212,10 @@ def paths(
                 )
 
             candidate = casebase.Concept(
-                name,
+                lemma,
                 vector,
-                frozenset([name]),
+                form2pos,
+                pos2form,
                 pos,
                 original_concept.inodes,
                 end_nodes,
@@ -350,9 +383,14 @@ def _filter_lemmas(
         limit=1,
     )[0]
 
+    _lemma, _form2pos, _pos2form = inflect_concept(
+        best_lemma.name, casebase.pos2spacy(best_lemma.pos)
+    )
+
     return casebase.Concept(
-        name=best_lemma.name,
-        forms=frozenset([best_lemma.name]),
+        name=_lemma,
+        form2pos=_form2pos,
+        pos2form=_pos2form,
         pos=best_lemma.pos,
         inodes=retrieved_concept.inodes,
         nodes=best_lemma.nodes,

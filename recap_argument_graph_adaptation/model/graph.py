@@ -52,7 +52,7 @@ class AbstractNode(abc.ABC):
         return spacy.vector(self.processed_name)
 
     @property
-    def lemma_vectors(self) -> t.Tuple[spacy.Vector]:
+    def lemma_vectors(self) -> t.Tuple[spacy.Vector, ...]:
         return spacy.vectors(self.processed_lemmas)
 
 

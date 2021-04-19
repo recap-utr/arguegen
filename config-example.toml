@@ -84,10 +84,11 @@ threshold_node_similarity = [0.0] # Assigning nodes
 lang = "en"
 embeddings = "glove" # glove, sbert, use
 fuzzymax = false
+local_model = "en_core_web_sm"
 
 [nlp.inflections]
 [nlp.inflections.prove]
-proven = ["VBN"]
+VBN = ["proven"]
 
 
 [wordnet]

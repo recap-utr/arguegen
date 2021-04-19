@@ -124,7 +124,7 @@ def _parse_query(path: Path) -> casebase.UserQuery:
 
 def _parse_rules(
     path: Path, graph: ag.Graph, user_query: casebase.UserQuery
-) -> t.Tuple[casebase.Rule]:
+) -> t.Tuple[casebase.Rule, ...]:
     rules = []
 
     with path.open() as file:
@@ -143,7 +143,7 @@ def _parse_rules(
 
 
 def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:
-    if len(rules) != len(set(rule.source for rule in rules)):
+    if len(rules) != len({rule.source for rule in rules}):
         raise RuntimeError(
             f"The number of rules specified in '{str(path)}' does not match the number of unique lemmas in the source column. "
             "Please verify that you only specify one rule per lemma (e.g., 'runner/noun'), not one rule per form (e.g., 'runner/noun' and 'runners/noun'). "
@@ -211,10 +211,8 @@ def _parse_rule_concept(
             f"You did not provide a pos for the rule '{name}' specified in '{str(path)}'."
         )
 
-    kw_name, kw_forms = inflect_concept(name, casebase.pos2spacy(pos))
+    kw_name, kw_form2pos, kw_pos2form = inflect_concept(name, casebase.pos2spacy(pos))
     vector = spacy.vector(kw_name)
-
-    found_forms = set()
 
     if not inodes:
         tmp_inodes = set()
@@ -222,7 +220,7 @@ def _parse_rule_concept(
         # Only accept rules that cover a complete word.
         # If for example 'landlord' is a rule, but the node only contains 'landlords',
         # an exception will be thrown.
-        for kw_form in kw_forms:
+        for kw_form in kw_form2pos:
             pattern = re.compile(f"\\b({kw_form})\\b")
 
             for inode in graph.inodes:
@@ -230,31 +228,31 @@ def _parse_rule_concept(
 
                 if pattern.search(node_txt):
                     tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
-                    found_forms.add(kw_form)
 
-        if len(tmp_inodes) == 0:
+        if not tmp_inodes:
             raise RuntimeError(
-                f"The concept '{rule}' with the forms '{kw_forms}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
+                f"The concept '{rule}' with the forms '{kw_form2pos}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
             )
 
         inodes = frozenset(tmp_inodes)
-    else:
-        found_forms.add(name)
 
     if config["loading"]["enforce_node_paths"]:
-        nodes = query.concept_nodes(kw_forms, pos)
+        nodes = query.concept_nodes(kw_form2pos.keys(), pos)
     else:
-        nodes = query.concept_nodes(kw_forms, pos, [inode.vector for inode in inodes])
+        nodes = query.concept_nodes(
+            kw_form2pos.keys(), pos, [inode.vector for inode in inodes]
+        )
 
     if not nodes:
         raise RuntimeError(
-            f"The concept '{rule}' with the forms '{kw_forms}' specified in '{str(path)}' cannot be found in the knowledge graph."
+            f"The concept '{rule}' with the forms '{kw_form2pos}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(
         kw_name,
         vector,
-        frozenset(found_forms),
+        kw_form2pos,
+        kw_pos2form,
         pos,
         inodes,
         nodes,

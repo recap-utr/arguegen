@@ -53,7 +53,6 @@ def grid_stats(
     out_path: Path,
 ) -> None:
     log.info("Exporting grid stats.")
-    # TODO: Update for new evaluation tuple!
 
     results = [entry for entry in results if entry is not None]
     case_results: t.Dict[

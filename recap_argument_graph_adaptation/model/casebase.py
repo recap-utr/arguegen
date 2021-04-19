@@ -10,6 +10,7 @@ from enum import Enum
 from multiprocessing import Value
 from pathlib import Path
 
+import immutables
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import graph, spacy
@@ -65,6 +66,9 @@ assert metric_keys == set(itertools.chain.from_iterable(metrics_per_stage.values
 empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
     key: None for key in metric_keys
 }
+best_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
+    key: 1.0 for key in metric_keys
+}
 
 
 class ArgumentNode(ag.Node):
@@ -89,7 +93,8 @@ class ArgumentNode(ag.Node):
 class Concept:
     name: str
     vector: spacy.Vector = field(compare=False, repr=False)
-    forms: t.FrozenSet[str]
+    form2pos: immutables.Map[str, t.Tuple[str, ...]]
+    pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos: t.Optional[POS]
     inodes: t.FrozenSet[ArgumentNode]
     nodes: t.FrozenSet[graph.AbstractNode] = field(compare=False)
@@ -98,6 +103,10 @@ class Concept:
     metrics: t.Dict[str, t.Optional[float]] = field(
         default_factory=empty_metrics, compare=False, repr=False
     )
+
+    @property
+    def forms(self) -> t.Tuple[str, ...]:
+        return self.form2pos.keys()
 
     def __str__(self):
         code = self.code
@@ -145,7 +154,8 @@ class Concept:
         source: Concept,
         name=None,
         vector=None,
-        forms=None,
+        form2pos=None,
+        pos2form=None,
         pos=None,
         inodes=None,
         nodes=None,
@@ -159,7 +169,8 @@ class Concept:
         return cls(
             name or source.name,
             vector,
-            forms or source.forms,
+            form2pos or source.form2pos,
+            pos2form or source.pos2form,
             pos or source.pos,
             inodes or source.inodes,
             nodes or source.nodes,

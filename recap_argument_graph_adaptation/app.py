@@ -25,11 +25,6 @@ logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 
-# TODO: Add LaTeX tabular export option.
-# TODO: The replacements in the text can be achieved via the inflected forms.
-# Each form has a tag associated which can be used to replace it with a matching version.
-
-
 def _init_child_process():
     # https://stackoverflow.com/a/50379950/7626878
     wordnet.wn = wordnet.init_reader()

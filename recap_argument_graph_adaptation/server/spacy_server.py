@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
-from textacy import ke
+from textacy.extract.keyterms.yake import yake
 
 config = Config.instance()
 
@@ -36,20 +36,21 @@ def spacy_nlp():
     )
 
     model = spacy.load(
-        spacy_model_name, disable=["ner", "textcat", "parser"]
+        spacy_model_name, exclude=["ner", "textcat", "parser"]
     )  # parser needed for noun chunks
-    model.add_pipe(model.create_pipe("sentencizer"))
+    model.enable_pipe("senter")
 
     if embeddings == "glove" and fuzzymax:
-        model.add_pipe(FuzzyModel(), first=True)
-    if embeddings == "sbert":
-        model.add_pipe(TransformerModel(model_name), first=True)
+        model.add_pipe("fuzzymax", last=True)
+    elif embeddings == "sbert":
+        model.add_pipe("sbert", last=True, config={"model": model_name})
     elif embeddings == "use":
-        model.add_pipe(UseModel(model_name), first=True)
+        model.add_pipe("use", last=True, config={"model": model_name})
 
     return model
 
 
+@spacy.Language.component("fuzzymax")
 class FuzzyModel:
     def __call__(self, doc):
         doc.user_hooks["vector"] = self.vectors
@@ -58,7 +59,7 @@ class FuzzyModel:
         return doc
 
     def vectors(self, obj):
-        return [t.vector for t in obj]  # TODO: Check if correct
+        return [t.vector for t in obj]
 
 
 if config["nlp"]["embeddings"] == "sbert":
@@ -66,9 +67,10 @@ if config["nlp"]["embeddings"] == "sbert":
 
     # https://spacy.io/usage/processing-pipelines#custom-components-user-hooks
     # https://github.com/explosion/spaCy/issues/3823
+    @spacy.Language.factory("sbert")
     class TransformerModel:
-        def __init__(self, lang):
-            self._model = SentenceTransformer(_models[lang])
+        def __init__(self, nlp, name, model):
+            self._model = SentenceTransformer(_models[model])
 
         def __call__(self, doc):
             doc.user_hooks["vector"] = self.vector
@@ -87,9 +89,10 @@ if config["nlp"]["embeddings"] == "sbert":
 if config["nlp"]["embeddings"] == "use":
     import tensorflow_hub as hub
 
+    @spacy.Language.factory("use")
     class UseModel:
-        def __init__(self, lang):
-            self._model = hub.load(_models[lang])
+        def __init__(self, nlp, name, model):
+            self._model = hub.load(_models[model])
 
         def __call__(self, doc):
             doc.user_hooks["vector"] = self.vector
@@ -107,7 +110,6 @@ if config["nlp"]["embeddings"] == "use":
 
 app = FastAPI()
 nlp = spacy_nlp()
-extractor = ke.yake
 # ke.textrank, ke.yake, ke.scake, ke.sgrank
 # alternative: https://github.com/boudinfl/pke
 
@@ -138,11 +140,7 @@ def _vectors(
     # docs = nlp.pipe(query.texts)  # disable=vector_disabled_pipes
     # return [doc.vector.tolist() for doc in docs]  # type: ignore
 
-    unknown_texts = []
-
-    for text in texts:
-        if text not in _vector_cache:
-            unknown_texts.append(text)
+    unknown_texts = [text for text in texts if text not in _vector_cache]
 
     if unknown_texts:
         docs = nlp.pipe(unknown_texts)
@@ -181,7 +179,8 @@ class KeywordQuery(BaseModel):
 class KeywordResponse(BaseModel):
     keyword: str
     vector: Vector
-    forms: t.FrozenSet[str]
+    form2pos: t.Dict[str, t.Tuple[str, ...]]
+    pos2form: t.Dict[str, t.Tuple[str, ...]]
     pos_tag: str
     weight: float
 
@@ -198,11 +197,11 @@ def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
 
 @app.post("/keywords", response_model=t.Tuple[KeywordResponse, ...])
 def keywords(query: KeywordQuery) -> t.Tuple[KeywordResponse, ...]:
-    unknown_combinations = []
-
-    for text, pos in itertools.product(query.texts, query.pos_tags):
-        if (text, pos) not in _keyword_cache:
-            unknown_combinations.append((text, pos))
+    unknown_combinations = [
+        (text, pos)
+        for text, pos in itertools.product(query.texts, query.pos_tags)
+        if (text, pos) not in _keyword_cache
+    ]
 
     if unknown_combinations:
         docs: t.Iterable[t.Any] = nlp.pipe([x[0] for x in unknown_combinations])
@@ -214,19 +213,20 @@ def keywords(query: KeywordQuery) -> t.Tuple[KeywordResponse, ...]:
             # Textacy uses token.norm_ if normalize is None.
             # This causes for example 'centres' to be extracted as 'centers'.
             # To avoid this, we use 'lower' instead.
-            keywords = extractor(doc, include_pos=pos_tag, normalize="lower", topn=1.0)
+            keywords = yake(doc, include_pos=pos_tag, normalize="lower", topn=1.0)
             # processed_keywords = list(nlp.pipe(kw for kw, _ in keywords))
 
             for kw_, score in keywords:
-                lemma, forms = inflect_concept(kw_, pos_tag)
+                lemma, form2pos, pos2form = inflect_concept(kw_, pos_tag)
                 vector = _vector(lemma)
 
-                if forms is not None:
+                if form2pos is not None and pos2form is not None:
                     doc_keywords.append(
                         KeywordResponse(
                             keyword=lemma,
                             vector=vector,
-                            forms=frozenset(forms),
+                            form2pos=form2pos,
+                            pos2form=pos2form,
                             pos_tag=pos_tag,
                             weight=_dist2sim(score),
                         )
