@@ -42,33 +42,6 @@ def argument_graph(
 
                 graph_node.text = pattern.sub(sub_candidates[0], graph_node.plain_text)
 
-    # for source in sources:
-    #     for mapped_node in source.inodes:
-    #         graph_node = adapted_graph.inode_mappings[mapped_node.key]
-
-    #         for form in source.forms:
-    #             matcher = PhraseMatcher(nlp.vocab, attr="LOWER")
-    #             pattern = nlp.make_doc(form)
-    #             matcher.add("MATCH", [pattern])
-    #             doc = nlp.make_doc(graph_node.plain_text)
-
-    #             for id, start, end in matcher(doc):
-    #                 pos = doc[end].pos_
-
-    #                 sub_name = substitutions[source].name
-    #                 sub_parts = [t for t in nlp.make_doc(sub_name)]
-    #                 inflected_end = lemminflect.getInflection(sub_parts[-1], pos)
-
-    #                 substitution = sub_parts[:-1]
-    #                 substitution.append(inflected_end)
-
-    #                 graph_node.text = pattern.sub(
-    #                     , graph_node.plain_text
-    #                 )
-
-    # for node in adapted_graph.inodes:
-    #     node.text = pr.proofread(node.text)
-
     return adapted_graph
 
 
