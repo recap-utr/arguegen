@@ -31,8 +31,10 @@ lemminflect = "^0.2.2"
 bert-score = "^0.3.8"
 torch = "~1.7"
 immutables = "^0.15"
+httpx = "^0.18.1"
 
 [tool.poetry.dev-dependencies]
+json2python-models = "^0.2.1"
 
 [build-system]
 requires = ["poetry>=0.12"]

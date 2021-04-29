@@ -135,7 +135,7 @@ def _parametrized_run(
             or config["export"]["graph_pdf"]
         ):
             adapted_graph = adapt.argument_graph(
-                case.graph, case.rules, adapted_concepts
+                case.user_query, case.graph, case.rules, adapted_concepts
             )
     else:
         # adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}

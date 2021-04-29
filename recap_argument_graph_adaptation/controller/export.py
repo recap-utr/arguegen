@@ -165,10 +165,10 @@ def grid_stats(
 
 
 def _param_sorter(x: t.Mapping[str, t.Any]) -> float:
-    if (val := x["evaluation"]["synthesis"].get("score")) is not None:
+    if (val := x["evaluation"]["synthesis"].get("sim_improvement")) is not None:
         return val
 
-    return x["evaluation"]["synthesis"]["mean"]["score"]
+    return x["evaluation"]["synthesis"]["mean"]["sim_improvement"]
 
 
 def nested_path(

@@ -20,7 +20,14 @@ config = Config.instance()
 log = logging.getLogger(__name__)
 
 
+def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
+    graph_text = " ".join(inode.plain_text for inode in graph.inodes)
+
+    return spacy.similarity(user_query.vector, graph_text)
+
+
 def argument_graph(
+    user_query: casebase.UserQuery,
     original_graph: ag.Graph,
     rules: t.Collection[casebase.Rule],
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
@@ -30,17 +37,37 @@ def argument_graph(
 
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
-    sources = sorted(substitutions.keys(), key=lambda x: len(x.name), reverse=True)
+    sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
+    current_similarity = 0.0
 
-    for source in sources:
-        for form, pos_tags in source.form2pos.items():
-            pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+    while len(sources) > 0:
+        source = sources[0]
+        variants = [x for x in sources if source.name in x.name]
 
-            for mapped_node in source.inodes:
-                graph_node = adapted_graph.inode_mappings[mapped_node.key]
-                sub_candidates = substitutions[source].pos2form[pos_tags[0]]
+        for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
+            sources.remove(variant)
 
-                graph_node.text = pattern.sub(sub_candidates[0], graph_node.plain_text)
+            for form, pos_tags in variant.form2pos.items():
+                pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+
+                for mapped_node in variant.inodes:
+                    graph_node = adapted_graph.inode_mappings[mapped_node.key]
+                    sub_candidates = substitutions[variant].pos2form[pos_tags[0]]
+
+                    graph_node.text = pattern.sub(
+                        sub_candidates[0], graph_node.plain_text
+                    )
+
+        # IDEA: Insert all possible adaptations in a first step.
+        # Then select the graph with the highest similarity and insert all remaining adaptations.
+        # Repeat until the similarity is significantly lower than for the previous iteration.
+
+        new_similarity = _graph_similarity(user_query, adapted_graph)
+
+        if new_similarity < current_similarity:
+            return adapted_graph
+
+        current_similarity = new_similarity
 
     return adapted_graph
 
