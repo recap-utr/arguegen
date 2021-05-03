@@ -11,6 +11,8 @@ from recap_argument_graph_adaptation.model import (
 )
 from recap_argument_graph_adaptation.model.config import Config
 
+from spacy.tokens import Doc  # type: ignore
+
 config = Config.instance()
 _kg = config["adaptation"]["knowledge_graph"]
 kg_wn = _kg == "wordnet"
@@ -38,11 +40,11 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 def concept_nodes(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
-    comparison_texts: t.Optional[t.Iterable[str]] = None,
+    comparison_docs: t.Optional[t.Iterable[Doc]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
-        return wordnet.concept_synsets(names, pos, comparison_texts, min_similarity)
+        return wordnet.concept_synsets(names, pos, comparison_docs, min_similarity)
 
     elif kg_cn:
         return conceptnet.Database().nodes(names, pos)
@@ -56,7 +58,7 @@ def concept_metrics(
     user_query: casebase.UserQuery,
     inodes: t.Iterable[casebase.ArgumentNode],
     nodes: t.Iterable[graph.AbstractNode],
-    lemma: str,
+    doc: Doc,
     weight: t.Optional[float] = None,
     hypernym_level: t.Optional[int] = None,
     hypernym_proximity: t.Optional[float] = None,
@@ -87,14 +89,10 @@ def concept_metrics(
         else None
     )
     query_concept_semantic_similarity = (
-        spacy.similarity(user_query.text, lemma)
-        if active("query_concept_sem_sim")
-        else None
+        doc.similarity(user_query.doc) if active("query_concept_sem_sim") else None
     )
     query_adus_semantic_similarity = (
-        statistics.mean(
-            spacy.similarity(user_query.text, inode.plain_text) for inode in inodes
-        )
+        statistics.mean(user_query.doc.similarity(inode.text) for inode in inodes)
         if active("query_adus_sem_sim")
         else None
     )
@@ -104,13 +102,13 @@ def concept_metrics(
             total_weight += related_concept_weight
 
             concept_semantic_similarity = (
-                spacy.similarity(lemma, related_concept.name)
+                doc.similarity(related_concept.doc)
                 if active("concept_sem_sim")
                 else None
             )
             adus_semantic_similarity = (
                 statistics.mean(
-                    spacy.similarity(inode2.plain_text, inode1.plain_text)
+                    inode2.text.similarity(inode1.text)
                     for inode1, inode2 in itertools.product(
                         related_concept.inodes, inodes
                     )
@@ -168,7 +166,7 @@ def concept_metrics(
 
 def direct_hypernyms(
     node: graph.AbstractNode,
-    comparison_texts: t.Iterable[str],
+    comparison_docs: t.Iterable[Doc],
     min_similarity: float,
 ) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
@@ -178,7 +176,7 @@ def direct_hypernyms(
 
     elif kg_wn:
         return wordnet.direct_hypernyms(
-            t.cast(wordnet.WordnetNode, node), comparison_texts, min_similarity
+            t.cast(wordnet.WordnetNode, node), comparison_docs, min_similarity
         )
 
     raise kg_err

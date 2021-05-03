@@ -16,6 +16,8 @@ from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import graph, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
+from spacy.tokens import Doc  # type: ignore
+
 log = logging.getLogger(__name__)
 config = Config.instance()
 
@@ -84,7 +86,7 @@ class ArgumentNode(ag.Node):
 
 @dataclass(frozen=True, eq=True)
 class Concept:
-    name: str
+    doc: Doc
     form2pos: immutables.Map[str, t.Tuple[str, ...]]
     pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos: t.Optional[POS]
@@ -113,7 +115,7 @@ class Concept:
 
     @property
     def code(self) -> str:
-        out = f"{self.name}"
+        out = f"{self.doc.text}"
 
         if self.pos:
             out += f"/{self.pos.value}"
@@ -140,7 +142,7 @@ class Concept:
     def from_concept(
         cls,
         source: Concept,
-        name=None,
+        doc=None,
         form2pos=None,
         pos2form=None,
         pos=None,
@@ -151,7 +153,7 @@ class Concept:
         metrics=None,
     ) -> Concept:
         return cls(
-            name or source.name,
+            doc or source.doc,
             form2pos or source.form2pos,
             pos2form or source.pos2form,
             pos or source.pos,
@@ -202,10 +204,10 @@ class Rule:
 
 @dataclass(frozen=True, eq=True)
 class UserQuery:
-    text: str
+    doc: Doc
 
     def __str__(self) -> str:
-        return self.text
+        return self.doc.text
 
 
 @dataclass(frozen=True, eq=True)

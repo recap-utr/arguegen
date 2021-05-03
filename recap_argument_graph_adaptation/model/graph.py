@@ -7,25 +7,27 @@ from dataclasses import dataclass
 from recap_argument_graph_adaptation.model import spacy
 from recap_argument_graph_adaptation.model.config import Config
 
+from spacy.tokens import Doc  # type: ignore
+
 config = Config.instance()
 
 
 @dataclass(frozen=True)
 class AbstractNode(abc.ABC):
-    name: str
+    doc: Doc
     _lemmas: t.FrozenSet[str]
     pos: t.Optional[str]
     uri: str
 
     @property
     def lemmas(self) -> t.FrozenSet[str]:
-        return self._lemmas or frozenset([self.name])
+        return self._lemmas or frozenset([self.doc.text])
 
     def __str__(self):
         if self.pos:
-            return f"{self.name}/{self.pos}"
+            return f"{self.doc.text}/{self.pos}"
 
-        return self.name
+        return self.doc.text
 
     def __eq__(self, other: AbstractNode) -> bool:
         return self.uri == other.uri
@@ -35,17 +37,18 @@ class AbstractNode(abc.ABC):
 
     @abc.abstractmethod
     def hypernym_distances(
-        self, comparison_texts: t.Iterable[str], min_similarity: float
+        self, comparison_docs: t.Iterable[Doc], min_similarity: float
     ) -> t.Dict[AbstractNode, int]:
         pass
 
     @property
     def processed_name(self) -> str:
-        return process_name(self.name)
+        return process_name(self.doc.text)
 
     @property
     def processed_lemmas(self) -> t.FrozenSet[str]:
         return frozenset(process_name(lemma) for lemma in self.lemmas)
+
 
 def process_name(name: str) -> str:
     return name.replace("_", " ").lower()

@@ -15,6 +15,8 @@ from recap_argument_graph_adaptation.model import (
 )
 from recap_argument_graph_adaptation.model.config import Config
 
+from spacy.tokens import Doc  # type: ignore
+
 config = Config.instance()
 POS_OTHER = "other"
 
@@ -29,7 +31,7 @@ class ConceptnetNode(graph.AbstractNode):
     def from_neo4j(cls, obj: neo4j.data.Node) -> ConceptnetNode:
         return cls(
             id=obj.id,
-            name=obj["name"],  # type: ignore
+            name=spacy.doc(obj["name"]),  # type: ignore
             language=obj["language"],  # type: ignore
             pos=obj["pos"],  # type: ignore
             uri=obj["uri"],  # type: ignore
@@ -38,7 +40,7 @@ class ConceptnetNode(graph.AbstractNode):
         )
 
     def hypernym_distances(
-        self, comparison_texts: t.Iterable[str], min_similarity: float
+        self, comparison_docs: t.Iterable[Doc], min_similarity: float
     ) -> t.Dict[ConceptnetNode, int]:
         return Database().hypernym_distances(self)
 
@@ -155,7 +157,9 @@ class Database:
                         nodes[end_node].append(len(found_path.relationships))
 
                         if end_node.pos != pos and (
-                            best_node := Database._node(tx, end_node.name, pos, lang)
+                            best_node := Database._node(
+                                tx, end_node.doc.text, pos, lang
+                            )
                         ):
                             nodes[best_node].append(len(found_path.relationships))
 
@@ -239,7 +243,7 @@ class Database:
     ) -> t.Dict[ConceptnetNode, int]:
         return Database._nodes_along_paths(
             tx,
-            node.name,
+            node.doc.text,
             node.pos,
             lang,
             config["conceptnet"]["relation"]["generalization_types"],

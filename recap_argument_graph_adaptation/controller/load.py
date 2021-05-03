@@ -12,6 +12,7 @@ from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
+from spacy.tokens import Doc  # type: ignore
 
 config = Config.instance()
 log = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
             f"Only some of the required assets {[p.name for p in paths]} were found in '{path}'."
         )
 
-    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode)
+    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode, nlp=spacy.doc)
     user_query = _parse_query(query_path)
     rules = _parse_rules(rules_path, graph, user_query)
 
@@ -169,7 +170,7 @@ def _postprocess_rule(
                     hyp.lemmas()
                     for synset in synsets
                     for hyp, _ in synset.hypernym_distances()
-                    if not hyp.name().startswith(source.name)
+                    if not hyp.name().startswith(source.doc.text)
                     and hyp.name() not in config["wordnet"]["hypernym_filter"]
                 )
                 lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
@@ -239,7 +240,7 @@ def _parse_rule_concept(
         nodes = query.concept_nodes(kw_form2pos.keys(), pos)
     else:
         nodes = query.concept_nodes(
-            kw_form2pos.keys(), pos, [inode.plain_text for inode in inodes]
+            kw_form2pos.keys(), pos, [inode.text for inode in inodes]
         )
 
     if not nodes:
@@ -248,7 +249,7 @@ def _parse_rule_concept(
         )
 
     return casebase.Concept(
-        kw_name,
+        spacy.doc(kw_name),
         kw_form2pos,
         kw_pos2form,
         pos,
