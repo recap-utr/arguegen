@@ -38,11 +38,11 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
 def concept_nodes(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
-    comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+    comparison_texts: t.Optional[t.Iterable[str]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[graph.AbstractNode]:
     if kg_wn:
-        return wordnet.concept_synsets(names, pos, comparison_vectors, min_similarity)
+        return wordnet.concept_synsets(names, pos, comparison_texts, min_similarity)
 
     elif kg_cn:
         return conceptnet.Database().nodes(names, pos)
@@ -56,7 +56,7 @@ def concept_metrics(
     user_query: casebase.UserQuery,
     inodes: t.Iterable[casebase.ArgumentNode],
     nodes: t.Iterable[graph.AbstractNode],
-    vector: spacy.Vector,
+    lemma: str,
     weight: t.Optional[float] = None,
     hypernym_level: t.Optional[int] = None,
     hypernym_proximity: t.Optional[float] = None,
@@ -87,13 +87,13 @@ def concept_metrics(
         else None
     )
     query_concept_semantic_similarity = (
-        spacy.similarity(user_query.vector, vector)
+        spacy.similarity(user_query.text, lemma)
         if active("query_concept_sem_sim")
         else None
     )
     query_adus_semantic_similarity = (
         statistics.mean(
-            spacy.similarity(user_query.vector, inode.vector) for inode in inodes
+            spacy.similarity(user_query.text, inode.plain_text) for inode in inodes
         )
         if active("query_adus_sem_sim")
         else None
@@ -104,13 +104,13 @@ def concept_metrics(
             total_weight += related_concept_weight
 
             concept_semantic_similarity = (
-                spacy.similarity(vector, related_concept.vector)
+                spacy.similarity(lemma, related_concept.name)
                 if active("concept_sem_sim")
                 else None
             )
             adus_semantic_similarity = (
                 statistics.mean(
-                    spacy.similarity(inode2.vector, inode1.vector)
+                    spacy.similarity(inode2.plain_text, inode1.plain_text)
                     for inode1, inode2 in itertools.product(
                         related_concept.inodes, inodes
                     )
@@ -168,7 +168,7 @@ def concept_metrics(
 
 def direct_hypernyms(
     node: graph.AbstractNode,
-    comparison_vectors: t.Iterable[spacy.Vector],
+    comparison_texts: t.Iterable[str],
     min_similarity: float,
 ) -> t.FrozenSet[graph.AbstractPath]:
     if kg_cn:
@@ -178,7 +178,7 @@ def direct_hypernyms(
 
     elif kg_wn:
         return wordnet.direct_hypernyms(
-            t.cast(wordnet.WordnetNode, node), comparison_vectors, min_similarity
+            t.cast(wordnet.WordnetNode, node), comparison_texts, min_similarity
         )
 
     raise kg_err

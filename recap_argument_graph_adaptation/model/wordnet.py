@@ -45,7 +45,19 @@ wn = init_reader()
 class WordnetNode(graph.AbstractNode):
     index: str
     definition: str
-    examples: t.Tuple[str]
+    examples: t.Tuple[str, ...]
+
+    @property
+    def context(self) -> t.Tuple[str, ...]:
+        synset_context = []
+
+        for context_type in config["wordnet"]["node_context_components"]:
+            if context_type == "examples":
+                synset_context.extend(self.examples)
+            elif context_type == "definition":
+                synset_context.append(self.definition)
+
+        return tuple(synset_context)
 
     @classmethod
     def from_nltk(cls, s: Synset) -> WordnetNode:
@@ -83,21 +95,21 @@ class WordnetNode(graph.AbstractNode):
 
     def hypernyms(
         self,
-        comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+        comparison_texts: t.Optional[t.Iterable[str]] = None,
         min_similarity: t.Optional[float] = None,
     ) -> t.FrozenSet[WordnetNode]:
         hyps = frozenset(
             WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()
         )
 
-        if comparison_vectors and min_similarity:
-            hyps = _filter_nodes(hyps, comparison_vectors, min_similarity)
+        if comparison_texts and min_similarity:
+            hyps = _filter_nodes(hyps, comparison_texts, min_similarity)
 
         return hyps
 
     def hypernym_distances(
         self,
-        comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+        comparison_texts: t.Optional[t.Iterable[str]] = None,
         min_similarity: t.Optional[float] = None,
     ) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
@@ -114,9 +126,9 @@ class WordnetNode(graph.AbstractNode):
 
         filtered_hypernym_keys = distances_map.keys()
 
-        if comparison_vectors and min_similarity:
+        if comparison_texts and min_similarity:
             filtered_hypernym_keys = _filter_nodes(
-                distances_map.keys(), comparison_vectors, min_similarity
+                distances_map.keys(), comparison_texts, min_similarity
             )
 
         return {
@@ -209,58 +221,38 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
     return results
 
 
-def _nodes_vectors(synsets: t.Iterable[WordnetNode]) -> t.List[t.Tuple[spacy.Vector]]:
-    synset_contexts = []
-
-    for synset in synsets:
-        synset_context = []
-
-        for vector_type in config["wordnet"]["node_vector_components"]:
-            if vector_type == "examples":
-                synset_context.extend(synset.examples)
-            elif vector_type == "definition":
-                synset_context.append(synset.definition)
-
-        synset_contexts.append(synset_context)
-
-    return [spacy.vectors(context) for context in synset_contexts]
-
-
 def _nodes_similarities(
     synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
-) -> t.List[float]:
-    synsets1_vec = _nodes_vectors(synsets1)
-    synsets2_vec = _nodes_vectors(synsets2)
+) -> t.Sequence[float]:
+    synsets1_ctx = [x.context for x in synsets1]
+    synsets2_ctx = [x.context for x in synsets2]
     similarities = []
 
-    for vectors1, vectors2 in itertools.product(synsets1_vec, synsets2_vec):
-        for v1, v2 in itertools.product(vectors1, vectors2):
-            similarities.append(spacy.similarity(v1, v2))
+    for contexts1, contexts2 in itertools.product(synsets1_ctx, synsets2_ctx):
+        for ctx1, ctx2 in itertools.product(contexts1, contexts2):
+            similarities.append(spacy.similarity(ctx1, ctx2))
 
     return similarities
 
 
 def _filter_nodes(
     synsets: t.AbstractSet[WordnetNode],
-    comparison_vectors: t.Iterable[spacy.Vector],
+    comparison_texts: t.Iterable[str],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetNode]:
-    synsets_vectors = _nodes_vectors(synsets)
-
+    synsets_contexts = [x.context for x in synsets]
     synset_map = {}
 
-    for synset, synset_vectors in zip(synsets, synsets_vectors):
-        similarities = []
-
-        for v1, v2 in itertools.product(synset_vectors, comparison_vectors):
-            similarities.append(spacy.similarity(v1, v2))
-
+    for synset, synset_contexts in zip(synsets, synsets_contexts):
+        similarities = spacy.similarities(
+            (x1, x2) for x1, x2 in itertools.product(synset_contexts, comparison_texts)
+        )
         synset_map[synset] = statistics.mean(similarities)
 
     # Check if the best result has a higher similarity than demanded.
     # If true, only include the synsets with higher similarity.
     # Otherwise, include only the best one (regardless of the similarity).
-    if len(synset_map) > 0:
+    if synset_map:
         max_similarity = max(synset_map.values())
 
         if min_similarity < max_similarity:
@@ -293,10 +285,10 @@ def inherited_hypernyms(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
 
 def direct_hypernyms(
     node: WordnetNode,
-    comparison_vectors: t.Iterable[spacy.Vector],
+    comparison_texts: t.Iterable[str],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetPath]:
-    hyps = node.hypernyms(comparison_vectors, min_similarity)
+    hyps = node.hypernyms(comparison_texts, min_similarity)
 
     return frozenset(WordnetPath.from_nodes((node, hyp)) for hyp in hyps)
 
@@ -322,7 +314,7 @@ def all_shortest_paths(
 def concept_synsets(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
-    comparison_vectors: t.Optional[t.Iterable[spacy.Vector]] = None,
+    comparison_texts: t.Optional[t.Iterable[str]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
     synsets = set()
@@ -338,10 +330,10 @@ def concept_synsets(
 
     synsets = frozenset(synsets)
 
-    if comparison_vectors is None or min_similarity is None:
+    if comparison_texts is None or min_similarity is None:
         return synsets
 
-    return _filter_nodes(synsets, comparison_vectors, min_similarity)
+    return _filter_nodes(synsets, comparison_texts, min_similarity)
 
 
 def metrics(
@@ -374,12 +366,10 @@ def metrics(
 
 
 def query_nodes_similarity(
-    synsets: t.Iterable[WordnetNode], query: casebase.UserQuery
+    synsets: t.Iterable[WordnetNode], user_query: casebase.UserQuery
 ) -> t.Optional[float]:
-    similarities = []
-    synset_vectors = itertools.chain.from_iterable(_nodes_vectors(synsets))
-
-    for synset_vector in synset_vectors:
-        similarities.append(spacy.similarity(synset_vector, query.vector))
+    similarities = spacy.similarities(
+        (synset.name, user_query.text) for synset in synsets
+    )
 
     return statistics.mean(similarities) if similarities else None

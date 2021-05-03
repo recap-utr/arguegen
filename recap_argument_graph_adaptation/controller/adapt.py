@@ -8,6 +8,7 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
@@ -23,7 +24,7 @@ log = logging.getLogger(__name__)
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return spacy.similarity(user_query.vector, graph_text)
+    return spacy.similarity(user_query.text, graph_text)
 
 
 def argument_graph(
@@ -114,14 +115,13 @@ def concepts(
 
         for node in original_concept.nodes:
             hypernym_distances = node.hypernym_distances(
-                original_concept.inode_vectors,
+                [inode.plain_text for inode in original_concept.inodes],
                 config.tuning("threshold", "node_similarity", "adaptation"),
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
                 name = hypernym.processed_name
                 pos = query.pos(hypernym.pos)
-                vector = spacy.vector(name)
                 nodes = frozenset([hypernym])
                 lemma, form2pos, pos2form = inflect_concept(
                     name, casebase.pos2spacy(pos)
@@ -129,7 +129,6 @@ def concepts(
 
                 candidate = casebase.Concept(
                     lemma,
-                    vector,
                     form2pos,
                     pos2form,
                     pos,
@@ -143,7 +142,7 @@ def concepts(
                         user_query,
                         original_concept.inodes,
                         nodes,
-                        vector,
+                        lemma,
                         hypernym_level=hyp_distance,
                     ),
                 )
@@ -205,7 +204,6 @@ def paths(
         for result in adaptation_results:
             hyp_distance = len(result)
             name = result.end_node.processed_name
-            vector = spacy.vector(name)
             end_nodes = frozenset([result.end_node])
             pos = query.pos(result.end_node.pos)
             related_concepts = {
@@ -225,7 +223,6 @@ def paths(
 
             candidate = casebase.Concept(
                 lemma,
-                vector,
                 form2pos,
                 pos2form,
                 pos,
@@ -239,7 +236,7 @@ def paths(
                     user_query,
                     original_concept.inodes,
                     end_nodes,
-                    vector,
+                    lemma,
                     hypernym_level=hyp_distance,
                 ),
             )
@@ -287,7 +284,7 @@ def _bfs_adaptation(
             for current_path in current_paths:
                 path_extensions = query.direct_hypernyms(
                     current_path.end_node,
-                    concept.inode_vectors,
+                    [inode.plain_text for inode in concept.inodes],
                     config.tuning("threshold", "node_similarity", "adaptation"),
                 )
 
@@ -355,7 +352,6 @@ class Lemma:
     pos: casebase.POS
     nodes: t.FrozenSet[graph.AbstractNode]
     concepts: t.FrozenSet[casebase.Concept]
-    vector: spacy.Vector = field(repr=False, compare=False)
 
 
 def _filter_lemmas(
@@ -378,13 +374,10 @@ def _filter_lemmas(
 
     assert lemma_nodes.keys() == lemma_concepts.keys()
 
-    lemma_vectors = spacy.vectors(
-        [lemma_tuple[0] for lemma_tuple in lemma_nodes.keys()]
-    )
     lemmas = [
-        Lemma(name, pos, frozenset(nodes), frozenset(concepts), vector)
-        for ((name, pos), nodes), concepts, vector in zip(
-            lemma_nodes.items(), lemma_concepts.values(), lemma_vectors
+        Lemma(name, pos, frozenset(nodes), frozenset(concepts))
+        for ((name, pos), nodes), concepts in zip(
+            lemma_nodes.items(), lemma_concepts.values()
         )
     ]
 
@@ -408,7 +401,6 @@ def _filter_lemmas(
         nodes=best_lemma.nodes,
         related_concepts={},
         user_query=retrieved_concept.user_query,
-        vector=best_lemma.vector,
         metrics=casebase.empty_metrics(),
     )
 
@@ -443,15 +435,15 @@ def _prune(
 
     for item in reference_items:
         val_reference = _aggregate_features(
-            item[0].vector,
-            item[1].vector,
+            item[0].name,
+            item[1].name,
             selector,
         )
 
         for adapted_item in adapted_items:
             val_adapted = _aggregate_features(
-                retrieved_item.vector,
-                adapted_item.vector,
+                retrieved_item.name,
+                adapted_item.name,
                 selector,
             )
             candidate_values[adapted_item].append(
@@ -470,23 +462,24 @@ def _prune(
 
 
 def _aggregate_features(
-    vec1: spacy.Vector, vec2: spacy.Vector, selector: str
-) -> t.Union[float, spacy.Vector]:
+    feat1: str, feat2: str, selector: str
+) -> t.Union[float, np.ndarray]:
     if selector == "difference":
-        return vec1 - vec2  # type: ignore
+        return spacy.vector(vec1) - spacy.vector(vec2)  # type: ignore
     elif selector == "similarity":
-        return spacy.similarity(vec1, vec2)
+        return spacy.similarity(feat1, feat1)
 
     raise ValueError("Parameter 'selector' wrong.")
 
 
 def _compare_features(
-    feat1: t.Union[float, spacy.Vector], feat2: t.Union[float, spacy.Vector]
+    feat1: t.Union[float, np.ndarray], feat2: t.Union[float, np.ndarray]
 ) -> float:
     if type(feat1) == type(feat2):
         if isinstance(feat1, float) and isinstance(feat2, float):
             return 1 - abs(feat1 - feat2)
         else:
+            # TODO: Does not work currently
             return spacy.similarity(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")

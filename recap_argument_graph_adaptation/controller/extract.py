@@ -32,7 +32,6 @@ def keywords(
         kw = k.keyword
         kw_form2pos = k.form2pos
         kw_pos2form = k.pos2form
-        kw_vector = k.vector
         kw_pos = casebase.spacy2pos(k.pos_tag)
         kw_weight = k.weight
 
@@ -65,14 +64,13 @@ def keywords(
         kg_nodes = query.concept_nodes(
             kw_form2pos.keys(),
             kw_pos,
-            [inode.vector for inode in inodes],
+            [inode.plain_text for inode in inodes],
             config.tuning("threshold", "node_similarity", "extraction"),
         )
 
         if len(kg_nodes) > 0:
             candidate = casebase.Concept(
                 kw.lower(),
-                kw_vector,
                 kw_form2pos,
                 kw_pos2form,
                 kw_pos,
@@ -86,7 +84,7 @@ def keywords(
                     user_query,
                     inodes,
                     kg_nodes,
-                    kw_vector,
+                    kw,
                     weight=kw_weight,
                     major_claim_distance=mc_distance,
                 ),

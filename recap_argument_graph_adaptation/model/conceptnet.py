@@ -38,7 +38,7 @@ class ConceptnetNode(graph.AbstractNode):
         )
 
     def hypernym_distances(
-        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
+        self, comparison_texts: t.Iterable[str], min_similarity: float
     ) -> t.Dict[ConceptnetNode, int]:
         return Database().hypernym_distances(self)
 

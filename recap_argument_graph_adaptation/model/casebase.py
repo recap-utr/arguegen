@@ -72,13 +72,6 @@ best_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
 
 
 class ArgumentNode(ag.Node):
-    __slots__ = ("vector",)
-
-    vector: spacy.Vector
-
-    def __post_init__(self):
-        self.vector = spacy.vector(self.plain_text)
-
     def __str__(self) -> str:
         return str(self.key)
 
@@ -92,7 +85,6 @@ class ArgumentNode(ag.Node):
 @dataclass(frozen=True, eq=True)
 class Concept:
     name: str
-    vector: spacy.Vector = field(compare=False, repr=False)
     form2pos: immutables.Map[str, t.Tuple[str, ...]]
     pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos: t.Optional[POS]
@@ -128,10 +120,6 @@ class Concept:
 
         return out
 
-    @property
-    def inode_vectors(self) -> t.List[spacy.Vector]:
-        return [inode.vector for inode in self.inodes]
-
     @staticmethod
     def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
         return list(sorted(concepts, key=lambda concept: concept.score))
@@ -153,7 +141,6 @@ class Concept:
         cls,
         source: Concept,
         name=None,
-        vector=None,
         form2pos=None,
         pos2form=None,
         pos=None,
@@ -163,12 +150,8 @@ class Concept:
         user_query=None,
         metrics=None,
     ) -> Concept:
-        if vector is None:
-            vector = source.vector
-
         return cls(
             name or source.name,
-            vector,
             form2pos or source.form2pos,
             pos2form or source.pos2form,
             pos or source.pos,
@@ -220,7 +203,6 @@ class Rule:
 @dataclass(frozen=True, eq=True)
 class UserQuery:
     text: str
-    vector: spacy.Vector = field(repr=False, compare=False)
 
     def __str__(self) -> str:
         return self.text
@@ -387,7 +369,7 @@ class Evaluation:
     @staticmethod
     def _latex_format(value: float) -> str:
         prefix = str(abs(int(value)))
-        num_negative = True if value < 0 else False
+        num_negative = value < 0
 
         if value < 1 and value > -1:
             num_digits = 3

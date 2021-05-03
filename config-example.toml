@@ -104,7 +104,7 @@ hypernym_filter = [
     "psychological_feature.n.01",
     "thing.n.08",
 ]
-node_vector_components = ["examples", "definition"]
+node_context_components = ["examples", "definition"]
 
 
 [conceptnet]

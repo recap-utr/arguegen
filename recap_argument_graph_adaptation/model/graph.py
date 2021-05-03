@@ -35,7 +35,7 @@ class AbstractNode(abc.ABC):
 
     @abc.abstractmethod
     def hypernym_distances(
-        self, comparison_vectors: t.Iterable[spacy.Vector], min_similarity: float
+        self, comparison_texts: t.Iterable[str], min_similarity: float
     ) -> t.Dict[AbstractNode, int]:
         pass
 
@@ -46,15 +46,6 @@ class AbstractNode(abc.ABC):
     @property
     def processed_lemmas(self) -> t.FrozenSet[str]:
         return frozenset(process_name(lemma) for lemma in self.lemmas)
-
-    @property
-    def vector(self) -> spacy.Vector:
-        return spacy.vector(self.processed_name)
-
-    @property
-    def lemma_vectors(self) -> t.Tuple[spacy.Vector, ...]:
-        return spacy.vectors(self.processed_lemmas)
-
 
 def process_name(name: str) -> str:
     return name.replace("_", " ").lower()
@@ -86,10 +77,6 @@ class AbstractPath(abc.ABC):
     @property
     def end_node(self) -> AbstractNode:
         return self.nodes[-1]
-
-    @property
-    def vector(self) -> spacy.Vector:
-        return self.end_node.vector
 
     def __str__(self):
         out = f"{self.start_node}"

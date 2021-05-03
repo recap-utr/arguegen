@@ -119,7 +119,7 @@ def _parse_query(path: Path) -> casebase.UserQuery:
     with path.open() as f:
         text = f.read()
 
-    return casebase.UserQuery(text, spacy.vector(text))
+    return casebase.UserQuery(text)
 
 
 def _parse_rules(
@@ -212,7 +212,6 @@ def _parse_rule_concept(
         )
 
     kw_name, kw_form2pos, kw_pos2form = inflect_concept(name, casebase.pos2spacy(pos))
-    vector = spacy.vector(kw_name)
 
     if not inodes:
         tmp_inodes = set()
@@ -240,7 +239,7 @@ def _parse_rule_concept(
         nodes = query.concept_nodes(kw_form2pos.keys(), pos)
     else:
         nodes = query.concept_nodes(
-            kw_form2pos.keys(), pos, [inode.vector for inode in inodes]
+            kw_form2pos.keys(), pos, [inode.plain_text for inode in inodes]
         )
 
     if not nodes:
@@ -250,7 +249,6 @@ def _parse_rule_concept(
 
     return casebase.Concept(
         kw_name,
-        vector,
         kw_form2pos,
         kw_pos2form,
         pos,
