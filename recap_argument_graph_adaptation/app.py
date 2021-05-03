@@ -129,14 +129,9 @@ def _parametrized_run(
                 reference_paths, case.rules, args.case.user_query
             )
 
-        if (
-            config["export"]["retrieval_improvement"]
-            or config["export"]["graph_json"]
-            or config["export"]["graph_pdf"]
-        ):
-            adapted_graph = adapt.argument_graph(
-                case.user_query, case.graph, case.rules, adapted_concepts
-            )
+        adapted_graph, adapted_concepts = adapt.argument_graph(
+            case.user_query, case.graph, case.rules, adapted_concepts
+        )
     else:
         # adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}
         raise RuntimeError("You have to provide at least one rule.")

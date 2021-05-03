@@ -35,7 +35,6 @@ def pos(tag: t.Optional[str]) -> t.Optional[casebase.POS]:
     raise kg_err
 
 
-# TODO: Currently, all metrics that do not depend on the related concepts are computed multiple times.
 def concept_nodes(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
@@ -80,17 +79,33 @@ def concept_metrics(
     total_weight = 0
     metrics_map = {key: [] for key in casebase.metric_keys}
 
+    query_nodes_sem_sim = (
+        wordnet.query_nodes_similarity(
+            t.cast(t.Iterable[wordnet.WordnetNode], nodes), user_query
+        )
+        if active("query_nodes_sem_sim") and kg_wn
+        else None
+    )
+    query_concept_semantic_similarity = (
+        spacy.similarity(user_query.vector, vector)
+        if active("query_concept_sem_sim")
+        else None
+    )
+    query_adus_semantic_similarity = (
+        statistics.mean(
+            spacy.similarity(user_query.vector, inode.vector) for inode in inodes
+        )
+        if active("query_adus_sem_sim")
+        else None
+    )
+
     for related_concept, related_concept_weight in related_concepts.items():
         if related_concept_weight > 0:
             total_weight += related_concept_weight
+
             concept_semantic_similarity = (
                 spacy.similarity(vector, related_concept.vector)
                 if active("concept_sem_sim")
-                else None
-            )
-            query_concept_semantic_similarity = (
-                spacy.similarity(user_query.vector, vector)
-                if active("query_concept_sem_sim")
                 else None
             )
             adus_semantic_similarity = (
@@ -101,14 +116,6 @@ def concept_metrics(
                     )
                 )
                 if active("adus_sem_sim")
-                else None
-            )
-            query_adus_semantic_similarity = (
-                statistics.mean(
-                    spacy.similarity(user_query.vector, inode.vector)
-                    for inode in inodes
-                )
-                if active("query_adus_sem_sim")
                 else None
             )
 
@@ -124,7 +131,7 @@ def concept_metrics(
                 "nodes_wup_sim": None,
                 "query_adus_sem_sim": query_adus_semantic_similarity,
                 "query_concept_sem_sim": query_concept_semantic_similarity,
-                "query_nodes_sem_sim": None,
+                "query_nodes_sem_sim": query_nodes_sem_sim,
             }
 
             assert metrics.keys() == casebase.metric_keys
@@ -136,11 +143,6 @@ def concept_metrics(
                 )
 
                 metrics.update(wordnet.metrics(nodes, related_nodes, active))
-                metrics["query_nodes_sem_sim"] = (
-                    wordnet.query_nodes_similarity(nodes, user_query)
-                    if active("query_nodes_sem_sim")
-                    else None
-                )
 
             elif kg_cn:
                 db = conceptnet.Database()

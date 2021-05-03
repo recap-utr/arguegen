@@ -18,14 +18,11 @@ def case(
     adapted_graph: t.Optional[ag.Graph],
     duration: float,
 ) -> casebase.EvaluationTuple:
-    case_rules = case.rules
-    benchmark_rules = case.benchmark_rules
-
-    benchmark_adaptations = {
-        rule.source: rule.target for rule in benchmark_rules if rule not in case_rules
-    }
+    benchmark_adaptations = {rule.source: rule.target for rule in case.benchmark_rules}
     computed_adaptations = {**adapted_concepts}
-    benchmark_weights = list(range(len(benchmark_adaptations), 0, -1))
+    # TODO: Revise weighting scheme
+    # benchmark_weights = list(range(len(benchmark_adaptations), 0, -1))
+    benchmark_weights = [1 for _ in range(len(benchmark_adaptations))]
 
     benchmark_keys = set(benchmark_adaptations)
     computed_keys = set(computed_adaptations)

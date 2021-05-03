@@ -31,45 +31,57 @@ def argument_graph(
     original_graph: ag.Graph,
     rules: t.Collection[casebase.Rule],
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
-) -> ag.Graph:
-    adapted_graph = original_graph.copy()
+) -> t.Tuple[ag.Graph, t.Mapping[casebase.Concept, casebase.Concept]]:
+    original_similarity = _graph_similarity(user_query, original_graph)
     # nlp = spacylib.load(config["nlp"]["local_model"])
 
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
-    sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
+    # sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
+    sources = set(substitutions.keys())
+    applied_adaptations = {}
     current_similarity = 0.0
+    current_adapted_graph = original_graph
 
-    while len(sources) > 0:
-        source = sources[0]
-        variants = [x for x in sources if source.name in x.name]
+    while sources:
+        adapted_graphs = {}
 
-        for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
-            sources.remove(variant)
+        for source in sources:
+            _adapted_graph = current_adapted_graph.copy()
+            variants = frozenset(x for x in sources if source.name in x.name)
 
-            for form, pos_tags in variant.form2pos.items():
-                pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+            for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
+                for form, pos_tags in variant.form2pos.items():
+                    pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
-                for mapped_node in variant.inodes:
-                    graph_node = adapted_graph.inode_mappings[mapped_node.key]
-                    sub_candidates = substitutions[variant].pos2form[pos_tags[0]]
+                    for mapped_node in variant.inodes:
+                        graph_node = _adapted_graph.inode_mappings[mapped_node.key]
+                        sub_candidates = substitutions[variant].pos2form[pos_tags[0]]
 
-                    graph_node.text = pattern.sub(
-                        sub_candidates[0], graph_node.plain_text
-                    )
+                        graph_node.text = pattern.sub(
+                            sub_candidates[0], graph_node.plain_text
+                        )
 
-        # IDEA: Insert all possible adaptations in a first step.
-        # Then select the graph with the highest similarity and insert all remaining adaptations.
-        # Repeat until the similarity is significantly lower than for the previous iteration.
+            adapted_graphs[variants] = (
+                _adapted_graph,
+                _graph_similarity(user_query, _adapted_graph),
+            )
 
-        new_similarity = _graph_similarity(user_query, adapted_graph)
+        applied_variants, (new_adapted_graph, new_similarity) = max(
+            adapted_graphs.items(), key=lambda x: x[1][1]
+        )
 
-        if new_similarity < current_similarity:
-            return adapted_graph
+        if new_similarity < current_similarity or new_similarity < original_similarity:
+            return current_adapted_graph, applied_adaptations
 
         current_similarity = new_similarity
+        current_adapted_graph = new_adapted_graph
 
-    return adapted_graph
+        for variant in applied_variants:
+            applied_adaptations[variant] = substitutions[variant]
+            sources.remove(variant)
+
+    return current_adapted_graph, applied_adaptations
 
 
 def concepts(
