@@ -31,31 +31,6 @@ channel = grpc.insecure_channel("127.0.0.1:5001")
 client = nlp_pb2_grpc.NlpServiceStub(channel)
 
 
-# def parse_doc(text: str) -> Doc:
-#     return parse_docs([text])[0]
-
-
-# def parse_docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
-#     unknown = {text for text in texts if text not in _cache}
-
-#     if unknown:
-#         docbin = client.DocBin(
-#             nlp_pb2.DocBinRequest(
-#                 language="en",
-#                 texts=unknown,
-#                 spacy_model="en_core_web_lg",
-#                 embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
-#                 no_attributes=True,
-#             )
-#         ).docbin
-#         docs = nlp_service.client.docbin2doc(
-#             docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE
-#         )
-#         _cache.update({text: doc for text, doc in zip(unknown, docs)})
-
-#     return tuple(_cache[text] for text in texts)
-
-
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
     unknown = {text for text in texts if text not in _cache}
 
@@ -76,25 +51,12 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
 
     return tuple(_cache[text] for text in texts)
 
-    # return tuple(doc.vector for doc in parse_docs(texts))
-
 
 def vector(text: str) -> np.ndarray:
     return vectors([text])[0]
 
 
 def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, ...]:
-    # return client.Similarities(
-    #     nlp_pb2.SimilaritiesRequest(
-    #         language="en",
-    #         text_tuples=[
-    #             nlp_pb2.TextTuple(text1=x[0], text2=x[1]) for x in text_tuples
-    #         ],
-    #         spacy_model="en_core_web_lg",
-    #         similarity_method=nlp_pb2.SIMILARITY_METHOD_COSINE,
-    #     )
-    # ).similarities
-
     vecs1 = vectors([x[0] for x in text_tuples])
     vecs2 = vectors([x[1] for x in text_tuples])
 
