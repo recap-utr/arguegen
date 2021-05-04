@@ -72,7 +72,7 @@ class WordnetNode(graph.AbstractNode):
                 definition = _def
 
             if _ex := s.examples():
-                examples = tuple(spacy.parse_docs(examples))
+                examples = tuple(spacy.parse_docs(_ex))
 
             return cls(
                 doc=spacy.parse_doc(name),
