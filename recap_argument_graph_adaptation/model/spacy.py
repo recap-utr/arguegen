@@ -21,46 +21,90 @@ from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from textacy.extract.keyterms.yake import yake
 
+from spacy.tokens import Doc  # type: ignore
+
 config = Config.instance()
 
-# from sentence_transformers import SentenceTransformer
+_cache = {}
 
 channel = grpc.insecure_channel("127.0.0.1:5001")
 client = nlp_pb2_grpc.NlpServiceStub(channel)
 
 
-def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
-    res = client.Vectors(
-        nlp_pb2.VectorsRequest(
-            language="en",
-            texts=texts,
-            spacy_model="en_core_web_lg",
-            embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
-        )
-    )
+# def parse_doc(text: str) -> Doc:
+#     return parse_docs([text])[0]
 
-    return tuple(nlp_service.client.list2array(x.document.vector) for x in res.vectors)
+
+# def parse_docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
+#     unknown = {text for text in texts if text not in _cache}
+
+#     if unknown:
+#         docbin = client.DocBin(
+#             nlp_pb2.DocBinRequest(
+#                 language="en",
+#                 texts=unknown,
+#                 spacy_model="en_core_web_lg",
+#                 embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
+#                 no_attributes=True,
+#             )
+#         ).docbin
+#         docs = nlp_service.client.docbin2doc(
+#             docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE
+#         )
+#         _cache.update({text: doc for text, doc in zip(unknown, docs)})
+
+#     return tuple(_cache[text] for text in texts)
+
+
+def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
+    unknown = {text for text in texts if text not in _cache}
+
+    if unknown:
+        res = client.Vectors(
+            nlp_pb2.VectorsRequest(
+                language="en",
+                texts=texts,
+                spacy_model="en_core_web_lg",
+                embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
+            )
+        )
+
+        new_vectors = tuple(
+            nlp_service.client.list2array(x.document.vector) for x in res.vectors
+        )
+        _cache.update({text: vec for text, vec in zip(unknown, new_vectors)})
+
+    return tuple(_cache[text] for text in texts)
+
+    # return tuple(doc.vector for doc in parse_docs(texts))
 
 
 def vector(text: str) -> np.ndarray:
     return vectors([text])[0]
 
 
-def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Sequence[float]:
-    return client.Similarities(
-        nlp_pb2.SimilaritiesRequest(
-            language="en",
-            text_tuples=[
-                nlp_pb2.TextTuple(text1=x[0], text2=x[1]) for x in text_tuples
-            ],
-            spacy_model="en_core_web_lg",
-            similarity_method=nlp_pb2.SIMILARITY_METHOD_COSINE,
-        )
-    ).similarities
+def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, ...]:
+    # return client.Similarities(
+    #     nlp_pb2.SimilaritiesRequest(
+    #         language="en",
+    #         text_tuples=[
+    #             nlp_pb2.TextTuple(text1=x[0], text2=x[1]) for x in text_tuples
+    #         ],
+    #         spacy_model="en_core_web_lg",
+    #         similarity_method=nlp_pb2.SIMILARITY_METHOD_COSINE,
+    #     )
+    # ).similarities
+
+    vecs1 = vectors([x[0] for x in text_tuples])
+    vecs2 = vectors([x[1] for x in text_tuples])
+
+    return tuple(1 - distance.cosine(vec1, vec2) for vec1, vec2 in zip(vecs1, vecs2))
 
 
-def similarity(obj1: str, obj2: str) -> float:
-    return similarities([(obj1, obj2)])[0]
+def similarity(text1: str, text2: str) -> float:
+    vecs = vectors([text1, text2])
+
+    return 1 - distance.cosine(vecs[0], vecs[1])
 
 
 @dataclass(frozen=True)
@@ -84,7 +128,7 @@ def keywords(
     key = (tuple(texts), tuple(pos_tags))
 
     if key not in _keyword_cache:
-        _keywords(texts, pos_tags, key)
+        _keyword_cache[key] = tuple(_keywords(texts, pos_tags))
 
     return _keyword_cache[key]
 
@@ -92,10 +136,13 @@ def keywords(
 def _keywords(
     texts: t.Iterable[str],
     pos_tags: t.Iterable[str],
-    key: t.Tuple[t.Tuple[str, ...], ...],
-):
+) -> t.List[Keyword]:
     docbin = client.DocBin(
-        nlp_pb2.DocBinRequest(language="en", texts=texts, spacy_model="en_core_web_lg")
+        nlp_pb2.DocBinRequest(
+            language="en",
+            texts=texts,
+            spacy_model="en_core_web_lg",
+        )
     ).docbin
     docs = nlp_service.client.docbin2doc(docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE)
     keyword_map = defaultdict(list)
@@ -124,7 +171,8 @@ def _keywords(
             )
 
     keywords.sort(key=lambda x: x.weight, reverse=True)
-    _keyword_cache[key] = tuple(keywords)
+
+    return keywords
 
 
 def _dist2sim(distance: float) -> float:

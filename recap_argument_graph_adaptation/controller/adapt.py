@@ -13,6 +13,7 @@ import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
+from scipy.spatial import distance
 
 # from spacy.matcher import PhraseMatcher
 
@@ -465,9 +466,9 @@ def _aggregate_features(
     feat1: str, feat2: str, selector: str
 ) -> t.Union[float, np.ndarray]:
     if selector == "difference":
-        return spacy.vector(vec1) - spacy.vector(vec2)  # type: ignore
+        return spacy.vector(feat1) - spacy.vector(feat2)  # type: ignore
     elif selector == "similarity":
-        return spacy.similarity(feat1, feat1)
+        return spacy.similarity(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
 
@@ -479,7 +480,6 @@ def _compare_features(
         if isinstance(feat1, float) and isinstance(feat2, float):
             return 1 - abs(feat1 - feat2)
         else:
-            # TODO: Does not work currently
-            return spacy.similarity(feat1, feat2)  # type: ignore
+            return 1 - distance.cosine(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")

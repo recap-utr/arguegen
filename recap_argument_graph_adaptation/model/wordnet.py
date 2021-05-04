@@ -245,7 +245,7 @@ def _filter_nodes(
 
     for synset, synset_contexts in zip(synsets, synsets_contexts):
         similarities = spacy.similarities(
-            (x1, x2) for x1, x2 in itertools.product(synset_contexts, comparison_texts)
+            [(x1, x2) for x1, x2 in itertools.product(synset_contexts, comparison_texts)]
         )
         synset_map[synset] = statistics.mean(similarities)
 
@@ -369,7 +369,7 @@ def query_nodes_similarity(
     synsets: t.Iterable[WordnetNode], user_query: casebase.UserQuery
 ) -> t.Optional[float]:
     similarities = spacy.similarities(
-        (synset.name, user_query.text) for synset in synsets
+        [(synset.name, user_query.text) for synset in synsets]
     )
 
     return statistics.mean(similarities) if similarities else None
