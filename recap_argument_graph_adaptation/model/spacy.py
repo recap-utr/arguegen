@@ -37,9 +37,7 @@ def parse_doc(text: str) -> Doc:
 
 def parse_docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
     docbin = client.DocBin(
-        nlp_pb2.DocBinRequest(
-            language="en", texts=texts, spacy_model="en_core_web_lg", no_attributes=True
-        )
+        nlp_pb2.DocBinRequest(language="en", texts=texts, spacy_model="en_core_web_lg")
     ).docbin
     return nlp_service.client.docbin2doc(docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE)
 
