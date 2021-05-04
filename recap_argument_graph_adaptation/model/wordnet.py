@@ -12,8 +12,6 @@ from nltk.corpus.util import LazyCorpusLoader
 from recap_argument_graph_adaptation.model import casebase, graph, spacy
 from recap_argument_graph_adaptation.model.config import Config
 
-from spacy.tokens import Doc  # type: ignore
-
 # from nltk.corpus import wordnet as wn
 
 config = Config.instance()
@@ -50,7 +48,7 @@ class WordnetNode(graph.AbstractNode):
     examples: t.Tuple[str, ...]
 
     @property
-    def context(self) -> t.Tuple[Doc, ...]:
+    def context(self) -> t.Tuple[str, ...]:
         synset_context = []
 
         for context_type in config["wordnet"]["node_context_components"]:
@@ -67,13 +65,13 @@ class WordnetNode(graph.AbstractNode):
             name, pos, index = tuple(code.rsplit(".", 2))  # type: ignore
 
             return cls(
-                doc=spacy.doc(name),
+                name=name,
                 pos=pos,
                 index=index,
                 uri=code,
                 definition=s.definition() or "",
-                examples=tuple(spacy.docs(s.examples())) or tuple(),
-                _lemmas=frozenset(spacy.doc(lemma.name()) for lemma in s.lemmas()),
+                examples=tuple(s.examples()) or tuple(),
+                _lemmas=frozenset(lemma.name() for lemma in s.lemmas()),
             )
 
         raise RuntimeError("The synset does not have a name!")
@@ -97,21 +95,21 @@ class WordnetNode(graph.AbstractNode):
 
     def hypernyms(
         self,
-        comparison_docs: t.Optional[t.Iterable[Doc]] = None,
+        comparison_texts: t.Optional[t.Iterable[str]] = None,
         min_similarity: t.Optional[float] = None,
     ) -> t.FrozenSet[WordnetNode]:
         hyps = frozenset(
             WordnetNode.from_nltk(hyp) for hyp in self.to_nltk().hypernyms()
         )
 
-        if comparison_docs and min_similarity:
-            hyps = _filter_nodes(hyps, comparison_docs, min_similarity)
+        if comparison_texts and min_similarity:
+            hyps = _filter_nodes(hyps, comparison_texts, min_similarity)
 
         return hyps
 
     def hypernym_distances(
         self,
-        comparison_docs: t.Optional[t.Iterable[Doc]] = None,
+        comparison_texts: t.Optional[t.Iterable[str]] = None,
         min_similarity: t.Optional[float] = None,
     ) -> t.Dict[WordnetNode, int]:
         distances_map = defaultdict(list)
@@ -128,9 +126,9 @@ class WordnetNode(graph.AbstractNode):
 
         filtered_hypernym_keys = distances_map.keys()
 
-        if comparison_docs and min_similarity:
+        if comparison_texts and min_similarity:
             filtered_hypernym_keys = _filter_nodes(
-                distances_map.keys(), comparison_docs, min_similarity
+                distances_map.keys(), comparison_texts, min_similarity
             )
 
         return {
@@ -232,24 +230,23 @@ def _nodes_similarities(
 
     for contexts1, contexts2 in itertools.product(synsets1_ctx, synsets2_ctx):
         for ctx1, ctx2 in itertools.product(contexts1, contexts2):
-            similarities.append(ctx1.similarity(ctx2))
+            similarities.append(spacy.similarity(ctx1, ctx2))
 
     return similarities
 
 
 def _filter_nodes(
     synsets: t.AbstractSet[WordnetNode],
-    comparison_docs: t.Iterable[Doc],
+    comparison_texts: t.Iterable[str],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetNode]:
     synsets_contexts = [x.context for x in synsets]
     synset_map = {}
 
     for synset, synset_contexts in zip(synsets, synsets_contexts):
-        similarities = [
-            x1.similarity(x2)
-            for x1, x2 in itertools.product(synset_contexts, comparison_docs)
-        ]
+        similarities = spacy.similarities(
+            (x1, x2) for x1, x2 in itertools.product(synset_contexts, comparison_texts)
+        )
         synset_map[synset] = statistics.mean(similarities)
 
     # Check if the best result has a higher similarity than demanded.
@@ -288,10 +285,10 @@ def inherited_hypernyms(node: WordnetNode) -> t.FrozenSet[WordnetPath]:
 
 def direct_hypernyms(
     node: WordnetNode,
-    comparison_docs: t.Iterable[Doc],
+    comparison_texts: t.Iterable[str],
     min_similarity: float,
 ) -> t.FrozenSet[WordnetPath]:
-    hyps = node.hypernyms(comparison_docs, min_similarity)
+    hyps = node.hypernyms(comparison_texts, min_similarity)
 
     return frozenset(WordnetPath.from_nodes((node, hyp)) for hyp in hyps)
 
@@ -317,7 +314,7 @@ def all_shortest_paths(
 def concept_synsets(
     names: t.Iterable[str],
     pos: t.Optional[casebase.POS],
-    comparison_docs: t.Optional[t.Iterable[Doc]] = None,
+    comparison_texts: t.Optional[t.Iterable[str]] = None,
     min_similarity: t.Optional[float] = None,
 ) -> t.FrozenSet[WordnetNode]:
     synsets = set()
@@ -333,10 +330,10 @@ def concept_synsets(
 
     synsets = frozenset(synsets)
 
-    if comparison_docs is None or min_similarity is None:
+    if comparison_texts is None or min_similarity is None:
         return synsets
 
-    return _filter_nodes(synsets, comparison_docs, min_similarity)
+    return _filter_nodes(synsets, comparison_texts, min_similarity)
 
 
 def metrics(
@@ -371,6 +368,8 @@ def metrics(
 def query_nodes_similarity(
     synsets: t.Iterable[WordnetNode], user_query: casebase.UserQuery
 ) -> t.Optional[float]:
-    similarities = [synset.doc.similarity(user_query.doc) for synset in synsets]
+    similarities = spacy.similarities(
+        (synset.name, user_query.text) for synset in synsets
+    )
 
     return statistics.mean(similarities) if similarities else None

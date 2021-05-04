@@ -7,7 +7,6 @@ import statistics
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass, field
-from spacy.tokens import Doc
 
 import numpy as np
 import recap_argument_graph as ag
@@ -25,7 +24,7 @@ log = logging.getLogger(__name__)
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return user_query.doc.similarity(spacy.doc(graph_text))
+    return spacy.similarity(user_query.text, graph_text)
 
 
 def argument_graph(
@@ -50,11 +49,9 @@ def argument_graph(
 
         for source in sources:
             _adapted_graph = current_adapted_graph.copy()
-            variants = frozenset(x for x in sources if source.doc.text in x.doc.text)
+            variants = frozenset(x for x in sources if source.name in x.name)
 
-            for variant in sorted(
-                variants, key=lambda x: len(x.doc.text), reverse=True
-            ):
+            for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
                 for form, pos_tags in variant.form2pos.items():
                     pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
@@ -118,7 +115,7 @@ def concepts(
 
         for node in original_concept.nodes:
             hypernym_distances = node.hypernym_distances(
-                [inode.text for inode in original_concept.inodes],
+                [inode.plain_text for inode in original_concept.inodes],
                 config.tuning("threshold", "node_similarity", "adaptation"),
             )
 
@@ -130,9 +127,8 @@ def concepts(
                     name, casebase.pos2spacy(pos)
                 )
 
-                doc = spacy.doc(lemma)
                 candidate = casebase.Concept(
-                    doc,
+                    lemma,
                     form2pos,
                     pos2form,
                     pos,
@@ -146,7 +142,7 @@ def concepts(
                         user_query,
                         original_concept.inodes,
                         nodes,
-                        doc,
+                        lemma,
                         hypernym_level=hyp_distance,
                     ),
                 )
@@ -225,9 +221,8 @@ def paths(
                     }
                 )
 
-            doc = spacy.doc(lemma)
             candidate = casebase.Concept(
-                doc,
+                lemma,
                 form2pos,
                 pos2form,
                 pos,
@@ -241,7 +236,7 @@ def paths(
                     user_query,
                     original_concept.inodes,
                     end_nodes,
-                    doc,
+                    lemma,
                     hypernym_level=hyp_distance,
                 ),
             )
@@ -289,7 +284,7 @@ def _bfs_adaptation(
             for current_path in current_paths:
                 path_extensions = query.direct_hypernyms(
                     current_path.end_node,
-                    [inode.text for inode in concept.inodes],
+                    [inode.plain_text for inode in concept.inodes],
                     config.tuning("threshold", "node_similarity", "adaptation"),
                 )
 
@@ -398,7 +393,7 @@ def _filter_lemmas(
     )
 
     return casebase.Concept(
-        doc=spacy.doc(_lemma),
+        name=_lemma,
         form2pos=_form2pos,
         pos2form=_pos2form,
         pos=best_lemma.pos,

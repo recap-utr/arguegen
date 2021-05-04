@@ -21,25 +21,12 @@ from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from textacy.extract.keyterms.yake import yake
 
-from spacy.tokens import Doc  # type: ignore
-
 config = Config.instance()
 
 # from sentence_transformers import SentenceTransformer
 
 channel = grpc.insecure_channel("127.0.0.1:5001")
 client = nlp_pb2_grpc.NlpServiceStub(channel)
-
-
-def doc(text: str) -> Doc:
-    return docs([text])[0]
-
-
-def docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
-    docbin = client.DocBin(
-        nlp_pb2.DocBinRequest(language="en", texts=texts, spacy_model="en_core_web_lg")
-    ).docbin
-    return nlp_service.client.docbin2doc(docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE)
 
 
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
@@ -88,23 +75,29 @@ class Keyword:
 _keyword_cache = {}
 
 
-def keywords(docs: t.Iterable[Doc], pos_tags: t.Iterable[str]) -> t.Tuple[Keyword, ...]:
+def keywords(
+    texts: t.Iterable[str], pos_tags: t.Iterable[str]
+) -> t.Tuple[Keyword, ...]:
     if not config.tuning("extraction", "keywords_per_adu"):
-        docs = [" ".join(docs)]
+        texts = [" ".join(texts)]
 
-    key = (tuple(doc.text for doc in docs), tuple(pos_tags))
+    key = (tuple(texts), tuple(pos_tags))
 
     if key not in _keyword_cache:
-        _keywords(docs, pos_tags, key)
+        _keywords(texts, pos_tags, key)
 
     return _keyword_cache[key]
 
 
 def _keywords(
-    docs: t.Iterable[Doc],
+    texts: t.Iterable[str],
     pos_tags: t.Iterable[str],
     key: t.Tuple[t.Tuple[str, ...], ...],
 ):
+    docbin = client.DocBin(
+        nlp_pb2.DocBinRequest(language="en", texts=texts, spacy_model="en_core_web_lg")
+    ).docbin
+    docs = nlp_service.client.docbin2doc(docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE)
     keyword_map = defaultdict(list)
     keywords = []
 

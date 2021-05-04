@@ -24,7 +24,7 @@ def keywords(
     use_mc_proximity = "major_claim_prox" in config.tuning("score")
 
     keywords = spacy.keywords(
-        [node.text for node in graph.inodes],
+        [node.plain_text.lower() for node in graph.inodes],
         config.tuning("extraction", "keyword_pos_tags"),
     )
 
@@ -67,11 +67,10 @@ def keywords(
             [inode.plain_text for inode in inodes],
             config.tuning("threshold", "node_similarity", "extraction"),
         )
-        doc = spacy.doc(kw.lower())
 
         if len(kg_nodes) > 0:
             candidate = casebase.Concept(
-                doc,
+                kw.lower(),
                 kw_form2pos,
                 kw_pos2form,
                 kw_pos,
@@ -85,7 +84,7 @@ def keywords(
                     user_query,
                     inodes,
                     kg_nodes,
-                    doc,
+                    kw,
                     weight=kw_weight,
                     major_claim_distance=mc_distance,
                 ),
@@ -107,9 +106,7 @@ def keywords(
         # 'tuition' in 'tuition fees'
         if (
             c1 != c2
-            and (
-                c2.doc.text.startswith(c1.doc.text) or c2.doc.text.endswith(c1.doc.text)
-            )
+            and (c2.name.startswith(c1.name) or c2.name.endswith(c1.name))
             and o1 == o2
         ):
             candidates.difference_update([c1])
