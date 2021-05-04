@@ -7,14 +7,13 @@ import statistics
 import typing as t
 from collections import defaultdict
 from dataclasses import dataclass, field
+from spacy.tokens import Doc
 
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
-from scipy.spatial import distance
-from spacy.tokens import Doc  # type: ignore
 
 # from spacy.matcher import PhraseMatcher
 
@@ -26,7 +25,7 @@ log = logging.getLogger(__name__)
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return user_query.doc.similarity(spacy.parse_doc(graph_text))
+    return user_query.doc.similarity(spacy.doc(graph_text))
 
 
 def argument_graph(
@@ -131,7 +130,7 @@ def concepts(
                     name, casebase.pos2spacy(pos)
                 )
 
-                doc = spacy.parse_doc(lemma)
+                doc = spacy.doc(lemma)
                 candidate = casebase.Concept(
                     doc,
                     form2pos,
@@ -226,7 +225,7 @@ def paths(
                     }
                 )
 
-            doc = spacy.parse_doc(lemma)
+            doc = spacy.doc(lemma)
             candidate = casebase.Concept(
                 doc,
                 form2pos,
@@ -399,7 +398,7 @@ def _filter_lemmas(
     )
 
     return casebase.Concept(
-        doc=spacy.parse_doc(_lemma),
+        doc=spacy.doc(_lemma),
         form2pos=_form2pos,
         pos2form=_pos2form,
         pos=best_lemma.pos,
@@ -441,15 +440,15 @@ def _prune(
 
     for item in reference_items:
         val_reference = _aggregate_features(
-            item[0].doc,
-            item[1].doc,
+            item[0].name,
+            item[1].name,
             selector,
         )
 
         for adapted_item in adapted_items:
             val_adapted = _aggregate_features(
-                retrieved_item.doc,
-                adapted_item.doc,
+                retrieved_item.name,
+                adapted_item.name,
                 selector,
             )
             candidate_values[adapted_item].append(
@@ -468,12 +467,12 @@ def _prune(
 
 
 def _aggregate_features(
-    feat1: Doc, feat2: Doc, selector: str
+    feat1: str, feat2: str, selector: str
 ) -> t.Union[float, np.ndarray]:
     if selector == "difference":
-        return feat1.vector - feat2.vector  # type: ignore
+        return spacy.vector(vec1) - spacy.vector(vec2)  # type: ignore
     elif selector == "similarity":
-        return feat1.similarity(feat1)
+        return spacy.similarity(feat1, feat1)
 
     raise ValueError("Parameter 'selector' wrong.")
 
@@ -485,6 +484,7 @@ def _compare_features(
         if isinstance(feat1, float) and isinstance(feat2, float):
             return 1 - abs(feat1 - feat2)
         else:
-            return 1 - distance.cosine(feat1, feat2)  # type: ignore
+            # TODO: Does not work currently
+            return spacy.similarity(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")

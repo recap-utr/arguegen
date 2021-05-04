@@ -189,7 +189,7 @@ def _eval_scores(
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return user_query.doc.similarity(spacy.parse_doc(graph_text))
+    return user_query.doc.similarity(spacy.doc(graph_text))
 
 
 def _compute_score(

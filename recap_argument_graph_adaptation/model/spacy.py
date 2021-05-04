@@ -31,11 +31,11 @@ channel = grpc.insecure_channel("127.0.0.1:5001")
 client = nlp_pb2_grpc.NlpServiceStub(channel)
 
 
-def parse_doc(text: str) -> Doc:
-    return parse_docs([text])[0]
+def doc(text: str) -> Doc:
+    return docs([text])[0]
 
 
-def parse_docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
+def docs(texts: t.Iterable[str]) -> t.Tuple[Doc, ...]:
     docbin = client.DocBin(
         nlp_pb2.DocBinRequest(language="en", texts=texts, spacy_model="en_core_web_lg")
     ).docbin
@@ -90,7 +90,7 @@ _keyword_cache = {}
 
 def keywords(docs: t.Iterable[Doc], pos_tags: t.Iterable[str]) -> t.Tuple[Keyword, ...]:
     if not config.tuning("extraction", "keywords_per_adu"):
-        docs = [parse_doc(" ".join(docs))]
+        docs = [" ".join(docs)]
 
     key = (tuple(doc.text for doc in docs), tuple(pos_tags))
 
