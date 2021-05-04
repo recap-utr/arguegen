@@ -31,7 +31,7 @@ class ConceptnetNode(graph.AbstractNode):
     def from_neo4j(cls, obj: neo4j.data.Node) -> ConceptnetNode:
         return cls(
             id=obj.id,
-            name=spacy.doc(obj["name"]),  # type: ignore
+            name=spacy.parse_doc(obj["name"]),  # type: ignore
             language=obj["language"],  # type: ignore
             pos=obj["pos"],  # type: ignore
             uri=obj["uri"],  # type: ignore

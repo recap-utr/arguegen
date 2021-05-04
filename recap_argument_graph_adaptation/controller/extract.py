@@ -67,7 +67,7 @@ def keywords(
             [inode.plain_text for inode in inodes],
             config.tuning("threshold", "node_similarity", "extraction"),
         )
-        doc = spacy.doc(kw.lower())
+        doc = spacy.parse_doc(kw.lower())
 
         if len(kg_nodes) > 0:
             candidate = casebase.Concept(

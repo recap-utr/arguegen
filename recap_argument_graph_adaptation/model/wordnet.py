@@ -65,15 +65,25 @@ class WordnetNode(graph.AbstractNode):
     def from_nltk(cls, s: Synset) -> WordnetNode:
         if code := s.name():
             name, pos, index = tuple(code.rsplit(".", 2))  # type: ignore
+            definition = ""
+            examples = tuple()
+
+            if _def := s.definition():
+                definition = _def
+
+            if _ex := s.examples():
+                examples = tuple(spacy.parse_docs(examples))
 
             return cls(
-                doc=spacy.doc(name),
+                doc=spacy.parse_doc(name),
                 pos=pos,
                 index=index,
                 uri=code,
-                definition=s.definition() or "",
-                examples=tuple(spacy.docs(s.examples())) or tuple(),
-                _lemmas=frozenset(spacy.doc(lemma.name()) for lemma in s.lemmas()),
+                definition=definition,
+                examples=examples,
+                _lemmas=frozenset(
+                    spacy.parse_docs(lemma.name() for lemma in s.lemmas())
+                ),
             )
 
         raise RuntimeError("The synset does not have a name!")

@@ -104,7 +104,7 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
             f"Only some of the required assets {[p.name for p in paths]} were found in '{path}'."
         )
 
-    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode, nlp=spacy.doc)
+    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode, nlp=spacy.parse_doc)
     user_query = _parse_query(query_path)
     rules = _parse_rules(rules_path, graph, user_query)
 
@@ -249,7 +249,7 @@ def _parse_rule_concept(
         )
 
     return casebase.Concept(
-        spacy.doc(kw_name),
+        spacy.parse_doc(kw_name),
         kw_form2pos,
         kw_pos2form,
         pos,
