@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
-from recap_argument_graph_adaptation.model import casebase, graph, spacy
+from recap_argument_graph_adaptation.model import casebase, graph, nlp
 from recap_argument_graph_adaptation.model.config import Config
 
 # from nltk.corpus import wordnet as wn
@@ -223,13 +223,15 @@ def _synsets(name: str, pos_tags: t.Collection[t.Optional[str]]) -> t.List[Synse
 
 def _nodes_similarities(
     synsets1: t.Iterable[WordnetNode], synsets2: t.Iterable[WordnetNode]
-) -> t.Sequence[float]:
+) -> t.List[float]:
     synsets1_ctx = [x.context for x in synsets1]
     synsets2_ctx = [x.context for x in synsets2]
-    return spacy.similarities(
-        (ctx1, ctx2)
-        for contexts1, contexts2 in itertools.product(synsets1_ctx, synsets2_ctx)
-        for ctx1, ctx2 in itertools.product(contexts1, contexts2)
+    return list(
+        nlp.similarities(
+            (ctx1, ctx2)
+            for contexts1, contexts2 in itertools.product(synsets1_ctx, synsets2_ctx)
+            for ctx1, ctx2 in itertools.product(contexts1, contexts2)
+        )
     )
 
 
@@ -242,7 +244,7 @@ def _filter_nodes(
     synset_map = {}
 
     for synset, synset_contexts in zip(synsets, synsets_contexts):
-        similarities = spacy.similarities(
+        similarities = nlp.similarities(
             [
                 (x1, x2)
                 for x1, x2 in itertools.product(synset_contexts, comparison_texts)
@@ -346,7 +348,7 @@ def metrics(
         _nodes_similarities(synsets1, synsets2) if active("nodes_sem_sim") else []
     )
 
-    tmp_results: t.Dict[str, t.List[float]] = {
+    tmp_results: t.Dict[str, t.MutableSequence[float]] = {
         "nodes_sem_sim": nodes_semantic_similarity,
         "nodes_path_sim": [],
         "nodes_wup_sim": [],
@@ -369,7 +371,7 @@ def metrics(
 def query_nodes_similarity(
     synsets: t.Iterable[WordnetNode], user_query: casebase.UserQuery
 ) -> t.Optional[float]:
-    similarities = spacy.similarities(
+    similarities = nlp.similarities(
         (synset.name, user_query.text) for synset in synsets
     )
 

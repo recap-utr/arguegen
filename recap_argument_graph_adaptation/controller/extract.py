@@ -5,7 +5,7 @@ import typing as t
 from collections import defaultdict
 
 import recap_argument_graph as ag
-from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
+from recap_argument_graph_adaptation.model import casebase, graph, query, nlp
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -23,7 +23,7 @@ def keywords(
     mc = graph.major_claim
     use_mc_proximity = "major_claim_prox" in config.tuning("score")
 
-    keywords = spacy.keywords(
+    keywords = nlp.keywords(
         [node.plain_text.lower() for node in graph.inodes],
         config.tuning("extraction", "keyword_pos_tags"),
     )

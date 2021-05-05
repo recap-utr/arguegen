@@ -6,7 +6,7 @@ from recap_argument_graph_adaptation.model import (
     casebase,
     conceptnet,
     graph,
-    spacy,
+    nlp,
     wordnet,
 )
 from recap_argument_graph_adaptation.model.config import Config
@@ -87,13 +87,13 @@ def concept_metrics(
         else None
     )
     query_concept_semantic_similarity = (
-        spacy.similarity(user_query.text, lemma)
+        nlp.similarity(user_query.text, lemma)
         if active("query_concept_sem_sim")
         else None
     )
     query_adus_semantic_similarity = (
         statistics.mean(
-            spacy.similarities((user_query.text, inode.plain_text) for inode in inodes)
+            nlp.similarities((user_query.text, inode.plain_text) for inode in inodes)
         )
         if active("query_adus_sem_sim")
         else None
@@ -104,13 +104,13 @@ def concept_metrics(
             total_weight += related_concept_weight
 
             concept_semantic_similarity = (
-                spacy.similarity(lemma, related_concept.name)
+                nlp.similarity(lemma, related_concept.name)
                 if active("concept_sem_sim")
                 else None
             )
             adus_semantic_similarity = (
                 statistics.mean(
-                    spacy.similarities(
+                    nlp.similarities(
                         (inode1.plain_text, inode2.plain_text)
                         for inode1, inode2 in itertools.product(
                             related_concept.inodes, inodes

@@ -79,7 +79,7 @@ def _split_list(
 
 
 def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
-    return [item for sublist in seq for item in sublist]
+    return [item[0] for item in seq] + [item[1] for item in seq]
 
 
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
@@ -89,7 +89,7 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
     unknown = {text for text in texts if text not in _vector_cache}
 
     if unknown:
-        if use_token_vectors:
+        if use_token_vectors():
             levels = [nlp_pb2.EMBEDDING_LEVEL_TOKENS]
         else:
             levels = [nlp_pb2.EMBEDDING_LEVEL_DOCUMENT]
@@ -103,7 +103,7 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
             )
         )
 
-        if use_token_vectors:
+        if use_token_vectors():
             new_vectors = tuple(
                 tuple(nlp_service.client.list2array(token.vector) for token in x.tokens)
                 for x in res.vectors

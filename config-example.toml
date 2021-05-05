@@ -1,4 +1,4 @@
-version = "3.3"
+version = "3.4"
 
 
 # PRIVATE
@@ -16,20 +16,18 @@ url = "neo4j://localhost:7687"
 username = "neo4j"
 password = ""
 
-[resources.spacy]
-host = "0.0.0.0"
-port = 8765
-workers = 1
+[resources.nlp]
+url = "127.0.0.1:5001"
 
 
 # PUBLIC
 
 [export]
 graph_json = true
-graph_pdf = false
+graph_pdf = true
 grid_stats = true
 deliberation = true
-aggr_funcs = ["mean"]
+aggr_funcs = ["mean", "min", "max"]
 retrieval_improvement = true
 single_stats = true
 
@@ -59,15 +57,18 @@ extraction_max_concepts = [10000]
 
 global_rule_limit = [1]
 
+nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large, roberta
+nlp_similarity = ["cosine"] # dynamax
+
 # Of which metrics should the score consist
 # score_adus_sem_sim = [0, 1]
-score_concept_sem_sim = [1]
+# score_concept_sem_sim = [1]
 # score_hypernym_prox = [0, 1]
 # score_keyword_weight = [0, 1]
 # score_major_claim_prox = [0, 1]
 # score_nodes_path_sim = [0, 1]
-# score_nodes_sem_sim = [0, 1]
-# score_nodes_wup_sim = [0, 1]
+score_nodes_sem_sim = [1]
+score_nodes_wup_sim = [1]
 # score_query_adus_sem_sim = [0, 1]
 # score_query_concept_sem_sim = [0, 1]
 # score_query_nodes_sem_sim = [0, 1]
@@ -82,9 +83,6 @@ threshold_node_similarity = [0.0] # Assigning nodes
 
 [nlp]
 lang = "en"
-embeddings = "glove" # glove, sbert, use
-fuzzymax = false
-local_model = "en_core_web_sm"
 
 [nlp.inflections]
 [nlp.inflections.prove]

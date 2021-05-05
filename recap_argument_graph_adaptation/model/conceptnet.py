@@ -11,7 +11,7 @@ from recap_argument_graph_adaptation.model import (
     casebase,
     conceptnet_helper,
     graph,
-    spacy,
+    nlp,
 )
 from recap_argument_graph_adaptation.model.config import Config
 
@@ -86,9 +86,7 @@ class Database:
     active: bool
 
     def __init__(self):
-        self.active = (
-            True if config["adaptation"]["knowledge_graph"] == "conceptnet" else False
-        )
+        self.active = config["adaptation"]["knowledge_graph"] == "conceptnet"
 
         if self.active:
             driver = neo4j.GraphDatabase.driver(

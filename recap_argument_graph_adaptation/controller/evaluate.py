@@ -3,7 +3,7 @@ import typing as t
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, query, spacy
+from recap_argument_graph_adaptation.model import casebase, query, nlp
 
 log = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ def _eval_scores(
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return spacy.similarity(user_query.text, graph_text)
+    return nlp.similarity(user_query.text, graph_text)
 
 
 def _compute_score(

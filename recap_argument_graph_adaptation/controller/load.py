@@ -9,7 +9,7 @@ from pathlib import Path
 import recap_argument_graph as ag
 from nltk.corpus import wordnet as wn
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
-from recap_argument_graph_adaptation.model import casebase, query, spacy
+from recap_argument_graph_adaptation.model import casebase, query, nlp
 from recap_argument_graph_adaptation.model.config import Config
 from sklearn.model_selection import ParameterGrid
 

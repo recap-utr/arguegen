@@ -13,7 +13,7 @@ from pathlib import Path
 import immutables
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import graph, spacy
+from recap_argument_graph_adaptation.model import graph, nlp
 from recap_argument_graph_adaptation.model.config import Config
 
 log = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ from recap_argument_graph_adaptation.controller import (
     extract,
     load,
 )
-from recap_argument_graph_adaptation.model import casebase, spacy, wordnet
+from recap_argument_graph_adaptation.model import casebase, nlp, wordnet
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -106,32 +106,31 @@ def _parametrized_run(
     adapted_concept_candidates = {}
     adapted_graph = None
 
-    if len(case.rules) > 0:
-        log.debug("Extracting keywords.")
-        relevant_concepts, all_concepts = extract.keywords(
-            case.graph, case.rules, case.user_query
-        )
-
-        log.debug("Adapting concepts.")
-        adaptation_method = config.tuning("adaptation", "method")
-
-        if adaptation_method == "direct":
-            adapted_concepts, adapted_concept_candidates = adapt.concepts(
-                relevant_concepts, case.rules, args.case.user_query
-            )
-
-        elif adaptation_method == "bfs":
-            reference_paths = extract.paths(relevant_concepts, case.rules)
-            adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
-                reference_paths, case.rules, args.case.user_query
-            )
-
-        adapted_graph, adapted_concepts = adapt.argument_graph(
-            case.user_query, case.graph, case.rules, adapted_concepts
-        )
-    else:
-        # adapted_concepts = {rule.source: rule.source for rule in case.benchmark_rules}
+    if not case.rules:
         raise RuntimeError("You have to provide at least one rule.")
+
+    log.debug("Extracting keywords.")
+    relevant_concepts, all_concepts = extract.keywords(
+        case.graph, case.rules, case.user_query
+    )
+
+    log.debug("Adapting concepts.")
+    adaptation_method = config.tuning("adaptation", "method")
+
+    if adaptation_method == "direct":
+        adapted_concepts, adapted_concept_candidates = adapt.concepts(
+            relevant_concepts, case.rules, args.case.user_query
+        )
+
+    elif adaptation_method == "bfs":
+        reference_paths = extract.paths(relevant_concepts, case.rules)
+        adapted_concepts, adapted_paths, adapted_concept_candidates = adapt.paths(
+            reference_paths, case.rules, args.case.user_query
+        )
+
+    adapted_graph, adapted_concepts = adapt.argument_graph(
+        case.user_query, case.graph, case.rules, adapted_concepts
+    )
 
     end_time = timer()
     duration = end_time - start_time

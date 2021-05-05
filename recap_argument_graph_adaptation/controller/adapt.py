@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
-from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
+from recap_argument_graph_adaptation.model import casebase, graph, nlp, query
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 
@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     graph_text = " ".join(inode.plain_text for inode in graph.inodes)
 
-    return spacy.similarity(user_query.text, graph_text)
+    return nlp.similarity(user_query.text, graph_text)
 
 
 def argument_graph(
@@ -428,7 +428,7 @@ def _prune(
     candidate_values = defaultdict(list)
     selector = config.tuning("adaptation", "pruning_selector")
 
-    if spacy.use_token_vectors:
+    if nlp.use_token_vectors():
         selector = "similarity"
 
     for item in reference_items:
@@ -463,9 +463,9 @@ def _aggregate_features(
     feat1: str, feat2: str, selector: str
 ) -> t.Union[float, np.ndarray]:
     if selector == "difference":
-        return spacy.vector(feat1) - spacy.vector(feat2)  # type: ignore
+        return nlp.vector(feat1) - nlp.vector(feat2)  # type: ignore
     elif selector == "similarity":
-        return spacy.similarity(feat1, feat2)
+        return nlp.similarity(feat1, feat2)
 
     raise ValueError("Parameter 'selector' wrong.")
 

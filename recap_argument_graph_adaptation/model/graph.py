@@ -4,7 +4,7 @@ import abc
 import typing as t
 from dataclasses import dataclass
 
-from recap_argument_graph_adaptation.model import spacy
+from recap_argument_graph_adaptation.model import nlp
 from recap_argument_graph_adaptation.model.config import Config
 
 config = Config.instance()
@@ -46,6 +46,7 @@ class AbstractNode(abc.ABC):
     @property
     def processed_lemmas(self) -> t.FrozenSet[str]:
         return frozenset(process_name(lemma) for lemma in self.lemmas)
+
 
 def process_name(name: str) -> str:
     return name.replace("_", " ").lower()

@@ -14,7 +14,7 @@ poetry run python -m nltk.downloader popular universal_tagset
 
 - Start a spacy server in one terminal session:
 
-  `./spacy.sh`
+  `./nlp.sh`
 
 - Run the adaptation in another session:
 
