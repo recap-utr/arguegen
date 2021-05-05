@@ -93,7 +93,7 @@ def concept_metrics(
     )
     query_adus_semantic_similarity = (
         statistics.mean(
-            spacy.similarity(user_query.text, inode.plain_text) for inode in inodes
+            spacy.similarities((user_query.text, inode.plain_text) for inode in inodes)
         )
         if active("query_adus_sem_sim")
         else None
@@ -110,9 +110,11 @@ def concept_metrics(
             )
             adus_semantic_similarity = (
                 statistics.mean(
-                    spacy.similarity(inode2.plain_text, inode1.plain_text)
-                    for inode1, inode2 in itertools.product(
-                        related_concept.inodes, inodes
+                    spacy.similarities(
+                        (inode1.plain_text, inode2.plain_text)
+                        for inode1, inode2 in itertools.product(
+                            related_concept.inodes, inodes
+                        )
                     )
                 )
                 if active("adus_sem_sim")

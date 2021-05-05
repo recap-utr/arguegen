@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import itertools
 import statistics
 import typing as t
@@ -10,6 +11,7 @@ import arg_services_helper
 import grpc
 import immutables
 import nlp_service.client
+import nlp_service.similarity
 import numpy as np
 import requests
 from arg_services.nlp.v1 import nlp_pb2, nlp_pb2_grpc
@@ -21,35 +23,99 @@ from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 from textacy.extract.keyterms.yake import yake
 
-from spacy.tokens import Doc  # type: ignore
-
 config = Config.instance()
 
-_cache = {}
+_vector_cache = {}
 
 channel = grpc.insecure_channel("127.0.0.1:5001")
 client = nlp_pb2_grpc.NlpServiceStub(channel)
 
+_vector_config = {
+    "glove": {
+        "spacy_model": "en_core_web_lg",
+    },
+    "use-small": {
+        "embedding_models": [
+            nlp_pb2.EmbeddingModel(
+                model_type=nlp_pb2.EMBEDDING_TYPE_USE,
+                model_name="https://tfhub.dev/google/universal-sentence-encoder/4",
+                pooling=nlp_pb2.POOLING_MEAN,
+            )
+        ],
+    },
+    "use-large": {
+        "embedding_models": [
+            nlp_pb2.EmbeddingModel(
+                model_type=nlp_pb2.EMBEDDING_TYPE_USE,
+                model_name="https://tfhub.dev/google/universal-sentence-encoder-large/5",
+                pooling=nlp_pb2.POOLING_MEAN,
+            )
+        ],
+    },
+    "sbert": {
+        "embedding_models": [
+            nlp_pb2.EmbeddingModel(
+                model_type=nlp_pb2.EMBEDDING_TYPE_SBERT,
+                model_name="roberta-large-nli-stsb-mean-tokens",
+                pooling=nlp_pb2.POOLING_MEAN,
+            )
+        ],
+    },
+}
+
+_similarity_config = {
+    "cosine": nlp_service.similarity.cosine,
+    "dynamax": nlp_service.similarity.dynamax_jaccard,
+}
+
+use_token_vectors = config["nlp"]["similarity"] in ["dynamax"]
+
+
+def _split_list(
+    seq: t.Sequence[t.Any],
+) -> t.Tuple[t.Sequence[t.Any], t.Sequence[t.Any]]:
+    half = len(seq) // 2
+    return seq[:half], seq[half:]
+
+
+def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
+    return [item for sublist in seq for item in sublist]
+
 
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
-    unknown = {text for text in texts if text not in _cache}
+    if inspect.isgenerator(texts):
+        texts = list(texts)
+
+    unknown = {text for text in texts if text not in _vector_cache}
 
     if unknown:
+        if use_token_vectors:
+            levels = [nlp_pb2.EMBEDDING_LEVEL_TOKENS]
+        else:
+            levels = [nlp_pb2.EMBEDDING_LEVEL_DOCUMENT]
+
         res = client.Vectors(
             nlp_pb2.VectorsRequest(
                 language="en",
                 texts=texts,
-                spacy_model="en_core_web_lg",
-                embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
+                embedding_levels=levels,
+                **_vector_config[config["nlp"]["embeddings"]]
             )
         )
 
-        new_vectors = tuple(
-            nlp_service.client.list2array(x.document.vector) for x in res.vectors
-        )
-        _cache.update({text: vec for text, vec in zip(unknown, new_vectors)})
+        if use_token_vectors:
+            new_vectors = tuple(
+                tuple(nlp_service.client.list2array(token.vector) for token in x.tokens)
+                for x in res.vectors
+            )
+        else:
+            new_vectors = tuple(
+                nlp_service.client.list2array(x.document.vector) for x in res.vectors
+            )
 
-    return tuple(_cache[text] for text in texts)
+        _vector_cache.update({text: vec for text, vec in zip(unknown, new_vectors)})
+
+    return tuple(_vector_cache[text] for text in texts)
 
 
 def vector(text: str) -> np.ndarray:
@@ -57,16 +123,20 @@ def vector(text: str) -> np.ndarray:
 
 
 def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, ...]:
-    vecs1 = vectors([x[0] for x in text_tuples])
-    vecs2 = vectors([x[1] for x in text_tuples])
+    if inspect.isgenerator(text_tuples):
+        text_tuples = list(text_tuples)
 
-    return tuple(1 - distance.cosine(vec1, vec2) for vec1, vec2 in zip(vecs1, vecs2))
+    vecs = vectors(_flatten_list(text_tuples))
+    vecs1, vecs2 = _split_list(vecs)
+
+    return tuple(
+        1 - _similarity_config[config["nlp"]["similarity"]](vec1, vec2)
+        for vec1, vec2 in zip(vecs1, vecs2)
+    )
 
 
 def similarity(text1: str, text2: str) -> float:
-    vecs = vectors([text1, text2])
-
-    return 1 - distance.cosine(vecs[0], vecs[1])
+    return similarities([(text1, text2)])[0]
 
 
 @dataclass(frozen=True)
@@ -106,7 +176,7 @@ def _keywords(
             spacy_model="en_core_web_lg",
         )
     ).docbin
-    docs = nlp_service.client.docbin2doc(docbin, "en", nlp_pb2.SIMILARITY_METHOD_COSINE)
+    docs = nlp_service.client.docbin2doc(docbin, "en")
     keyword_map = defaultdict(list)
     keywords = []
 

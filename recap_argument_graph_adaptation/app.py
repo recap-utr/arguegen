@@ -35,7 +35,7 @@ def run():
 
     # Add some hyperparameters
     config["tuning"]["global_embeddings"] = [config["nlp"]["embeddings"]]
-    config["tuning"]["global_fuzzymax"] = [config["nlp"]["fuzzymax"]]
+    config["tuning"]["global_similarity"] = [config["nlp"]["similarity"]]
     config["tuning"]["global_knowledge_graph"] = [
         config["adaptation"]["knowledge_graph"]
     ]
@@ -92,7 +92,6 @@ def _parametrized_run(
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
-    spacy.session = requests.Session()
     case = args.case
 
     log.debug("Starting adaptation pipeline.")

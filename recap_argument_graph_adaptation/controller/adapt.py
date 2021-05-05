@@ -15,8 +15,6 @@ from recap_argument_graph_adaptation.model import casebase, graph, query, spacy
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
 
-# from spacy.matcher import PhraseMatcher
-
 config = Config.instance()
 
 log = logging.getLogger(__name__)
@@ -431,7 +429,7 @@ def _prune(
     candidate_values = defaultdict(list)
     selector = config.tuning("adaptation", "pruning_selector")
 
-    if config["nlp"]["fuzzymax"]:
+    if spacy.use_token_vectors:
         selector = "similarity"
 
     for item in reference_items:
