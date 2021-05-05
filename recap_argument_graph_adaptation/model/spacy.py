@@ -27,7 +27,7 @@ config = Config.instance()
 
 _vector_cache = {}
 
-channel = grpc.insecure_channel("127.0.0.1:5001")
+channel = grpc.insecure_channel(config["resources"]["nlp"]["url"])
 client = nlp_pb2_grpc.NlpServiceStub(channel)
 
 _vector_config = {
@@ -68,7 +68,7 @@ _similarity_config = {
     "dynamax": nlp_service.similarity.dynamax_jaccard,
 }
 
-use_token_vectors = config["nlp"]["similarity"] in ["dynamax"]
+use_token_vectors = lambda: config.tuning("nlp", "similarity") in ["dynamax"]
 
 
 def _split_list(
@@ -96,10 +96,10 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
 
         res = client.Vectors(
             nlp_pb2.VectorsRequest(
-                language="en",
+                language=config["nlp"]["lang"],
                 texts=texts,
                 embedding_levels=levels,
-                **_vector_config[config["nlp"]["embeddings"]]
+                **_vector_config[config.tuning("nlp", "embeddings")]
             )
         )
 
@@ -130,7 +130,7 @@ def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, .
     vecs1, vecs2 = _split_list(vecs)
 
     return tuple(
-        1 - _similarity_config[config["nlp"]["similarity"]](vec1, vec2)
+        1 - _similarity_config[config.tuning("nlp", "similarity")](vec1, vec2)
         for vec1, vec2 in zip(vecs1, vecs2)
     )
 
@@ -171,12 +171,12 @@ def _keywords(
 ) -> t.List[Keyword]:
     docbin = client.DocBin(
         nlp_pb2.DocBinRequest(
-            language="en",
+            language=config["nlp"]["lang"],
             texts=texts,
             spacy_model="en_core_web_lg",
         )
     ).docbin
-    docs = nlp_service.client.docbin2doc(docbin, "en")
+    docs = nlp_service.client.docbin2doc(docbin, config["nlp"]["lang"])
     keyword_map = defaultdict(list)
     keywords = []
 

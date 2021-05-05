@@ -33,7 +33,6 @@ def argument_graph(
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> t.Tuple[ag.Graph, t.Mapping[casebase.Concept, casebase.Concept]]:
     original_similarity = _graph_similarity(user_query, original_graph)
-    # nlp = spacylib.load(config["nlp"]["local_model"])
 
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
