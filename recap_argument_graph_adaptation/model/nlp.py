@@ -32,7 +32,9 @@ def init_client():
     global client
     global channel
 
-    channel = grpc.insecure_channel(config["resources"]["nlp"]["url"])
+    channel = grpc.insecure_channel(
+        config["resources"]["nlp"]["url"], [("grpc.lb_policy_name", "round_robin")]
+    )
     client = nlp_pb2_grpc.NlpServiceStub(channel)
 
 
