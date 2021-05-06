@@ -28,6 +28,7 @@ log = logging.getLogger(__name__)
 def _init_child_process():
     # https://stackoverflow.com/a/50379950/7626878
     wordnet.wn = wordnet.init_reader()
+    nlp.init_client()
 
 
 def run():
@@ -61,6 +62,7 @@ def run():
 
     if processes == 1:
         logging.getLogger(__package__).setLevel(logging.DEBUG)
+        nlp.init_client()
         results = [_parametrized_run(run_arg) for run_arg in run_args]
     else:
         with mp.Pool(processes, initializer=_init_child_process) as pool:

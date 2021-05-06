@@ -41,7 +41,7 @@ def _inflect(text: str, pos: str) -> t.Tuple[str, t.Dict[str, t.List[str]]]:
             forms[pos_tag].append(form.strip())
 
     if additional_inflections := config["nlp"]["inflections"].get(lemma):
-        for pos_tag, inflections in additional_inflections:
+        for pos_tag, inflections in additional_inflections.items():
             forms[pos_tag].extend(inflections)
 
     return lemma, forms

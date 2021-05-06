@@ -3,9 +3,11 @@ import typing as t
 
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, query, nlp
+from recap_argument_graph_adaptation.model import casebase, nlp, query
 
 log = logging.getLogger(__name__)
+
+# TODO: Incorporate number of generated rules into the score
 
 
 def case(

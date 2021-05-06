@@ -27,8 +27,17 @@ config = Config.instance()
 
 _vector_cache = {}
 
-channel = grpc.insecure_channel(config["resources"]["nlp"]["url"])
-client = nlp_pb2_grpc.NlpServiceStub(channel)
+
+def init_client():
+    global client
+    global channel
+
+    channel = grpc.insecure_channel(config["resources"]["nlp"]["url"])
+    client = nlp_pb2_grpc.NlpServiceStub(channel)
+
+
+client = None
+channel = None
 
 _vector_config = {
     "glove": {
@@ -130,7 +139,7 @@ def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, .
     vecs1, vecs2 = _split_list(vecs)
 
     return tuple(
-        1 - _similarity_config[config.tuning("nlp", "similarity")](vec1, vec2)
+        _similarity_config[config.tuning("nlp", "similarity")](vec1, vec2)
         for vec1, vec2 in zip(vecs1, vecs2)
     )
 
