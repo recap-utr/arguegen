@@ -21,6 +21,7 @@ from recap_argument_graph_adaptation.controller.inflect import (
 )
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
+from spacy.tokens import Doc
 from textacy.extract.keyterms.yake import yake
 
 config = Config.instance()
@@ -149,6 +150,24 @@ def similarity(text1: str, text2: str) -> float:
     return similarities([(text1, text2)])[0]
 
 
+def parse_docs(
+    texts: t.Iterable[str], attributes: t.Iterable[str] = tuple()
+) -> t.Tuple[Doc, ...]:
+    docbin = client.DocBin(
+        nlp_pb2.DocBinRequest(
+            language=config["nlp"]["lang"],
+            texts=texts,
+            spacy_model="en_core_web_lg",
+            attributes=attributes,
+        )
+    ).docbin
+    return nlp_service.client.docbin2doc(docbin, config["nlp"]["lang"])
+
+
+def parse_doc(text: str, attributes: t.Iterable[str] = tuple()) -> Doc:
+    return parse_docs([text], attributes)[0]
+
+
 @dataclass(frozen=True)
 class Keyword:
     keyword: str
@@ -179,14 +198,7 @@ def _keywords(
     texts: t.Iterable[str],
     pos_tags: t.Iterable[str],
 ) -> t.List[Keyword]:
-    docbin = client.DocBin(
-        nlp_pb2.DocBinRequest(
-            language=config["nlp"]["lang"],
-            texts=texts,
-            spacy_model="en_core_web_lg",
-        )
-    ).docbin
-    docs = nlp_service.client.docbin2doc(docbin, config["nlp"]["lang"])
+    docs = parse_docs(texts)
     keyword_map = defaultdict(list)
     keywords = []
 

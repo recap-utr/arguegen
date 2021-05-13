@@ -60,11 +60,18 @@ def argument_graph(
                         for pos_tag in pos_tags:
                             if pos_tag in pos2form:
                                 sub_candidates = pos2form[pos_tag]
+                                node_doc = nlp.parse_doc(graph_node.plain_text)
 
-                                graph_node.text = pattern.sub(
-                                    sub_candidates[0], graph_node.plain_text
-                                )
-                                break
+                                for match in re.finditer(pattern, node_doc.text):
+                                    start, end = match.span()
+                                    span = node_doc.char_span(start, end)
+
+                                    if span is not None and any(
+                                        t.tag_ == pos_tag for t in span
+                                    ):
+                                        graph_node.text = pattern.sub(
+                                            sub_candidates[0], graph_node.plain_text
+                                        )
 
             adapted_graphs[variants] = (
                 _adapted_graph,
