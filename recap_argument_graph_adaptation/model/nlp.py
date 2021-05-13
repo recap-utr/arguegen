@@ -29,17 +29,13 @@ _vector_cache = {}
 
 
 def init_client():
-    global client
-    global channel
-
     channel = grpc.insecure_channel(
         config["resources"]["nlp"]["url"], [("grpc.lb_policy_name", "round_robin")]
     )
-    client = nlp_pb2_grpc.NlpServiceStub(channel)
+    return nlp_pb2_grpc.NlpServiceStub(channel)
 
 
-client = None
-channel = None
+client = init_client()
 
 _vector_config = {
     "glove": {
@@ -93,13 +89,19 @@ def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
     return [item[0] for item in seq] + [item[1] for item in seq]
 
 
+@dataclass(frozen=True)
+class TextKey:
+    text: str
+    use_token_vectors: bool
+    embeddings: str
+
+
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
-    if inspect.isgenerator(texts):
-        texts = list(texts)
+    args = (use_token_vectors(), config.tuning("nlp", "embeddings"))
+    text_keys = [TextKey(text, *args) for text in texts]
+    unknown_keys = [key for key in text_keys if key not in _vector_cache]
 
-    unknown = {text for text in texts if text not in _vector_cache}
-
-    if unknown:
+    if unknown_keys:
         if use_token_vectors():
             levels = [nlp_pb2.EMBEDDING_LEVEL_TOKENS]
         else:
@@ -108,7 +110,7 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
         res = client.Vectors(
             nlp_pb2.VectorsRequest(
                 language=config["nlp"]["lang"],
-                texts=texts,
+                texts=[x.text for x in unknown_keys],
                 embedding_levels=levels,
                 **_vector_config[config.tuning("nlp", "embeddings")]
             )
@@ -116,17 +118,14 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
 
         if use_token_vectors():
             new_vectors = tuple(
-                tuple(nlp_service.client.list2array(token.vector) for token in x.tokens)
-                for x in res.vectors
+                tuple(np.array(token.vector) for token in x.tokens) for x in res.vectors
             )
         else:
-            new_vectors = tuple(
-                nlp_service.client.list2array(x.document.vector) for x in res.vectors
-            )
+            new_vectors = tuple(np.array(x.document.vector) for x in res.vectors)
 
-        _vector_cache.update({text: vec for text, vec in zip(unknown, new_vectors)})
+        _vector_cache.update({x: vec for x, vec in zip(unknown_keys, new_vectors)})
 
-    return tuple(_vector_cache[text] for text in texts)
+    return tuple(_vector_cache[key] for key in text_keys)
 
 
 def vector(text: str) -> np.ndarray:

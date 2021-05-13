@@ -55,11 +55,16 @@ def argument_graph(
 
                     for mapped_node in variant.inodes:
                         graph_node = _adapted_graph.inode_mappings[mapped_node.key]
-                        sub_candidates = substitutions[variant].pos2form[pos_tags[0]]
+                        pos2form = substitutions[variant].pos2form
 
-                        graph_node.text = pattern.sub(
-                            sub_candidates[0], graph_node.plain_text
-                        )
+                        for pos_tag in pos_tags:
+                            if pos_tag in pos2form:
+                                sub_candidates = pos2form[pos_tag]
+
+                                graph_node.text = pattern.sub(
+                                    sub_candidates[0], graph_node.plain_text
+                                )
+                                break
 
             adapted_graphs[variants] = (
                 _adapted_graph,
@@ -445,7 +450,7 @@ def _prune(
                 selector,
             )
             candidate_values[adapted_item].append(
-                _compare_features(val_reference, val_adapted)
+                _compare_features(val_reference, val_adapted, selector)
             )
 
     sorted_candidate_tuples = sorted(
@@ -471,12 +476,11 @@ def _aggregate_features(
 
 
 def _compare_features(
-    feat1: t.Union[float, np.ndarray], feat2: t.Union[float, np.ndarray]
+    feat1: t.Union[float, np.ndarray], feat2: t.Union[float, np.ndarray], selector: str
 ) -> float:
-    if type(feat1) == type(feat2):
-        if isinstance(feat1, float) and isinstance(feat2, float):
-            return 1 - abs(feat1 - feat2)
-        else:
-            return 1 - distance.cosine(feat1, feat2)  # type: ignore
+    if selector == "similarity":
+        return 1 - abs(feat1 - feat2)
+    elif selector == "difference":
+        return 1 - distance.cosine(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")
