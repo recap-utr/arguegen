@@ -24,12 +24,13 @@ url = "127.0.0.1:5001"
 
 [export]
 graph_json = true
-graph_pdf = true
+graph_pdf = false
 grid_stats = true
 deliberation = true
-aggr_funcs = ["mean", "min", "max"]
+aggr_funcs = ["mean"]
 retrieval_improvement = true
 single_stats = true
+sort_key = "score" # score, sim_improvement
 
 [adaptation]
 knowledge_graph = "wordnet"
@@ -57,7 +58,7 @@ extraction_max_concepts = [10000]
 
 global_rule_limit = [1]
 
-nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large, roberta
+nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large
 nlp_similarity = ["cosine"] # dynamax
 
 # Of which metrics should the score consist
@@ -87,6 +88,15 @@ lang = "en"
 [nlp.inflections]
 [nlp.inflections.prove]
 VBN = ["proven"]
+
+[nlp.inflections.journey]
+NN = ["journeying"]
+
+[nlp.inflections.relinquish]
+NN = ["relinquishing"]
+
+[nlp.inflections.impedimentum]
+NNS = ["impedimenta"]
 
 
 [wordnet]
