@@ -11,7 +11,7 @@ config = Config.instance()
 
 
 def _lemma_parts(text: str, pos: str) -> t.List[str]:
-    tokens: t.List[str] = word_tokenize(text)  # type: ignore
+    tokens: t.List[str] = text.split()  # type: ignore
 
     *parts, tail = tokens
     parts.append(lemminflect.getLemma(tail, pos)[0])
