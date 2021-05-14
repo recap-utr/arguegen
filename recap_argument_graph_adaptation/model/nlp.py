@@ -14,6 +14,7 @@ import nlp_service.client
 import nlp_service.similarity
 import numpy as np
 import requests
+import spacy
 from arg_services.nlp.v1 import nlp_pb2, nlp_pb2_grpc
 from recap_argument_graph_adaptation.controller.inflect import (
     inflect_concept,
@@ -21,7 +22,7 @@ from recap_argument_graph_adaptation.controller.inflect import (
 )
 from recap_argument_graph_adaptation.model.config import Config
 from scipy.spatial import distance
-from spacy.tokens import Doc
+from spacy.tokens import Doc, DocBin
 from textacy.extract.keyterms.yake import yake
 
 config = Config.instance()
@@ -151,30 +152,37 @@ def similarity(text1: str, text2: str) -> float:
 
 
 _doc_cache = {}
+_nlp = spacy.blank("en")
 
 
 def parse_docs(
-    texts: t.Iterable[str], attributes: t.Iterable[str] = tuple()
+    texts: t.Iterable[str],
+    attributes: t.Iterable[str] = tuple(),
+    pipes: t.Iterable[str] = tuple(),
 ) -> t.Tuple[Doc, ...]:
     text_keys = [TextKey(text) for text in texts]
     unknown_keys = [key for key in text_keys if key not in _vector_cache]
 
     if unknown_keys:
-        docbin = client.DocBin(
+        docbin_bytes = client.DocBin(
             nlp_pb2.DocBinRequest(
                 language=config["nlp"]["lang"],
                 texts=[key.text for key in unknown_keys],
                 spacy_model="en_core_web_lg",
                 attributes=attributes,
+                pipes=pipes,
             )
         ).docbin
-        docs = nlp_service.client.docbin2docs(docbin, config["nlp"]["lang"])
+        docbin = DocBin().from_bytes(docbin_bytes)
+        docs = tuple(docbin.get_docs(_nlp.vocab))
         _doc_cache.update({key: doc for key, doc in zip(unknown_keys, docs)})
 
     return tuple(_doc_cache[key] for key in text_keys)
 
 
-def parse_doc(text: str, attributes: t.Iterable[str] = tuple()) -> Doc:
+def parse_doc(
+    text: str, attributes: t.Iterable[str] = tuple(), pipes: t.Iterable[str] = tuple()
+) -> Doc:
     return parse_docs([text], attributes)[0]
 
 
