@@ -54,23 +54,25 @@ def argument_graph(
                     pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
                     for mapped_node in variant.inodes:
-                        graph_node = _adapted_graph.inode_mappings[mapped_node.key]
+                        node = _adapted_graph.inode_mappings[mapped_node.key]
                         pos2form = substitutions[variant].pos2form
 
                         for pos_tag in pos_tags:
                             if pos_tag in pos2form:
                                 sub_candidates = pos2form[pos_tag]
-                                node_doc = nlp.parse_doc(graph_node.plain_text)
 
-                                for match in re.finditer(pattern, node_doc.text):
+                                for match in re.finditer(pattern, node.text):
+                                    node_doc = nlp.parse_doc(node.plain_text)
                                     start, end = match.span()
                                     span = node_doc.char_span(start, end)
 
                                     if span is not None and any(
                                         t.tag_ == pos_tag for t in span
                                     ):
-                                        graph_node.text = pattern.sub(
-                                            sub_candidates[0], graph_node.plain_text
+                                        node.text = (
+                                            node.plain_text[:start]
+                                            + sub_candidates[0]
+                                            + node.plain_text[end:]
                                         )
 
             adapted_graphs[variants] = (

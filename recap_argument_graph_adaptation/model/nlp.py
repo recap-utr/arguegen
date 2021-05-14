@@ -93,8 +93,8 @@ def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
 @dataclass(frozen=True)
 class TextKey:
     text: str
-    use_token_vectors: bool
-    embeddings: str
+    use_token_vectors: t.Optional[bool] = None
+    embeddings: t.Optional[str] = None
 
 
 def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
@@ -150,18 +150,28 @@ def similarity(text1: str, text2: str) -> float:
     return similarities([(text1, text2)])[0]
 
 
+_doc_cache = {}
+
+
 def parse_docs(
     texts: t.Iterable[str], attributes: t.Iterable[str] = tuple()
 ) -> t.Tuple[Doc, ...]:
-    docbin = client.DocBin(
-        nlp_pb2.DocBinRequest(
-            language=config["nlp"]["lang"],
-            texts=texts,
-            spacy_model="en_core_web_lg",
-            attributes=attributes,
-        )
-    ).docbin
-    return nlp_service.client.docbin2doc(docbin, config["nlp"]["lang"])
+    text_keys = [TextKey(text) for text in texts]
+    unknown_keys = [key for key in text_keys if key not in _vector_cache]
+
+    if unknown_keys:
+        docbin = client.DocBin(
+            nlp_pb2.DocBinRequest(
+                language=config["nlp"]["lang"],
+                texts=[key.text for key in unknown_keys],
+                spacy_model="en_core_web_lg",
+                attributes=attributes,
+            )
+        ).docbin
+        docs = nlp_service.client.docbin2docs(docbin, config["nlp"]["lang"])
+        _doc_cache.update({key: doc for key, doc in zip(unknown_keys, docs)})
+
+    return tuple(_doc_cache[key] for key in text_keys)
 
 
 def parse_doc(text: str, attributes: t.Iterable[str] = tuple()) -> Doc:
