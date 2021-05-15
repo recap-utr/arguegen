@@ -152,7 +152,7 @@ def similarity(text1: str, text2: str) -> float:
 
 
 _doc_cache = {}
-_nlp = spacy.blank("en")
+_nlp = spacy.blank(config["nlp"]["lang"])
 
 
 def parse_docs(
@@ -164,17 +164,16 @@ def parse_docs(
     unknown_keys = [key for key in text_keys if key not in _vector_cache]
 
     if unknown_keys:
-        docbin_bytes = client.DocBin(
+        docbin = client.DocBin(
             nlp_pb2.DocBinRequest(
                 language=config["nlp"]["lang"],
                 texts=[key.text for key in unknown_keys],
-                spacy_model="en_core_web_lg",
+                spacy_model="en_core_web_sm",
                 attributes=attributes,
                 pipes=pipes,
             )
         ).docbin
-        docbin = DocBin().from_bytes(docbin_bytes)
-        docs = tuple(docbin.get_docs(_nlp.vocab))
+        docs = nlp_service.client.docbin2docs(docbin, _nlp)
         _doc_cache.update({key: doc for key, doc in zip(unknown_keys, docs)})
 
     return tuple(_doc_cache[key] for key in text_keys)

@@ -6,12 +6,10 @@ import re
 import statistics
 import typing as t
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-import nltk
 import numpy as np
 import recap_argument_graph as ag
-import spacy
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, nlp, query
 from recap_argument_graph_adaptation.model.config import Config
@@ -35,7 +33,6 @@ def argument_graph(
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> t.Tuple[ag.Graph, t.Mapping[casebase.Concept, casebase.Concept]]:
     original_similarity = _graph_similarity(user_query, original_graph)
-    spacy_nlp = spacy.load("en_core_web_sm")
 
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
@@ -65,11 +62,10 @@ def argument_graph(
                                 sub_candidates = pos2form[pos_tag]
 
                                 for match in re.finditer(pattern, node.text):
-                                    node_doc = spacy_nlp(node.plain_text)
-                                    # node_doc = nlp.parse_doc(
-                                    #     node.plain_text,
-                                    #     attributes=["POS", "TAG"],
-                                    # )
+                                    node_doc = nlp.parse_doc(
+                                        node.plain_text,
+                                        attributes=["POS", "TAG"],
+                                    )
                                     start, end = match.span()
                                     span = node_doc.char_span(start, end)
 
