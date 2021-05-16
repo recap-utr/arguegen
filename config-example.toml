@@ -36,7 +36,7 @@ sort_key = "score" # score, sim_improvement
 knowledge_graph = "wordnet"
 
 [loading]
-# only set to true if the user-defined rules do NOT represent a path in the KG
+# only set to false if the user-defined rules do NOT represent a path in the KG
 enforce_node_paths = true
 
 
@@ -50,6 +50,7 @@ adaptation_weight_rule_target = [1]
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 adaptation_pruning_selector = ["similarity"]
+adaptation_substitution_method = ["score"] # score, query_sim
 
 # NOUN, PROPN (not in WordNet), VERB
 extraction_keyword_pos_tags = [["NOUN", "VERB"]]

@@ -26,68 +26,87 @@ def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
     return nlp.similarity(user_query.text, graph_text)
 
 
+def _apply_variants(
+    variants: t.Iterable[casebase.Concept],
+    substitutions: t.Mapping[casebase.Concept, casebase.Concept],
+    adapted_graph: ag.Graph,
+) -> None:
+    for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
+        for form, pos_tags in variant.form2pos.items():
+            pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+
+            for mapped_node in variant.inodes:
+                node = adapted_graph.inode_mappings[mapped_node.key]
+                pos2form = substitutions[variant].pos2form
+
+                for pos_tag in pos_tags:
+                    if pos_tag in pos2form:
+                        sub_candidates = pos2form[pos_tag]
+
+                        for match in re.finditer(pattern, node.text):
+                            node_doc = nlp.parse_doc(
+                                node.plain_text,
+                                attributes=["POS", "TAG"],
+                            )
+                            start, end = match.span()
+                            span = node_doc.char_span(start, end)
+
+                            if span is not None and any(
+                                t.tag_ == pos_tag for t in span
+                            ):
+                                node.text = (
+                                    node.plain_text[:start]
+                                    + sub_candidates[0]
+                                    + node.plain_text[end:]
+                                )
+
+
 def argument_graph(
     user_query: casebase.UserQuery,
     original_graph: ag.Graph,
     rules: t.Collection[casebase.Rule],
     adapted_concepts: t.Mapping[casebase.Concept, casebase.Concept],
 ) -> t.Tuple[ag.Graph, t.Mapping[casebase.Concept, casebase.Concept]]:
-    original_similarity = _graph_similarity(user_query, original_graph)
-
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
-    # sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
-    sources = set(substitutions.keys())
+    substitution_method = config.tuning("adaptation", "substitution_method")
+    sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
+
     applied_adaptations = {}
-    current_similarity = 0.0
-    current_adapted_graph = original_graph
+    current_similarity = _graph_similarity(user_query, original_graph)
+    current_adapted_graph = original_graph.copy()
 
     while sources:
-        adapted_graphs = {}
+        if substitution_method == "query_sim":
+            adapted_graphs = {}
 
-        for source in sources:
-            _adapted_graph = current_adapted_graph.copy()
-            variants = frozenset(x for x in sources if source.name in x.name)
+            for source in sources:
+                _adapted_graph = current_adapted_graph.copy()
+                variants = frozenset(x for x in sources if source.name in x.name)
+                _apply_variants(variants, substitutions, _adapted_graph)
 
-            for variant in sorted(variants, key=lambda x: len(x.name), reverse=True):
-                for form, pos_tags in variant.form2pos.items():
-                    pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
+                adapted_graphs[variants] = (
+                    _adapted_graph,
+                    _graph_similarity(user_query, _adapted_graph),
+                )
 
-                    for mapped_node in variant.inodes:
-                        node = _adapted_graph.inode_mappings[mapped_node.key]
-                        pos2form = substitutions[variant].pos2form
-
-                        for pos_tag in pos_tags:
-                            if pos_tag in pos2form:
-                                sub_candidates = pos2form[pos_tag]
-
-                                for match in re.finditer(pattern, node.text):
-                                    node_doc = nlp.parse_doc(
-                                        node.plain_text,
-                                        attributes=["POS", "TAG"],
-                                    )
-                                    start, end = match.span()
-                                    span = node_doc.char_span(start, end)
-
-                                    if span is not None and any(
-                                        t.tag_ == pos_tag for t in span
-                                    ):
-                                        node.text = (
-                                            node.plain_text[:start]
-                                            + sub_candidates[0]
-                                            + node.plain_text[end:]
-                                        )
-
-            adapted_graphs[variants] = (
-                _adapted_graph,
-                _graph_similarity(user_query, _adapted_graph),
+            applied_variants, (new_adapted_graph, new_similarity) = max(
+                adapted_graphs.items(), key=lambda x: x[1][1]
             )
 
-        applied_variants, (new_adapted_graph, new_similarity) = max(
-            adapted_graphs.items(), key=lambda x: x[1][1]
-        )
+        elif substitution_method == "score":
+            source = sources[0]
+            variants = frozenset(x for x in sources if source.name in x.name)
+            _apply_variants(variants, substitutions, current_adapted_graph)
 
-        if new_similarity < current_similarity or new_similarity < original_similarity:
+            new_similarity = _graph_similarity(user_query, current_adapted_graph)
+            new_adapted_graph = current_adapted_graph
+            applied_variants = variants
+
+        else:
+            raise ValueError(f"Setting {substitution_method=} is not valid.")
+
+        if new_similarity < current_similarity:
             return current_adapted_graph, applied_adaptations
 
         current_similarity = new_similarity

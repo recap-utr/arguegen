@@ -22,7 +22,6 @@ def case(
 ) -> casebase.EvaluationTuple:
     benchmark_adaptations = {rule.source: rule.target for rule in case.benchmark_rules}
     computed_adaptations = {**adapted_concepts}
-    # TODO: Revise weighting scheme
     # benchmark_weights = list(range(len(benchmark_adaptations), 0, -1))
     benchmark_weights = [1 for _ in range(len(benchmark_adaptations))]
 
