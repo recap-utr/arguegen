@@ -79,6 +79,10 @@ class AbstractPath(abc.ABC):
     def end_node(self) -> AbstractNode:
         return self.nodes[-1]
 
+    @property
+    def name(self) -> str:
+        return self.end_node.name
+
     def __str__(self):
         out = f"{self.start_node}"
 

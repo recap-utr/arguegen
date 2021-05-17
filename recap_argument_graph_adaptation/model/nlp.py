@@ -43,7 +43,7 @@ _vector_config = {
     "glove": {
         "spacy_model": "en_core_web_lg",
     },
-    "use-small": {
+    "use": {
         "embedding_models": [
             nlp_pb2.EmbeddingModel(
                 model_type=nlp_pb2.EMBEDDING_TYPE_USE,
@@ -52,20 +52,20 @@ _vector_config = {
             )
         ],
     },
-    "use-large": {
-        "embedding_models": [
-            nlp_pb2.EmbeddingModel(
-                model_type=nlp_pb2.EMBEDDING_TYPE_USE,
-                model_name="https://tfhub.dev/google/universal-sentence-encoder-large/5",
-                pooling=nlp_pb2.POOLING_MEAN,
-            )
-        ],
-    },
+    # "use-large": {
+    #     "embedding_models": [
+    #         nlp_pb2.EmbeddingModel(
+    #             model_type=nlp_pb2.EMBEDDING_TYPE_USE,
+    #             model_name="https://tfhub.dev/google/universal-sentence-encoder-large/5",
+    #             pooling=nlp_pb2.POOLING_MEAN,
+    #         )
+    #     ],
+    # },
     "sbert": {
         "embedding_models": [
             nlp_pb2.EmbeddingModel(
                 model_type=nlp_pb2.EMBEDDING_TYPE_SBERT,
-                model_name="roberta-large-nli-stsb-mean-tokens",
+                model_name="stsb-mpnet-base-v2",
                 pooling=nlp_pb2.POOLING_MEAN,
             )
         ],

@@ -70,7 +70,15 @@ def argument_graph(
     substitutions = {**adapted_concepts}
     substitutions.update({rule.source: rule.target for rule in rules})
     substitution_method = config.tuning("adaptation", "substitution_method")
-    sources = sorted(substitutions.keys(), key=lambda x: x.score, reverse=True)
+
+    sources = list(substitutions.keys())
+
+    if substitution_method == "target_score":
+        sources.sort(key=lambda x: substitutions[x].score, reverse=True)
+    elif substitution_method == "source_score":
+        sources.sort(key=lambda x: x.score, reverse=True)
+    elif substitution_method == "score":
+        sources.sort(key=lambda x: x.score + substitutions[x].score, reverse=True)
 
     applied_adaptations = {}
     current_similarity = _graph_similarity(user_query, original_graph)
@@ -94,7 +102,7 @@ def argument_graph(
                 adapted_graphs.items(), key=lambda x: x[1][1]
             )
 
-        elif substitution_method == "score":
+        elif substitution_method in ["source_score", "target_score", "score"]:
             source = sources[0]
             variants = frozenset(x for x in sources if source.name in x.name)
             _apply_variants(variants, substitutions, current_adapted_graph)

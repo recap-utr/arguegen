@@ -96,8 +96,8 @@ class Concept:
     )
 
     @property
-    def forms(self) -> t.Tuple[str, ...]:
-        return self.form2pos.keys()
+    def forms(self) -> t.FrozenSet[str]:
+        return frozenset(self.form2pos.keys())
 
     def __str__(self):
         code = self.code
