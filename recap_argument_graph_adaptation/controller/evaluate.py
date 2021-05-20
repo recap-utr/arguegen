@@ -76,6 +76,7 @@ def case(
     deliberation_adaptations = {
         concept: concept for concept in adapted_concept_candidates
     }
+    deliberation_adaptations.update({rule.source: rule.source for rule in case.rules})
 
     tp_baseline, fn_baseline, fp_baseline = _eval_sets(
         deliberation_adaptations,

@@ -8,6 +8,7 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 
+import nlp_service.similarity
 import numpy as np
 import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
@@ -520,6 +521,6 @@ def _compare_features(
     if selector == "similarity":
         return 1 - abs(feat1 - feat2)
     elif selector == "difference":
-        return 1 - distance.cosine(feat1, feat2)  # type: ignore
+        return nlp_service.similarity.cosine(feat1, feat2)  # type: ignore
 
     raise ValueError("Parameter 'selector' wrong.")
