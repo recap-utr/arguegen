@@ -83,7 +83,7 @@ def argument_graph(
 
     applied_adaptations = {}
     current_similarity = _graph_similarity(user_query, original_graph)
-    current_adapted_graph = original_graph.copy()
+    current_adapted_graph = original_graph
 
     while sources:
         if substitution_method == "query_sim":
@@ -105,12 +105,11 @@ def argument_graph(
 
         elif substitution_method in ["source_score", "target_score", "score"]:
             source = sources[0]
-            variants = frozenset(x for x in sources if source.name in x.name)
-            _apply_variants(variants, substitutions, current_adapted_graph)
+            new_adapted_graph = current_adapted_graph.copy()
+            applied_variants = frozenset(x for x in sources if source.name in x.name)
+            _apply_variants(applied_variants, substitutions, new_adapted_graph)
 
-            new_similarity = _graph_similarity(user_query, current_adapted_graph)
-            new_adapted_graph = current_adapted_graph
-            applied_variants = variants
+            new_similarity = _graph_similarity(user_query, new_adapted_graph)
 
         else:
             raise ValueError(f"Setting {substitution_method=} is not valid.")
