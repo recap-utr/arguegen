@@ -1,7 +1,7 @@
 import logging
 import typing as t
 
-import recap_argument_graph as ag
+import arguebuf as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import casebase, nlp, query
 
@@ -196,7 +196,7 @@ def _eval_scores(
 
 
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
-    graph_text = " ".join(inode.plain_text for inode in graph.inodes)
+    graph_text = " ".join(inode.plain_text for inode in graph.atom_nodes.values())
 
     return nlp.similarity(user_query.text, graph_text)
 

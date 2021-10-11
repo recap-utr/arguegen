@@ -5,7 +5,7 @@ import typing as t
 from collections import defaultdict
 from pathlib import Path
 
-import recap_argument_graph as ag
+import arguebuf as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import casebase, graph
 from recap_argument_graph_adaptation.model.config import Config
@@ -203,10 +203,10 @@ def write_output(
 
     if adapted_graph:
         if config["export"]["graph_json"]:
-            adapted_graph.save(path / "case.json")
+            adapted_graph.to_file(path / "case.json", format=ag.GraphFormat.ARGUEBUF)
 
         if config["export"]["graph_pdf"]:
-            adapted_graph.render(path / "case.pdf")
+            ag.render(adapted_graph.to_gv(), path / "case.pdf")
 
     if config["export"]["single_stats"]:
         stats_path = path / "stats.json"

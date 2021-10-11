@@ -8,9 +8,9 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 
+import arguebuf as ag
 import nlp_service.similarity
 import numpy as np
-import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, graph, nlp, query
 from recap_argument_graph_adaptation.model.config import Config
@@ -22,7 +22,7 @@ log = logging.getLogger(__name__)
 
 
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
-    graph_text = " ".join(inode.plain_text for inode in graph.inodes)
+    graph_text = " ".join(inode.plain_text for inode in graph.atom_nodes.values())
 
     return nlp.similarity(user_query.text, graph_text)
 
@@ -37,7 +37,7 @@ def _apply_variants(
             pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
             for mapped_node in variant.inodes:
-                node = adapted_graph.inode_mappings[mapped_node.key]
+                node = adapted_graph.atom_nodes[mapped_node.id]
                 pos2form = substitutions[variant].pos2form
 
                 for pos_tag in pos_tags:

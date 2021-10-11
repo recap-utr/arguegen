@@ -6,7 +6,6 @@ authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.10"
-recap-argument-graph = "^0.1.35"
 neo4j = "^4.1"
 tomlkit = "^0.7"
 wordfreq = "^2.3"
@@ -19,8 +18,9 @@ nltk = "^3.5"
 typer = "^0.3.2"
 lemminflect = "^0.2.2"
 immutables = "^0.15"
-httpx = "^0.18.1"
 nlp-service = { path = "../NLP", develop = true }
+arg-services = { path = "../Schema/python", develop = true }
+arguebuf = { path = "../Argument-Graph", develop = true }
 
 [tool.poetry.dev-dependencies]
 json2python-models = "^0.2.1"

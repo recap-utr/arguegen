@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+import arguebuf as ag
 import immutables
-import recap_argument_graph as ag
 from recap_argument_graph_adaptation.controller import convert
 from recap_argument_graph_adaptation.model import graph, nlp
 from recap_argument_graph_adaptation.model.config import Config
@@ -70,15 +70,23 @@ best_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
 }
 
 
-class ArgumentNode(ag.Node):
+class HashableNode(ag.Node):
     def __str__(self) -> str:
-        return str(self.key)
+        return str(self.id)
 
-    def __eq__(self, other: ArgumentNode) -> bool:
-        return self.key == other.key
+    def __eq__(self, other: HashableNode) -> bool:
+        return self.id == other.id
 
     def __hash__(self) -> int:
-        return hash(self.key)
+        return hash(self.id)
+
+
+class HashableAtom(HashableNode, ag.AtomNode):
+    pass
+
+
+class HashableScheme(HashableNode, ag.SchemeNode):
+    pass
 
 
 @dataclass(frozen=True, eq=True)
@@ -87,7 +95,7 @@ class Concept:
     form2pos: immutables.Map[str, t.Tuple[str, ...]]
     pos2form: immutables.Map[str, t.Tuple[str, ...]]
     pos: t.Optional[POS]
-    inodes: t.FrozenSet[ArgumentNode]
+    inodes: t.FrozenSet[HashableAtom]
     nodes: t.FrozenSet[graph.AbstractNode] = field(compare=False)
     related_concepts: t.Mapping[Concept, float] = field(compare=False)
     user_query: UserQuery = field(compare=False)
@@ -103,7 +111,7 @@ class Concept:
         code = self.code
 
         if self.inodes:
-            code += f"/{set(inode.key for inode in self.inodes)}"
+            code += f"/{set(inode.id for inode in self.inodes)}"
 
         return code
 

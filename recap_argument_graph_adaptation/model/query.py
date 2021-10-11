@@ -54,7 +54,7 @@ def concept_metrics(
     stage: str,
     related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
     user_query: casebase.UserQuery,
-    inodes: t.Iterable[casebase.ArgumentNode],
+    inodes: t.Iterable[casebase.HashableAtom],
     nodes: t.Iterable[graph.AbstractNode],
     lemma: str,
     weight: t.Optional[float] = None,

@@ -40,18 +40,20 @@ def init_client():
 client = init_client()
 
 _vector_config = {
-    "glove": {
-        "spacy_model": "en_core_web_lg",
-    },
-    "use": {
-        "embedding_models": [
+    "glove": nlp_pb2.NlpConfig(
+        language=config["nlp"]["lang"],
+        spacy_model="en_core_web_lg",
+    ),
+    "use": nlp_pb2.NlpConfig(
+        language=config["nlp"]["lang"],
+        embedding_models=[
             nlp_pb2.EmbeddingModel(
                 model_type=nlp_pb2.EMBEDDING_TYPE_USE,
                 model_name="https://tfhub.dev/google/universal-sentence-encoder/4",
                 pooling=nlp_pb2.POOLING_MEAN,
             )
         ],
-    },
+    ),
     # "use-large": {
     #     "embedding_models": [
     #         nlp_pb2.EmbeddingModel(
@@ -61,15 +63,16 @@ _vector_config = {
     #         )
     #     ],
     # },
-    "sbert": {
-        "embedding_models": [
+    "sbert": nlp_pb2.NlpConfig(
+        language=config["nlp"]["lang"],
+        embedding_models=[
             nlp_pb2.EmbeddingModel(
                 model_type=nlp_pb2.EMBEDDING_TYPE_SBERT,
                 model_name="stsb-mpnet-base-v2",
                 pooling=nlp_pb2.POOLING_MEAN,
             )
         ],
-    },
+    ),
 }
 
 _similarity_config = {
@@ -111,10 +114,9 @@ def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
 
         res = client.Vectors(
             nlp_pb2.VectorsRequest(
-                language=config["nlp"]["lang"],
                 texts=[x.text for x in unknown_keys],
                 embedding_levels=levels,
-                **_vector_config[config.tuning("nlp", "embeddings")]
+                config=_vector_config[config.tuning("nlp", "embeddings")],
             )
         )
 
@@ -166,9 +168,10 @@ def parse_docs(
     if unknown_keys:
         docbin = client.DocBin(
             nlp_pb2.DocBinRequest(
-                language=config["nlp"]["lang"],
                 texts=[key.text for key in unknown_keys],
-                spacy_model="en_core_web_sm",
+                config=nlp_pb2.NlpConfig(
+                    language=config["nlp"]["lang"], spacy_model="en_core_web_sm"
+                ),
                 attributes=attributes,
                 pipes=pipes,
             )

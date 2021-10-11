@@ -4,7 +4,7 @@ import re
 import typing as t
 from collections import defaultdict
 
-import recap_argument_graph as ag
+import arguebuf as ag
 from recap_argument_graph_adaptation.model import casebase, graph, query, nlp
 from recap_argument_graph_adaptation.model.config import Config
 
@@ -24,7 +24,7 @@ def keywords(
     use_mc_proximity = "major_claim_prox" in config.tuning("score")
 
     keywords = nlp.keywords(
-        [node.plain_text.lower() for node in graph.inodes],
+        [node.plain_text.lower() for node in graph.atom_nodes.values()],
         config.tuning("extraction", "keyword_pos_tags"),
     )
 
@@ -40,11 +40,11 @@ def keywords(
         for kw_form in kw_form2pos:
             pattern = re.compile(f"\\b({kw_form})\\b")
 
-            for inode in graph.inodes:
+            for inode in graph.atom_nodes.values():
                 node_txt = inode.plain_text.lower()
 
                 if pattern.search(node_txt):
-                    inodes.add(t.cast(casebase.ArgumentNode, inode))
+                    inodes.add(t.cast(casebase.HashableAtom, inode))
 
         if len(inodes) == 0:
             continue

@@ -6,7 +6,7 @@ import typing as t
 from dataclasses import dataclass
 from pathlib import Path
 
-import recap_argument_graph as ag
+import arguebuf as ag
 from nltk.corpus import wordnet as wn
 from recap_argument_graph_adaptation.controller.inflect import inflect_concept
 from recap_argument_graph_adaptation.model import casebase, query, nlp
@@ -103,7 +103,9 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
             f"Only some of the required assets {[p.name for p in paths]} were found in '{path}'."
         )
 
-    graph = ag.Graph.from_file(graph_path, casebase.ArgumentNode)
+    graph = ag.Graph.from_file(
+        graph_path, casebase.HashableAtom, casebase.HashableScheme
+    )
     user_query = _parse_query(query_path)
     rules = _parse_rules(rules_path, graph, user_query)
 
@@ -192,7 +194,7 @@ def _parse_rule_concept(
     graph: ag.Graph,
     user_query: casebase.UserQuery,
     path: Path,
-    inodes: t.Optional[t.FrozenSet[casebase.ArgumentNode]],
+    inodes: t.Optional[t.FrozenSet[casebase.HashableAtom]],
 ) -> casebase.Concept:
     rule = rule.strip().lower()
     rule_parts = rule.split("/")
@@ -222,11 +224,11 @@ def _parse_rule_concept(
         for kw_form in kw_form2pos:
             pattern = re.compile(f"\\b({kw_form})\\b")
 
-            for inode in graph.inodes:
+            for inode in graph.atom_nodes.values():
                 node_txt = inode.plain_text.lower()
 
                 if pattern.search(node_txt):
-                    tmp_inodes.add(t.cast(casebase.ArgumentNode, inode))
+                    tmp_inodes.add(t.cast(casebase.HashableAtom, inode))
 
         if not tmp_inodes:
             raise RuntimeError(
