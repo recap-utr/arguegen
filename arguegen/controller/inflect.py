@@ -5,7 +5,7 @@ from collections import defaultdict
 import immutables
 import lemminflect
 from nltk import pos_tag, word_tokenize
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model.config import Config
 
 config = Config.instance()
 

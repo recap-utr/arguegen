@@ -2,8 +2,8 @@ import logging
 import typing as t
 
 import arguebuf as ag
-from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, nlp, query
+from arguegen.controller import convert
+from arguegen.model import casebase, nlp, query
 
 log = logging.getLogger(__name__)
 

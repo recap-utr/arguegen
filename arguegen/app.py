@@ -8,11 +8,9 @@ import pendulum
 import requests
 import typer
 
-from recap_argument_graph_adaptation.controller import (adapt, convert,
-                                                        evaluate, export,
-                                                        extract, load)
-from recap_argument_graph_adaptation.model import casebase, nlp, wordnet
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.controller import adapt, convert, evaluate, export, extract, load
+from arguegen.model import casebase, nlp, wordnet
+from arguegen.model.config import Config
 
 config = Config.instance()
 

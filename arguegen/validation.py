@@ -6,8 +6,8 @@ from pathlib import Path
 import typer
 from nltk.metrics import agreement, masi_distance
 
-from recap_argument_graph_adaptation.controller import load
-from recap_argument_graph_adaptation.model import casebase
+from arguegen.controller import load
+from arguegen.model import casebase
 
 app = typer.Typer()
 

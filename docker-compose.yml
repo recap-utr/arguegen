@@ -5,4 +5,4 @@ services:
     build: .
     volumes:
       - .:/app
-    command: python -m recap_argument_graph_adaptation
+    command: python -m arguegen

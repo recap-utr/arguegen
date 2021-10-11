@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
-from recap_argument_graph_adaptation.model import casebase, graph, nlp
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model import casebase, graph, nlp
+from arguegen.model.config import Config
 
 # from nltk.corpus import wordnet as wn
 

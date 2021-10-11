@@ -16,11 +16,11 @@ import numpy as np
 import requests
 import spacy
 from arg_services.nlp.v1 import nlp_pb2, nlp_pb2_grpc
-from recap_argument_graph_adaptation.controller.inflect import (
+from arguegen.controller.inflect import (
     inflect_concept,
     make_immutable,
 )
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model.config import Config
 from scipy.spatial import distance
 from spacy.tokens import Doc, DocBin
 from textacy.extract.keyterms.yake import yake

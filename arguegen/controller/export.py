@@ -6,9 +6,9 @@ from collections import defaultdict
 from pathlib import Path
 
 import arguebuf as ag
-from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import casebase, graph
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.controller import convert
+from arguegen.model import casebase, graph
+from arguegen.model.config import Config
 
 log = logging.getLogger(__name__)
 config = Config.instance()

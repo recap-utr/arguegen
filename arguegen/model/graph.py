@@ -4,8 +4,8 @@ import abc
 import typing as t
 from dataclasses import dataclass
 
-from recap_argument_graph_adaptation.model import nlp
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model import nlp
+from arguegen.model.config import Config
 
 config = Config.instance()
 

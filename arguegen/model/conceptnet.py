@@ -7,13 +7,13 @@ from dataclasses import dataclass
 
 import neo4j
 import neo4j.data
-from recap_argument_graph_adaptation.model import (
+from arguegen.model import (
     casebase,
     conceptnet_helper,
     graph,
     nlp,
 )
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model.config import Config
 
 config = Config.instance()
 POS_OTHER = "other"

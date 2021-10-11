@@ -18,7 +18,7 @@ poetry run python -m nltk.downloader popular universal_tagset
 
 - Run the adaptation in another session:
 
-  `poetry run python -m recap_argument_graph_adaptation`
+  `poetry run python -m arguegen`
 
 ## Folder Structure
 

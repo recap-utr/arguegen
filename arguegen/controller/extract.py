@@ -5,8 +5,8 @@ import typing as t
 from collections import defaultdict
 
 import arguebuf as ag
-from recap_argument_graph_adaptation.model import casebase, graph, query, nlp
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model import casebase, graph, query, nlp
+from arguegen.model.config import Config
 
 config = Config.instance()
 log = logging.getLogger(__name__)

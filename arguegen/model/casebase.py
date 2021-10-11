@@ -11,9 +11,9 @@ from pathlib import Path
 
 import arguebuf as ag
 import immutables
-from recap_argument_graph_adaptation.controller import convert
-from recap_argument_graph_adaptation.model import graph, nlp
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.controller import convert
+from arguegen.model import graph, nlp
+from arguegen.model.config import Config
 
 log = logging.getLogger(__name__)
 config = Config.instance()

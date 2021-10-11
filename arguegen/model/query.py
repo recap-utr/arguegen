@@ -2,14 +2,14 @@ import itertools
 import statistics
 import typing as t
 
-from recap_argument_graph_adaptation.model import (
+from arguegen.model import (
     casebase,
     conceptnet,
     graph,
     nlp,
     wordnet,
 )
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.model.config import Config
 
 config = Config.instance()
 _kg = config["adaptation"]["knowledge_graph"]

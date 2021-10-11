@@ -11,9 +11,9 @@ from dataclasses import dataclass
 import arguebuf as ag
 import nlp_service.similarity
 import numpy as np
-from recap_argument_graph_adaptation.controller.inflect import inflect_concept
-from recap_argument_graph_adaptation.model import casebase, graph, nlp, query
-from recap_argument_graph_adaptation.model.config import Config
+from arguegen.controller.inflect import inflect_concept
+from arguegen.model import casebase, graph, nlp, query
+from arguegen.model.config import Config
 from scipy.spatial import distance
 
 config = Config.instance()
