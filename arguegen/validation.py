@@ -8,8 +8,45 @@ from nltk.metrics import agreement, masi_distance
 
 from arguegen.controller import load
 from arguegen.model import casebase
+from arguegen.model.config import Config
 
 app = typer.Typer()
+
+
+@app.command()
+def rule_agreement(path: Path) -> None:
+    config = Config.instance()
+    config["loading"]["user_defined_rules"] = True
+    user_cases = load.cases(path)
+
+    config = Config.instance()
+    config["loading"]["user_defined_rules"] = False
+    system_cases = load.cases(path)
+    total_rules = 0
+    total_common_rules = 0
+    total_contains_best_rule = 0
+
+    for user_case, system_case in zip(user_cases, system_cases):
+        # common_rules = set(user_case.rules).intersection(system_case.rules)
+        # total_rules = set(user_case.rules).union(system_case.rules)
+
+        common_rules = sum(
+            system_rule in user_case.benchmark_rules
+            for system_rule in system_case.benchmark_rules
+        )
+
+        contains_best_rule = user_case.benchmark_rules[0] in system_case.benchmark_rules
+
+        total_rules += len(user_case.benchmark_rules)
+        total_common_rules += common_rules
+        total_contains_best_rule += 1 if contains_best_rule else 0
+
+        # print(
+        #     f"{user_case.relative_path} - common rules: {common_rules}, system rules: {len(system_case.benchmark_rules)}, user rules: {len(user_case.benchmark_rules)}"
+        # )
+
+    print(f"Agreement over all rules: {total_common_rules}/{total_rules}")
+    print(f"Agreement over best rule: {total_contains_best_rule}/{len(user_cases)}")
 
 
 @app.command()

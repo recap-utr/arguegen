@@ -7,10 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import arguebuf as ag
-from nltk.corpus import wordnet as wn
 from arguegen.controller.inflect import inflect_concept
-from arguegen.model import casebase, query, nlp
+from arguegen.model import casebase, nlp, query
 from arguegen.model.config import Config
+from nltk.corpus import wordnet as wn
 from sklearn.model_selection import ParameterGrid
 
 config = Config.instance()
@@ -107,7 +107,11 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         graph_path, casebase.HashableAtom, casebase.HashableScheme
     )
     user_query = _parse_query(query_path)
-    rules = _parse_rules(rules_path, graph, user_query)
+    rules = (
+        _parse_user_rules(rules_path, graph, user_query)
+        if config["loading"]["user_defined_rules"]
+        else _generate_system_rules(rules_path, graph, user_query)
+    )
 
     return casebase.Case(
         path.relative_to(root_path),
@@ -124,7 +128,7 @@ def _parse_query(path: Path) -> casebase.UserQuery:
     return casebase.UserQuery(text)
 
 
-def _parse_rules(
+def _parse_user_rules(
     path: Path, graph: ag.Graph, user_query: casebase.UserQuery
 ) -> t.Tuple[casebase.Rule, ...]:
     rules = []
@@ -133,15 +137,81 @@ def _parse_rules(
         reader = csv.reader(file, delimiter=",")
 
         for row in reader:
-            source = _parse_rule_concept(row[0], graph, user_query, path, None)
-            target = _parse_rule_concept(row[1], graph, user_query, path, source.inodes)
-            rule = _postprocess_rule(source, target, path)
+            source_name, source_pos = _split_user_rule(row[0], path)
+            target_name, target_pos = _split_user_rule(row[1], path)
+
+            source = _parse_rule_concept(
+                source_name, source_pos, graph, user_query, path, None
+            )
+            target = _parse_rule_concept(
+                target_name, target_pos, graph, user_query, path, source.inodes
+            )
+            rule = _create_rule(source, target, path)
 
             rules.append(rule)
 
     _verify_rules(rules, path)
 
     return tuple(rules)
+
+
+def _generate_system_rules(
+    path: Path, graph: ag.Graph, user_query: casebase.UserQuery
+) -> t.Tuple[casebase.Rule, ...]:
+    major_claim_nlp, user_query_nlp = nlp.parse_docs(
+        [graph.major_claim.text, user_query.text], ["POS"]
+    )
+    rules = {}
+
+    for source_token, target_token in itertools.product(
+        major_claim_nlp, user_query_nlp
+    ):
+        if (
+            source_token.text != target_token.text
+            and source_token.pos == target_token.pos
+            and source_token.pos_ in config["loading"]["heuristic_pos_tags"]
+            and target_token.pos_ in config["loading"]["heuristic_pos_tags"]
+        ):
+            try:
+                source = _parse_rule_concept(
+                    source_token.text.strip().lower(),
+                    casebase.spacy2pos(source_token.pos_),
+                    graph,
+                    user_query,
+                    path,
+                    None,
+                )
+                target = _parse_rule_concept(
+                    target_token.text.strip().lower(),
+                    casebase.spacy2pos(target_token.pos_),
+                    graph,
+                    user_query,
+                    path,
+                    source.inodes,
+                )
+
+                if shortest_paths := query.all_shortest_paths(
+                    source.nodes, target.nodes
+                ):
+                    rule = _create_rule(source, target, path)
+
+                    if distance := len(next(iter(shortest_paths))):
+                        rules[rule] = distance
+
+            # If a source or target cannot be found in the knowledge graph,
+            # just ignore the error and try the next combination.
+            except ValueError:
+                pass
+
+    if rules.values():
+        min_distance = min(rules.values())
+
+        # Return all rules that have the shortest distance in the knowledge graph.
+        return tuple(
+            rule for rule, distance in rules.items() if distance == min_distance
+        )
+
+    return tuple()
 
 
 def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:
@@ -153,7 +223,7 @@ def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:
         )
 
 
-def _postprocess_rule(
+def _create_rule(
     source: casebase.Concept, target: casebase.Concept, path: Path
 ) -> casebase.Rule:
     if config["loading"]["enforce_node_paths"]:
@@ -190,29 +260,13 @@ def _postprocess_rule(
 
 
 def _parse_rule_concept(
-    rule: str,
+    name: str,
+    pos: t.Optional[casebase.POS],
     graph: ag.Graph,
     user_query: casebase.UserQuery,
     path: Path,
     inodes: t.Optional[t.FrozenSet[casebase.HashableAtom]],
 ) -> casebase.Concept:
-    rule = rule.strip().lower()
-    rule_parts = rule.split("/")
-    name = rule_parts[0]
-    pos = None
-
-    if len(rule_parts) > 1:
-        try:
-            pos = casebase.POS(rule_parts[1])
-        except ValueError:
-            raise RuntimeError(
-                f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
-            )
-    else:
-        raise RuntimeError(
-            f"You did not provide a pos for the rule '{name}' specified in '{str(path)}'."
-        )
-
     kw_name, kw_form2pos, kw_pos2form = inflect_concept(name, casebase.pos2spacy(pos))
 
     if not inodes:
@@ -231,13 +285,13 @@ def _parse_rule_concept(
                     tmp_inodes.add(t.cast(casebase.HashableAtom, inode))
 
         if not tmp_inodes:
-            raise RuntimeError(
-                f"The concept '{rule}' with the forms '{kw_form2pos}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
+            raise ValueError(
+                f"The concept '{name}' with the forms '{kw_form2pos}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
             )
 
         inodes = frozenset(tmp_inodes)
 
-    if config["loading"]["enforce_node_paths"]:
+    if config["loading"]["filter_kg_nodes"]:
         nodes = query.concept_nodes(kw_form2pos.keys(), pos)
     else:
         nodes = query.concept_nodes(
@@ -245,8 +299,8 @@ def _parse_rule_concept(
         )
 
     if not nodes:
-        raise RuntimeError(
-            f"The concept '{rule}' with the forms '{kw_form2pos}' specified in '{str(path)}' cannot be found in the knowledge graph."
+        raise ValueError(
+            f"The concept '{name}' with the forms '{kw_form2pos}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(
@@ -260,3 +314,21 @@ def _parse_rule_concept(
         user_query,
         {key: 1.0 for key in casebase.metric_keys},
     )
+
+
+def _split_user_rule(rule: str, path: Path) -> t.Tuple[str, casebase.POS]:
+    rule = rule.strip().lower()
+    rule_parts = rule.split("/")
+    name = rule_parts[0]
+
+    if len(rule_parts) > 1:
+        try:
+            return name, casebase.POS(rule_parts[1])
+        except ValueError:
+            raise RuntimeError(
+                f"The pos '{rule_parts[1]}' specified in '{str(path)}' is invalid."
+            )
+    else:
+        raise RuntimeError(
+            f"You did not provide a pos for the rule '{name}' specified in '{str(path)}'."
+        )

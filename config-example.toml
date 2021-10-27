@@ -30,7 +30,7 @@ deliberation = true
 aggr_funcs = ["mean"]
 retrieval_improvement = true
 single_stats = true
-sort_key = "score" # score, sim_improvement
+sort_key = "score"           # score, sim_improvement
 
 [adaptation]
 knowledge_graph = "wordnet"
@@ -38,11 +38,14 @@ knowledge_graph = "wordnet"
 [loading]
 # only set to false if the user-defined rules do NOT represent a path in the KG
 enforce_node_paths = true
+filter_kg_nodes = true
+user_defined_rules = false
+heuristic_pos_tags = ["NOUN", "VERB"]
 
 
 [tuning]
 adaptation_lemma_limit = [1]
-adaptation_method = ["direct"] # direct, bfs
+adaptation_method = ["direct"]           # direct, bfs
 adaptation_pruning_bfs_limit = [10000]
 adaptation_weight_original_concept = [1]
 adaptation_weight_rule_target = [1]
@@ -50,7 +53,7 @@ adaptation_weight_rule_target = [1]
 # difference: The vector direction between the concepts should match, i.e. min cosine(abs(vec1 - vec2), abs(vec3 - vec4)).
 # similarity: The absolute similarity values of the concepts should match, i.e. min abs(cosine(vec1, vec2) - cosine(vec3, vec4)).
 adaptation_pruning_selector = ["similarity"]
-adaptation_substitution_method = ["score"] # score, query_sim
+adaptation_substitution_method = ["score"]   # score, query_sim
 
 # NOUN, PROPN (not in WordNet), VERB
 extraction_keyword_pos_tags = [["NOUN", "VERB"]]
@@ -60,7 +63,7 @@ extraction_max_concepts = [10000]
 global_rule_limit = [1]
 
 nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large
-nlp_similarity = ["cosine"] # dynamax
+nlp_similarity = ["cosine"]    # dynamax
 
 # Of which metrics should the score consist
 # score_adus_sem_sim = [0, 1]
@@ -75,7 +78,7 @@ score_nodes_wup_sim = [1]
 # score_query_concept_sem_sim = [0, 1]
 # score_query_nodes_sem_sim = [0, 1]
 
-threshold_concept_score = [0.0] # Filtering concepts
+threshold_concept_score = [0.0]   # Filtering concepts
 threshold_node_similarity = [0.0] # Assigning nodes
 
 # between: Try to transfer the concept path from (adaptation origin, adaptation destination) to (current concept, adapted concept).
