@@ -107,17 +107,22 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         graph_path, casebase.HashableAtom, casebase.HashableScheme
     )
     user_query = _parse_query(query_path)
+    user_rules = _parse_user_rules(rules_path, graph, user_query)
     rules = (
-        _parse_user_rules(rules_path, graph, user_query)
+        user_rules
         if config["loading"]["user_defined_rules"]
         else _generate_system_rules(rules_path, graph, user_query)
     )
+    rules_limit = config["loading"]["rule_limit"]
+    # TODO: Does not work correctly
+    rules_slice = (
+        len(rules)
+        if config["loading"]["user_defined_rules"] and rules_limit == 0
+        else rules_limit
+    )
 
     return casebase.Case(
-        path.relative_to(root_path),
-        user_query,
-        graph,
-        rules,
+        path.relative_to(root_path), user_query, graph, rules[:rules_slice], user_rules
     )
 
 

@@ -1,4 +1,4 @@
-version = "3.4"
+version = "3.5"
 
 
 # PRIVATE
@@ -41,6 +41,7 @@ enforce_node_paths = true
 filter_kg_nodes = true
 user_defined_rules = false
 heuristic_pos_tags = ["NOUN", "VERB"]
+rule_limit = 1
 
 
 [tuning]
@@ -59,8 +60,6 @@ adaptation_substitution_method = ["score"]   # score, query_sim
 extraction_keyword_pos_tags = [["NOUN", "VERB"]]
 extraction_keywords_per_adu = [false]
 extraction_max_concepts = [10000]
-
-global_rule_limit = [1]
 
 nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large
 nlp_similarity = ["cosine"]    # dynamax

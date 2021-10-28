@@ -220,23 +220,19 @@ class Case:
     relative_path: Path
     user_query: UserQuery
     graph: ag.Graph
-    _rules: t.Tuple[Rule, ...]
+    rules: t.Tuple[Rule, ...]
+    benchmark_rules: t.Tuple[Rule, ...]
 
     def __str__(self) -> str:
         return str(self.relative_path)
 
-    @property
-    def rules(self) -> t.Tuple[Rule, ...]:
-        # slice = config.tuning("global", "rule_limit")
-        rules_limit = config.tuning("global", "rule_limit")
-        slice = len(self._rules) if rules_limit == 0 else rules_limit
+    # @property
+    # def rules(self) -> t.Tuple[Rule, ...]:
+    #     # slice = config.tuning("global", "rule_limit")
+    #     rules_limit = config.tuning("global", "rule_limit")
+    #     slice = len(self._rules) if rules_limit == 0 else rules_limit
 
-        return self._rules[:slice]
-
-    @property
-    def benchmark_rules(self) -> t.Tuple[Rule, ...]:
-        return self._rules
-
+    #     return self._rules[:slice]
 
 @dataclass(frozen=True)
 class WeightedScore:
