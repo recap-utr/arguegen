@@ -113,10 +113,10 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         if config["loading"]["user_defined_rules"]
         else _generate_system_rules(rules_path, graph, user_query)
     )
-    rules_limit = config["loading"]["rule_limit"]
+    user_rules_limit = config["loading"]["user_rules_limit"]
     rules_slice = (
-        rules_limit
-        if config["loading"]["user_defined_rules"] and rules_limit > 0
+        user_rules_limit
+        if config["loading"]["user_defined_rules"] and user_rules_limit > 0
         else len(rules)
     )
 
@@ -219,6 +219,13 @@ def _generate_system_rules(
         )
 
     return tuple()
+
+    # TODO: be is adapted to be
+    # microtexts-premtim/keep_retirement_at_63/nodeset6416
+    # generated: ["(be/verb/{'120420', '120419', '120421', '120418'})->(be/verb/{'120420', '120419', '120421', '120418'})", "(economy/noun/{'120421'})->(system/noun/{'120421'})"]
+    # user: ["(retirement/noun/{'120418'})->(termination/noun/{'120418'})", "(economy/noun/{'120421'})->(system/noun/{'120421'})", "(capability/noun/{'120420'})->(ability/noun/{'120420'})", "(labour/noun/{'120421'})->(work/noun/{'120421'})"]
+
+    # TODO: Noun chunks shoudl also be considered. At the moment, 'morning-after pill' is ignored and only 'pill' is considered
 
 
 def _verify_rules(rules: t.Collection[casebase.Rule], path: Path) -> None:

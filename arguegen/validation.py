@@ -39,7 +39,7 @@ def rule_agreement(path: Path) -> None:
         total_contains_any_rule += 1 if contains_any_rule else 0
 
         print(
-            f"{case.relative_path} - generated: {[str(rule) for rule in case.rules]}, user: {[str(rule) for rule in case.benchmark_rules]}"
+            f"{case.relative_path}\ngenerated: {[str(rule) for rule in case.rules]}\nuser: {[str(rule) for rule in case.benchmark_rules]}\n"
         )
         # print(
         #     f"{case.relative_path} - common rules: {common_rules}, system rules: {len(case.rules)}, expert rules: {len(case.benchmark_rules)}"

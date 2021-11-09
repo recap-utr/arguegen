@@ -226,13 +226,6 @@ class Case:
     def __str__(self) -> str:
         return str(self.relative_path)
 
-    # @property
-    # def rules(self) -> t.Tuple[Rule, ...]:
-    #     # slice = config.tuning("global", "rule_limit")
-    #     rules_limit = config.tuning("global", "rule_limit")
-    #     slice = len(self._rules) if rules_limit == 0 else rules_limit
-
-    #     return self._rules[:slice]
 
 @dataclass(frozen=True)
 class WeightedScore:

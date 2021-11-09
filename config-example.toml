@@ -41,7 +41,7 @@ enforce_node_paths = true
 filter_kg_nodes = true
 user_defined_rules = false
 heuristic_pos_tags = ["NOUN", "VERB"]
-rule_limit = 1
+user_rules_limit = 1
 
 
 [tuning]
