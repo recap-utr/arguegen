@@ -114,11 +114,10 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         else _generate_system_rules(rules_path, graph, user_query)
     )
     rules_limit = config["loading"]["rule_limit"]
-    # TODO: Does not work correctly
     rules_slice = (
-        len(rules)
-        if config["loading"]["user_defined_rules"] and rules_limit == 0
-        else rules_limit
+        rules_limit
+        if config["loading"]["user_defined_rules"] and rules_limit > 0
+        else len(rules)
     )
 
     return casebase.Case(
@@ -163,6 +162,9 @@ def _parse_user_rules(
 def _generate_system_rules(
     path: Path, graph: ag.Graph, user_query: casebase.UserQuery
 ) -> t.Tuple[casebase.Rule, ...]:
+    if not graph.major_claim:
+        return tuple()
+
     major_claim_nlp, user_query_nlp = nlp.parse_docs(
         [graph.major_claim.text, user_query.text], ["POS"]
     )

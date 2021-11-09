@@ -17,7 +17,6 @@ app = typer.Typer()
 def rule_agreement(path: Path) -> None:
     config = Config.instance()
     config["loading"]["user_defined_rules"] = False
-    config["loading"]["rule_limit"] = 5
     cases = load.cases(path)
 
     total_rules = 0
@@ -40,8 +39,11 @@ def rule_agreement(path: Path) -> None:
         total_contains_any_rule += 1 if contains_any_rule else 0
 
         print(
-            f"{case.relative_path} - common rules: {common_rules}, system rules: {len(case.rules)}, expert rules: {len(case.benchmark_rules)}"
+            f"{case.relative_path} - generated: {[str(rule) for rule in case.rules]}, user: {[str(rule) for rule in case.benchmark_rules]}"
         )
+        # print(
+        #     f"{case.relative_path} - common rules: {common_rules}, system rules: {len(case.rules)}, expert rules: {len(case.benchmark_rules)}"
+        # )
 
     print(f"Agreement over all rules: {total_common_rules}/{total_rules}")
     print(f"Agreement over best rule: {total_contains_best_rule}/{len(cases)}")

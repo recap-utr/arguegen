@@ -6,11 +6,11 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 
+from arguegen.model import casebase, graph, nlp
+from arguegen.model.config import Config
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Synset, WordNetCorpusReader
 from nltk.corpus.util import LazyCorpusLoader
-from arguegen.model import casebase, graph, nlp
-from arguegen.model.config import Config
 
 # from nltk.corpus import wordnet as wn
 
@@ -311,7 +311,9 @@ def all_shortest_paths(
 
                 all_paths.append(WordnetPath.from_nodes(shortest_path))
 
-    return frozenset(all_paths)
+    shortest_length = min(len(path) for path in all_paths)
+
+    return frozenset(path for path in all_paths if len(path) == shortest_length)
 
 
 def concept_synsets(
