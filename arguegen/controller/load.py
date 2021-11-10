@@ -165,32 +165,34 @@ def _generate_system_rules(
     if not graph.major_claim:
         return tuple()
 
-    major_claim_nlp, user_query_nlp = nlp.parse_docs(
-        [graph.major_claim.text, user_query.text], ["POS"]
-    )
     rules = {}
+    major_claim_kw = nlp.keywords(
+        [graph.major_claim.text], config["loading"]["heuristic_pos_tags"]
+    )
+    user_query_kw = nlp.keywords(
+        [user_query.text], config["loading"]["heuristic_pos_tags"]
+    )
 
     for source_token, target_token in itertools.product(
-        major_claim_nlp, user_query_nlp
+        major_claim_kw,
+        user_query_kw,
     ):
         if (
-            source_token.text != target_token.text
-            and source_token.pos == target_token.pos
-            and source_token.pos_ in config["loading"]["heuristic_pos_tags"]
-            and target_token.pos_ in config["loading"]["heuristic_pos_tags"]
+            source_token.keyword != target_token.keyword
+            and source_token.pos_tag == target_token.pos_tag
         ):
             try:
                 source = _parse_rule_concept(
-                    source_token.text.strip().lower(),
-                    casebase.spacy2pos(source_token.pos_),
+                    source_token.keyword.strip().lower(),
+                    casebase.spacy2pos(source_token.pos_tag),
                     graph,
                     user_query,
                     path,
                     None,
                 )
                 target = _parse_rule_concept(
-                    target_token.text.strip().lower(),
-                    casebase.spacy2pos(target_token.pos_),
+                    target_token.keyword.strip().lower(),
+                    casebase.spacy2pos(target_token.pos_tag),
                     graph,
                     user_query,
                     path,
@@ -215,7 +217,9 @@ def _generate_system_rules(
 
         # Return all rules that have the shortest distance in the knowledge graph.
         return tuple(
-            rule for rule, distance in rules.items() if distance == min_distance
+            rule
+            for rule, distance in rules.items()
+            if distance == min_distance and rule.source != rule.target
         )
 
     return tuple()

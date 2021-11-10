@@ -16,11 +16,11 @@ class Config(collections.MutableMapping):
 
     @classmethod
     def instance(cls) -> Config:
-        """ Static access method. """
+        """Static access method."""
         return cls._instance or cls()
 
     def __init__(self):
-        """ Private constructor."""
+        """Private constructor."""
         if Config._instance is not None:
             raise RuntimeError("This class is a singleton!")
         else:
@@ -71,6 +71,10 @@ class Config(collections.MutableMapping):
 
     def __str__(self):
         return str(self._store)
+
+    @property
+    def tuning_run(self) -> bool:
+        return "_tuning" in self._store
 
     def tuning(
         self,

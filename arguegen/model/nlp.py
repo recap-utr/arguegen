@@ -16,10 +16,7 @@ import numpy as np
 import requests
 import spacy
 from arg_services.nlp.v1 import nlp_pb2, nlp_pb2_grpc
-from arguegen.controller.inflect import (
-    inflect_concept,
-    make_immutable,
-)
+from arguegen.controller.inflect import inflect_concept, make_immutable
 from arguegen.model.config import Config
 from scipy.spatial import distance
 from spacy.tokens import Doc, DocBin
@@ -203,7 +200,7 @@ _keyword_cache = {}
 def keywords(
     texts: t.Iterable[str], pos_tags: t.Iterable[str]
 ) -> t.Tuple[Keyword, ...]:
-    if not config.tuning("extraction", "keywords_per_adu"):
+    if config.tuning_run and not config.tuning("extraction", "keywords_per_adu"):
         texts = [" ".join(texts)]
 
     key = (tuple(texts), tuple(pos_tags))
