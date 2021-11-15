@@ -1,0 +1,1 @@
+Should we terminate the jobs of workers when reaching a certain age?

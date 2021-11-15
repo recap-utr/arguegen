@@ -1,0 +1,1 @@
+Should broadcasting authorization costs be collected only from those who actually use it?

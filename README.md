@@ -39,3 +39,13 @@ You only need to create the folder `output`.
 It will then be used by the application to store the adapted cases.
 For each run, you will get a folder that is named based on the current date and time.
 You are free to delete adapted cases that are not needed anymore.
+
+## License Notes
+
+We use the microtexts corpus distributed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International license.
+The original XML representation is converted to a JSON-based on compliant with the AIF standard.
+The derivations are available under the same Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International license.
+
+<https://github.com/peldszus/arg-microtexts>
+
+Andreas Peldszus, Manfred Stede. An annotated corpus of argumentative microtexts. First European Conference on Argumentation: Argumentation and Reasoned Action, Portugal, Lisbon, June 2015.

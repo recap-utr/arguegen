@@ -1,0 +1,1 @@
+Should new payer pay higher prices than old payer for a new contract organized by the same owner?

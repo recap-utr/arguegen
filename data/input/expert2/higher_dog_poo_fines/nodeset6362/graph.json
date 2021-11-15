@@ -1,0 +1,109 @@
+{
+	"nodes": [
+		{
+			"nodeID": "119935",
+			"text": "One can hardly move in Friedrichshain or Neuk\u00f6lln these days without permanently scanning the ground for dog dirt.",
+			"type": "I",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119936",
+			"text": "And when bad luck does strike and you step into one of the many 'land mines' you have to painstakingly scrape the remains off your soles.",
+			"type": "I",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119937",
+			"text": "Higher fines are therefore the right measure against negligent, lazy or simply thoughtless dog owners.",
+			"type": "I",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119938",
+			"text": "Of course, first they'd actually need to be caught in the act by public order officers,",
+			"type": "I",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119939",
+			"text": "but once they have to dig into their pockets, their laziness will sure vanish!",
+			"type": "I",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119940",
+			"text": "Default Inference",
+			"type": "RA",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119941",
+			"text": "Default Inference",
+			"type": "RA",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119942",
+			"text": "Default Conflict",
+			"type": "CA",
+			"timestamp": "2015-12-14 12:09:15"
+		},
+		{
+			"nodeID": "119943",
+			"text": "Default Conflict",
+			"type": "CA",
+			"timestamp": "2015-12-14 12:09:15"
+		}
+	],
+	"edges": [
+		{
+			"edgeID": "160913",
+			"fromID": "119935",
+			"toID": "119940",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160914",
+			"fromID": "119940",
+			"toID": "119937",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160915",
+			"fromID": "119936",
+			"toID": "119941",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160916",
+			"fromID": "119941",
+			"toID": "119937",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160917",
+			"fromID": "119938",
+			"toID": "119942",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160918",
+			"fromID": "119942",
+			"toID": "119937",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160919",
+			"fromID": "119939",
+			"toID": "119943",
+			"formEdgeID": null
+		},
+		{
+			"edgeID": "160920",
+			"fromID": "119943",
+			"toID": "119942",
+			"formEdgeID": null
+		}
+	],
+	"locutions": []
+}
