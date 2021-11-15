@@ -12,12 +12,8 @@ poetry run python -m nltk.downloader popular universal_tagset
 
 ## Running
 
-- Start a spacy server in one terminal session:
-
-  `./nlp.sh`
-
+- Install our NLP server and start it in a terminal session: <https://github.com/ReCAP-UTR/NLP>
 - Run the adaptation in another session:
-
   `poetry run python -m arguegen`
 
 ## Folder Structure
