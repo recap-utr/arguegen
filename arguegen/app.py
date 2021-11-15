@@ -96,9 +96,6 @@ def _parametrized_run(
     adapted_concept_candidates = {}
     adapted_graph = None
 
-    if not case.rules:
-        raise RuntimeError("You have to provide at least one rule.")
-
     log.debug("Extracting keywords.")
     relevant_concepts, all_concepts = extract.keywords(
         case.graph, case.rules, case.user_query

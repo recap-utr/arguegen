@@ -65,13 +65,15 @@ def run_arguments(
     ]
 
 
-def cases(input_path: Path, ignore_errors: bool = False) -> t.List[casebase.Case]:
+def cases(
+    input_path: Path, ignore_errors: bool = False, allow_empty_rules: bool = False
+) -> t.List[casebase.Case]:
     result = []
 
     for path in itertools.chain([input_path], sorted(input_path.rglob("*"))):
         if path.is_dir():
             try:
-                case = _case(path, input_path)
+                case = _case(path, input_path, allow_empty_rules)
 
                 if case:
                     result.append(case)
@@ -87,7 +89,9 @@ def cases(input_path: Path, ignore_errors: bool = False) -> t.List[casebase.Case
     return result
 
 
-def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
+def _case(
+    path: Path, root_path: Path, allow_empty_rules: bool
+) -> t.Optional[casebase.Case]:
     graph_path = path / "graph.json"
     rules_path = path / "rules.csv"
     query_path = path / "query.txt"
@@ -113,6 +117,12 @@ def _case(path: Path, root_path: Path) -> t.Optional[casebase.Case]:
         if config["loading"]["user_defined_rules"]
         else _generate_system_rules(rules_path, graph, user_query)
     )
+
+    if not user_rules:
+        raise RuntimeError(f"No rules found in file '{rules_path}'.")
+    if not rules and not allow_empty_rules:
+        return None
+
     user_rules_limit = config["loading"]["user_rules_limit"]
     rules_slice = (
         user_rules_limit
