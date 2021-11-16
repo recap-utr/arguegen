@@ -12,7 +12,7 @@ poetry run python -m nltk.downloader popular universal_tagset
 
 ## Running
 
-- Install our NLP server and start it in a terminal session: <https://github.com/ReCAP-UTR/NLP>
+- Install the following NLP server and start it in a terminal session: <https://github.com/ReCAP-UTR/NLP>
 - Run the adaptation in another session:
   `poetry run python -m arguegen`
 

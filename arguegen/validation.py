@@ -49,12 +49,16 @@ def rule_agreement(path: Path) -> None:
         #     f"{case.relative_path} - common rules: {common_rules}, system rules: {len(case.rules)}, expert rules: {len(case.benchmark_rules)}"
         # )
 
+    print(f"Cases with empty rules: {empty_cases}/{len(cases)}")
     print(
-        f"Cases with empty rules (excluded in following metrics): {empty_cases}/{len(cases)}"
+        f"Agreement over all rules: {total_common_rules}/{total_rules} ({total_common_rules/total_rules})"
     )
-    print(f"Agreement over all rules: {total_common_rules}/{total_rules}")
-    print(f"Agreement over best rule: {total_contains_best_rule}/{non_empty_cases}")
-    print(f"Agreement over any rule: {total_contains_any_rule}/{non_empty_cases}")
+    print(
+        f"Agreement over best rule: {total_contains_best_rule}/{len(cases)} ({total_contains_best_rule/len(cases)})"
+    )
+    print(
+        f"Agreement over any rule: {total_contains_any_rule}/{len(cases)} ({total_contains_any_rule/len(cases)})"
+    )
 
 
 @app.command()
