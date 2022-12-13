@@ -5,10 +5,10 @@ import typing as t
 from collections import defaultdict
 
 import arguebuf as ag
-from arguegen.model import casebase, graph, query, nlp
-from arguegen.model.config import Config
 
-config = Config.instance()
+from arguegen.config import config, tuning
+from arguegen.model import casebase, evaluation, nlp, wordnet
+
 log = logging.getLogger(__name__)
 
 
@@ -19,34 +19,36 @@ def keywords(
     rule_sources = {rule.source for rule in rules}
     rule_targets = {rule.target for rule in rules}
 
-    candidates = set()
-    mc = graph.major_claim
-    use_mc_proximity = "major_claim_prox" in config.tuning("score")
+    candidates: set[casebase.Concept] = set()
+    mc = graph.major_claim or graph.root_node
+    assert mc is not None
+
+    use_mc_proximity = "major_claim_prox" in tuning(config, "score")
 
     keywords = nlp.keywords(
         [node.plain_text.lower() for node in graph.atom_nodes.values()],
-        config.tuning("extraction", "keyword_pos_tags"),
+        tuning(config, "extraction", "keyword_pos_tags"),
     )
 
     for k in keywords:
-        kw = k.keyword
-        kw_form2pos = k.form2pos
-        kw_pos2form = k.pos2form
-        kw_pos = casebase.spacy2pos(k.pos_tag)
-        kw_weight = k.weight
+        lemma = k.lemma
+        form2pos = k.form2pos
+        pos2form = k.pos2form
+        pos = casebase.spacy2pos(k.pos_tag)
+        weight = k.weight
 
-        inodes = set()
+        atoms = set()
 
-        for kw_form in kw_form2pos:
-            pattern = re.compile(f"\\b({kw_form})\\b")
+        for form in form2pos:
+            pattern = re.compile(f"\\b({form})\\b")
 
-            for inode in graph.atom_nodes.values():
-                node_txt = inode.plain_text.lower()
+            for atom in graph.atom_nodes.values():
+                node_txt = atom.plain_text.lower()
 
                 if pattern.search(node_txt):
-                    inodes.add(t.cast(casebase.HashableAtom, inode))
+                    atoms.add(t.cast(casebase.HashableAtom, atom))
 
-        if len(inodes) == 0:
+        if len(atoms) == 0:
             continue
 
         mc_distance = None
@@ -54,38 +56,38 @@ def keywords(
         if use_mc_proximity:
             mc_distances = set()
 
-            for inode in inodes:
-                if mc_distance := graph.node_distance(inode, mc):
+            for atom in atoms:
+                if mc_distance := graph.node_distance(atom, mc):
                     mc_distances.add(mc_distance)
 
             if mc_distances:
                 mc_distance = min(mc_distances)
 
-        kg_nodes = query.concept_nodes(
-            kw_form2pos.keys(),
-            kw_pos,
-            [inode.plain_text for inode in inodes],
-            config.tuning("threshold", "node_similarity", "extraction"),
+        kg_nodes = wordnet.concept_synsets(
+            form2pos.keys(),
+            pos,
+            [atom.plain_text for atom in atoms],
+            tuning(config, "threshold", "node_similarity", "extraction"),
         )
 
         if len(kg_nodes) > 0:
             candidate = casebase.Concept(
-                kw.lower(),
-                kw_form2pos,
-                kw_pos2form,
-                kw_pos,
-                frozenset(inodes),
+                lemma.lower(),
+                form2pos,
+                pos2form,
+                pos,
+                frozenset(atoms),
                 kg_nodes,
                 related_concepts,
                 user_query,
-                query.concept_metrics(
+                evaluation.concept_metrics(
                     "extraction",
                     related_concepts,
                     user_query,
-                    inodes,
+                    atoms,
                     kg_nodes,
-                    kw,
-                    weight=kw_weight,
+                    lemma,
+                    weight=weight,
                     major_claim_distance=mc_distance,
                 ),
             )
@@ -93,28 +95,28 @@ def keywords(
             if candidate not in rule_sources and candidate not in rule_targets:
                 candidates.add(candidate)
 
-    occurences = defaultdict(int)
+    occurences: defaultdict[casebase.Concept, int] = defaultdict(int)
 
     for c in candidates:
         for form in c.forms:
             pattern = re.compile(f"\\b({form})\\b", re.IGNORECASE)
 
-            for adu in c.inodes:
+            for adu in c.atoms:
                 occurences[c] += len(re.findall(pattern, adu.plain_text))
 
     for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
         # 'tuition' in 'tuition fees'
         if (
             c1 != c2
-            and (c2.name.startswith(c1.name) or c2.name.endswith(c1.name))
+            and (c2.lemma.startswith(c1.lemma) or c2.lemma.endswith(c1.lemma))
             and o1 == o2
         ):
             candidates.difference_update([c1])
 
     concepts = casebase.filter_concepts(
         candidates,
-        config.tuning("threshold", "concept_score", "extraction"),
-        config.tuning("extraction", "max_concepts"),
+        tuning(config, "threshold", "concept_score", "extraction"),
+        tuning(config, "extraction", "max_concepts"),
     )
 
     log.debug(
@@ -126,7 +128,7 @@ def keywords(
 
 def paths(
     concepts: t.Iterable[casebase.Concept], rules: t.Collection[casebase.Rule]
-) -> t.Dict[casebase.Concept, t.List[graph.AbstractPath]]:
+) -> t.Dict[casebase.Concept, t.List[wordnet.Path]]:
     result = {}
     bfs_method = "between"
 
@@ -136,8 +138,8 @@ def paths(
 
             for rule in rules:
                 if (
-                    candidates := query.all_shortest_paths(
-                        rule.source.nodes, concept.nodes
+                    candidates := wordnet.all_shortest_paths(
+                        rule.source.synsets, concept.synsets
                     )
                 ) is not None:
                     paths.extend(candidates)
@@ -152,8 +154,8 @@ def paths(
         paths = []
 
         for rule in rules:
-            if candidates := query.all_shortest_paths(
-                rule.source.nodes, rule.target.nodes
+            if candidates := wordnet.all_shortest_paths(
+                rule.source.synsets, rule.target.synsets
             ):
                 paths.extend(candidates)
 

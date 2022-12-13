@@ -22,7 +22,7 @@ def hypernyms():
         try:
             concept_uri = input("Enter concept in the form 'name/pos': ")
             concept, user_pos = concept_uri.split("/")
-            concept = concept.replace(" ", "_").strip()
+            concept = concept.strip()
             wn_pos_tags = _pos2wn(user_pos)
 
             if not wn_pos_tags:
@@ -51,9 +51,7 @@ def hypernyms():
                     "psychological_feature.n.01",
                 ]
             )
-            lemmas = sorted(
-                {lemma.name().replace("_", " ") + f"/{user_pos}" for lemma in hypernyms}
-            )
+            lemmas = sorted({lemma.name() + f"/{user_pos}" for lemma in hypernyms})
 
             print("The following hypernyms are possible:")
             print("\n".join(lemmas))

@@ -4,25 +4,32 @@ from collections import defaultdict
 
 import immutables
 import lemminflect
+from arguegen.config import config
 from nltk import pos_tag, word_tokenize
-from arguegen.model.config import Config
-
-config = Config.instance()
 
 
 def _lemma_parts(text: str, pos: str) -> t.List[str]:
-    tokens: t.List[str] = text.split()  # type: ignore
+    tokens: t.List[str] = text.split()
 
     *parts, tail = tokens
-    parts.append(lemminflect.getLemma(tail, pos)[0])
+    tail_lemmas = t.cast(tuple[str, ...], lemminflect.getLemma(tail, pos))
+
+    if len(tail_lemmas) > 0:
+        parts.append(tail_lemmas[0])
 
     return parts
 
 
-def _inflect(text: str, pos: str) -> t.Tuple[str, t.Dict[str, t.List[str]]]:
+def _inflect(
+    text: str, pos: str, lemmatize: bool
+) -> t.Tuple[str, t.Dict[str, t.List[str]]]:
     """Return the lemma of `text` and all inflected forms of `text`."""
 
-    lemma_parts = _lemma_parts(text, pos)
+    if lemmatize:
+        lemma_parts = _lemma_parts(text, pos)
+    else:
+        lemma_parts = text.split()
+
     lemma = " ".join(lemma_parts)
     *lemma_prefixes, lemma_suffix = lemma_parts
     lemma_prefix = " ".join(lemma_prefixes)
@@ -63,12 +70,12 @@ def make_immutable(
 
 
 def inflect_concept(
-    text: str, pos_tags: t.Union[str, t.Iterable[t.Optional[str]]]
+    text: str, pos_tags: t.Union[str, t.Iterable[t.Optional[str]]], lemmatize: bool
 ) -> t.Tuple[
     str, immutables.Map[str, t.Tuple[str, ...]], immutables.Map[str, t.Tuple[str, ...]]
 ]:
     if isinstance(pos_tags, str):
-        lemma, forms = _inflect(text, pos_tags)
+        lemma, forms = _inflect(text, pos_tags, lemmatize)
         return lemma, make_immutable(forms, True), make_immutable(forms, False)
 
     lemmas = set()
@@ -80,7 +87,7 @@ def inflect_concept(
             # The pos tag (index 1) of the last token (index -1) is used.
             pos = pos_tag(text, tagset="universal")[-1][1]
 
-        _lemma, _form2pos, _pos2form = inflect_concept(text, pos)
+        _lemma, _form2pos, _pos2form = inflect_concept(text, pos, lemmatize)
         lemmas.add(_lemma)
 
         for _pos_tag, _forms in _pos2form.items():

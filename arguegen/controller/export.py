@@ -7,17 +7,16 @@ from pathlib import Path
 
 import arguebuf as ag
 from arguegen.controller import convert
-from arguegen.model import casebase, graph
-from arguegen.model.config import Config
+from arguegen.model import casebase, evaluation, wordnet
+from arguegen.config import config
 
 log = logging.getLogger(__name__)
-config = Config.instance()
 
 
 def statistic(
     concepts: t.Iterable[casebase.Concept],
-    reference_paths: t.Mapping[casebase.Concept, t.Iterable[graph.AbstractPath]],
-    adapted_paths: t.Mapping[casebase.Concept, t.Iterable[graph.AbstractPath]],
+    reference_paths: t.Mapping[casebase.Concept, t.Iterable[wordnet.Path]],
+    adapted_paths: t.Mapping[casebase.Concept, t.Iterable[wordnet.Path]],
     adapted_concept_candidates: t.Mapping[
         casebase.Concept, t.Iterable[casebase.Concept]
     ],
@@ -47,7 +46,7 @@ def statistic(
 
 
 def grid_stats(
-    results: t.Iterable[t.Tuple[str, int, casebase.EvaluationTuple]],
+    results: t.Iterable[t.Tuple[str, int, evaluation.EvaluationTuple]],
     duration: float,
     param_grid: t.Sequence[t.Mapping[str, t.Any]],
     out_path: Path,
@@ -56,12 +55,12 @@ def grid_stats(
 
     results = [entry for entry in results if entry is not None]
     case_results: t.Dict[
-        str, t.List[t.Tuple[casebase.EvaluationTuple, int]]
+        str, t.List[t.Tuple[evaluation.EvaluationTuple, int]]
     ] = defaultdict(list)
-    param_combinations: t.List[t.List[casebase.EvaluationTuple]] = [
+    param_combinations: t.List[t.List[evaluation.EvaluationTuple]] = [
         [] for _ in range(len(param_grid))
     ]
-    param_results: t.Dict[str, t.Dict[str, t.List[casebase.EvaluationTuple]]] = {
+    param_results: t.Dict[str, t.Dict[str, t.List[evaluation.EvaluationTuple]]] = {
         key: defaultdict(list) for key in config["tuning"]
     }
     score_distribution = []
@@ -121,7 +120,7 @@ def grid_stats(
                     "files": _output_file_paths(current_path),
                 }
 
-            eval_results_aggr = casebase.aggregate_eval(eval_tuples)
+            eval_results_aggr = evaluation.aggregate_eval(eval_tuples)
 
             mean_param_combinations.append(
                 {
@@ -143,14 +142,14 @@ def grid_stats(
         mean_param_results[param_key] = {}
 
         for param_value, eval_results in param_values.items():
-            mean_param_results[param_key][param_value] = casebase.aggregate_eval(
+            mean_param_results[param_key][param_value] = evaluation.aggregate_eval(
                 eval_results
             )
 
     grid_stats_path = out_path / "grid_stats.json"
     grid_stats = {
         "duration": duration,
-        "score_distribution": casebase.aggregate_eval(score_distribution),
+        "score_distribution": evaluation.aggregate_eval(score_distribution),
         "param_results": mean_param_results,
         "param_combinations": mean_param_combinations,
         "case_results": best_case_results,

@@ -2,8 +2,9 @@ import logging
 import typing as t
 
 import arguebuf as ag
+
 from arguegen.controller import convert
-from arguegen.model import casebase, nlp, query
+from arguegen.model import casebase, evaluation, nlp
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ def case(
     all_concepts: t.Iterable[casebase.Concept],
     adapted_graph: t.Optional[ag.Graph],
     duration: float,
-) -> casebase.EvaluationTuple:
+) -> evaluation.EvaluationTuple:
     benchmark_adaptations = {rule.source: rule.target for rule in case.benchmark_rules}
     computed_adaptations = {**adapted_concepts}
     # benchmark_weights = list(range(len(benchmark_adaptations), 0, -1))
@@ -58,7 +59,7 @@ def case(
         retrieved_sim = _graph_similarity(case.user_query, case.graph)
         adapted_sim = _graph_similarity(case.user_query, adapted_graph)
 
-    synthesis_eval = casebase.Evaluation(
+    synthesis_eval = evaluation.Evaluation(
         duration=duration,
         tp=tp,
         tn=tn,
@@ -94,7 +95,7 @@ def case(
         case.user_query,
     )
 
-    deliberation_eval = casebase.Evaluation(
+    deliberation_eval = evaluation.Evaluation(
         duration=0,
         tp=tp_baseline,
         tn=tn,
@@ -107,7 +108,7 @@ def case(
         adapted_sim=retrieved_sim,
     )
 
-    return casebase.EvaluationTuple(synthesis_eval, deliberation_eval)
+    return evaluation.EvaluationTuple(synthesis_eval, deliberation_eval)
 
 
 def _eval_sets(
@@ -116,9 +117,9 @@ def _eval_sets(
     benchmark_weights: t.Iterable[int],
     user_query: casebase.UserQuery,
 ) -> t.Tuple[
-    t.List[casebase.WeightedScore],
-    t.List[casebase.WeightedScore],
-    t.List[casebase.WeightedScore],
+    t.List[evaluation.WeightedScore],
+    t.List[evaluation.WeightedScore],
+    t.List[evaluation.WeightedScore],
 ]:
     tp = []
     fn = []
@@ -130,7 +131,7 @@ def _eval_sets(
     ):
         if computed_adaptation := computed_adaptations.get(original_concept):
             tp.append(
-                casebase.WeightedScore(
+                evaluation.WeightedScore(
                     original_concept,
                     _compute_score(
                         benchmark_adaptation, computed_adaptation, user_query
@@ -139,20 +140,20 @@ def _eval_sets(
                 )
             )
             tp_baseline.append(
-                casebase.WeightedScore(
+                evaluation.WeightedScore(
                     original_concept,
                     _compute_score(benchmark_adaptation, original_concept, user_query),
                     weight,
                 )
             )
         else:
-            fn.append(casebase.WeightedScore(original_concept, 0.0, weight))
+            fn.append(evaluation.WeightedScore(original_concept, 0.0, weight))
 
     for original_concept, computed_adaptation in computed_adaptations.items():
         if original_concept not in benchmark_adaptations:
             # Here, benchmark_adaptation == original_concept
             fp.append(
-                casebase.WeightedScore(
+                evaluation.WeightedScore(
                     original_concept,
                     _compute_score(original_concept, computed_adaptation, user_query),
                     1,
@@ -163,9 +164,9 @@ def _eval_sets(
 
 
 def _eval_scores(
-    true_positives: t.Iterable[casebase.WeightedScore],
-    false_negatives: t.Iterable[casebase.WeightedScore],
-    false_positives: t.Iterable[casebase.WeightedScore],
+    true_positives: t.Iterable[evaluation.WeightedScore],
+    false_negatives: t.Iterable[evaluation.WeightedScore],
+    false_positives: t.Iterable[evaluation.WeightedScore],
     benchmark_weights: t.Iterable[int],
     benchmark_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
     computed_adaptations: t.Mapping[casebase.Concept, casebase.Concept],
@@ -196,7 +197,7 @@ def _eval_scores(
 
 
 def _graph_similarity(user_query: casebase.UserQuery, graph: ag.Graph) -> float:
-    graph_text = " ".join(inode.plain_text for inode in graph.atom_nodes.values())
+    graph_text = " ".join(atom.plain_text for atom in graph.atom_nodes.values())
 
     return nlp.similarity(user_query.text, graph_text)
 
@@ -210,12 +211,12 @@ def _compute_score(
         return 1.0
 
     return casebase.score(
-        query.concept_metrics(
+        evaluation.concept_metrics(
             "evaluation",
             concept2,
             user_query,
-            concept1.inodes,
-            concept1.nodes,
-            concept1.name,
+            concept1.atoms,
+            concept1.synsets,
+            concept1.lemma,
         )
     )

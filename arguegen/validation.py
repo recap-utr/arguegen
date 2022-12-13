@@ -8,14 +8,13 @@ from nltk.metrics import agreement, masi_distance
 
 from arguegen.controller import load
 from arguegen.model import casebase
-from arguegen.model.config import Config
+from arguegen.config import config
 
 app = typer.Typer()
 
 
 @app.command()
 def rule_agreement(path: Path) -> None:
-    config = Config.instance()
     config["loading"]["user_defined_rules"] = False
     cases = load.cases(path, allow_empty_rules=True)
 
@@ -80,8 +79,6 @@ def _triples(
 
 @app.command()
 def annotator_agreement(path1: Path, path2: t.Optional[Path] = None) -> None:
-    config = Config.instance()
-
     source_triples = set()
     target_triples = set()
     source_target_triples = set()

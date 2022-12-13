@@ -8,11 +8,9 @@ import pendulum
 import requests
 import typer
 
+from arguegen.config import config, tuning
 from arguegen.controller import adapt, convert, evaluate, export, extract, load
-from arguegen.model import casebase, nlp, wordnet
-from arguegen.model.config import Config
-
-config = Config.instance()
+from arguegen.model import casebase, evaluation, nlp, wordnet
 
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
@@ -20,7 +18,7 @@ log = logging.getLogger(__name__)
 
 def _init_child_process():
     # https://stackoverflow.com/a/50379950/7626878
-    wordnet.wn = wordnet.init_reader()
+    # wordnet.wn = wordnet.init_reader()
     nlp.client = nlp.init_client()
 
 
@@ -76,7 +74,7 @@ def run():
 
 def _parametrized_run(
     args: load.RunArgs,
-) -> t.Tuple[str, int, casebase.EvaluationTuple]:
+) -> t.Tuple[str, int, evaluation.EvaluationTuple]:
     log.debug(f"Starting run {args.current_run + 1}/{args.total_runs}.")
 
     config["_tuning"] = args.params
@@ -102,7 +100,7 @@ def _parametrized_run(
     )
 
     log.debug("Adapting concepts.")
-    adaptation_method = config.tuning("adaptation", "method")
+    adaptation_method = tuning(config, "adaptation", "method")
 
     if adaptation_method == "direct":
         adapted_concepts, adapted_concept_candidates = adapt.concepts(

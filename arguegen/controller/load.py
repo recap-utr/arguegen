@@ -7,13 +7,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import arguebuf as ag
-from arguegen.controller.inflect import inflect_concept
-from arguegen.model import casebase, nlp, query
-from arguegen.model.config import Config
-from nltk.corpus import wordnet as wn
 from sklearn.model_selection import ParameterGrid
 
-config = Config.instance()
+from arguegen.config import config
+from arguegen.controller.inflect import inflect_concept
+from arguegen.model import casebase, nlp, wordnet
+
 log = logging.getLogger(__name__)
 
 
@@ -108,7 +107,9 @@ def _case(
         )
 
     graph = ag.Graph.from_file(
-        graph_path, casebase.HashableAtom, casebase.HashableScheme
+        graph_path,
+        atom_class=casebase.HashableAtom,
+        scheme_class=casebase.HashableScheme,
     )
     user_query = _parse_query(query_path)
     user_rules = _parse_user_rules(rules_path, graph, user_query)
@@ -158,7 +159,7 @@ def _parse_user_rules(
                 source_name, source_pos, graph, user_query, path, None
             )
             target = _parse_rule_concept(
-                target_name, target_pos, graph, user_query, path, source.inodes
+                target_name, target_pos, graph, user_query, path, source.atoms
             )
             rule = _create_rule(source, target, path)
 
@@ -172,13 +173,13 @@ def _parse_user_rules(
 def _generate_system_rules(
     path: Path, graph: ag.Graph, user_query: casebase.UserQuery
 ) -> t.Tuple[casebase.Rule, ...]:
-    if not graph.major_claim:
+    mc = graph.major_claim or graph.root_node
+
+    if not mc:
         return tuple()
 
     rules = {}
-    major_claim_kw = nlp.keywords(
-        [graph.major_claim.text], config["loading"]["heuristic_pos_tags"]
-    )
+    major_claim_kw = nlp.keywords([mc.text], config["loading"]["heuristic_pos_tags"])
     user_query_kw = nlp.keywords(
         [user_query.text], config["loading"]["heuristic_pos_tags"]
     )
@@ -188,12 +189,12 @@ def _generate_system_rules(
         user_query_kw,
     ):
         if (
-            source_token.keyword != target_token.keyword
+            source_token.lemma != target_token.lemma
             and source_token.pos_tag == target_token.pos_tag
         ):
             try:
                 source = _parse_rule_concept(
-                    source_token.keyword.strip().lower(),
+                    source_token.lemma.strip(),
                     casebase.spacy2pos(source_token.pos_tag),
                     graph,
                     user_query,
@@ -201,16 +202,16 @@ def _generate_system_rules(
                     None,
                 )
                 target = _parse_rule_concept(
-                    target_token.keyword.strip().lower(),
+                    target_token.lemma.strip(),
                     casebase.spacy2pos(target_token.pos_tag),
                     graph,
                     user_query,
                     path,
-                    source.inodes,
+                    source.atoms,
                 )
 
-                if shortest_paths := query.all_shortest_paths(
-                    source.nodes, target.nodes
+                if shortest_paths := wordnet.all_shortest_paths(
+                    source.synsets, target.synsets
                 ):
                     rule = _create_rule(source, target, path)
 
@@ -255,7 +256,7 @@ def _create_rule(
     source: casebase.Concept, target: casebase.Concept, path: Path
 ) -> casebase.Rule:
     if config["loading"]["enforce_node_paths"]:
-        paths = query.all_shortest_paths(source.nodes, target.nodes)
+        paths = wordnet.all_shortest_paths(source.synsets, target.synsets)
 
         if len(paths) == 0:
             err = (
@@ -263,18 +264,15 @@ def _create_rule(
                 "No path to connect the concepts could be found in the knowledge graph. "
             )
 
-            if config["adaptation"]["knowledge_graph"] == "wordnet":
-                synsets = [wn.synset(node.uri) for node in source.nodes]
-                hypernyms = itertools.chain.from_iterable(
-                    hyp.lemmas()
-                    for synset in synsets
-                    for hyp, _ in synset.hypernym_distances()
-                    if not hyp.name().startswith(source.name)
-                    and hyp.name() not in config["wordnet"]["hypernym_filter"]
-                )
-                lemmas = {lemma.name().replace("_", " ") for lemma in hypernyms}
+            lemmas = itertools.chain.from_iterable(
+                hyp.lemmas
+                for synset in source.synsets
+                for hyp, _ in synset.hypernym_distances().items()
+                if not any(lemma.startswith(source.lemma) for lemma in hyp.lemmas)
+                and hyp._synset.id not in config["wordnet"]["hypernym_filter"]
+            )
 
-                err += f"The following hypernyms are permitted: {sorted(lemmas)}"
+            err += f"The following hypernyms are permitted: {sorted(lemmas)}"
 
             raise RuntimeError(err)
 
@@ -293,51 +291,53 @@ def _parse_rule_concept(
     graph: ag.Graph,
     user_query: casebase.UserQuery,
     path: Path,
-    inodes: t.Optional[t.FrozenSet[casebase.HashableAtom]],
+    atoms: t.Optional[t.FrozenSet[casebase.HashableAtom]],
 ) -> casebase.Concept:
-    kw_name, kw_form2pos, kw_pos2form = inflect_concept(name, casebase.pos2spacy(pos))
+    lemma, form2pos, pos2form = inflect_concept(
+        name, casebase.pos2spacy(pos), lemmatize=True
+    )
 
-    if not inodes:
-        tmp_inodes = set()
+    if not atoms:
+        tmp_atoms = set()
 
         # Only accept rules that cover a complete word.
         # If for example 'landlord' is a rule, but the node only contains 'landlords',
         # an exception will be thrown.
-        for kw_form in kw_form2pos:
-            pattern = re.compile(f"\\b({kw_form})\\b")
+        for form in form2pos:
+            pattern = re.compile(f"\\b({form})\\b")
 
-            for inode in graph.atom_nodes.values():
-                node_txt = inode.plain_text.lower()
+            for atom in graph.atom_nodes.values():
+                atom_txt = atom.plain_text.lower()
 
-                if pattern.search(node_txt):
-                    tmp_inodes.add(t.cast(casebase.HashableAtom, inode))
+                if pattern.search(atom_txt):
+                    tmp_atoms.add(t.cast(casebase.HashableAtom, atom))
 
-        if not tmp_inodes:
+        if not tmp_atoms:
             raise ValueError(
-                f"The concept '{name}' with the forms '{kw_form2pos}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
+                f"The concept '{name}' with the forms '{form2pos}' specified in '{str(path)}' could not be found in the graph '{path.parent / str(graph.name)}.json'. Please check the spelling."
             )
 
-        inodes = frozenset(tmp_inodes)
+        atoms = frozenset(tmp_atoms)
 
-    if config["loading"]["filter_kg_nodes"]:
-        nodes = query.concept_nodes(kw_form2pos.keys(), pos)
+    if not config["loading"]["filter_kg_nodes"]:
+        synsets = wordnet.concept_synsets(form2pos.keys(), pos)
     else:
-        nodes = query.concept_nodes(
-            kw_form2pos.keys(), pos, [inode.plain_text for inode in inodes]
+        synsets = wordnet.concept_synsets(
+            form2pos.keys(), pos, [atom.plain_text for atom in atoms]
         )
 
-    if not nodes:
+    if not synsets:
         raise ValueError(
-            f"The concept '{name}' with the forms '{kw_form2pos}' specified in '{str(path)}' cannot be found in the knowledge graph."
+            f"The concept '{name}' with the forms '{form2pos}' specified in '{str(path)}' cannot be found in the knowledge graph."
         )
 
     return casebase.Concept(
-        kw_name,
-        kw_form2pos,
-        kw_pos2form,
+        lemma,
+        form2pos,
+        pos2form,
         pos,
-        inodes,
-        nodes,
+        atoms,
+        synsets,
         {},
         user_query,
         {key: 1.0 for key in casebase.metric_keys},

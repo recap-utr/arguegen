@@ -1,23 +1,15 @@
-version = "3.5"
-
-
 # PRIVATE
 
 [resources]
-processes = 0
+processes = 1
 relative_paths = false # in stat files, output paths relative to the workspace root
 
 [resources.cases]
 input = "data/input"
 output = "data/output"
 
-[resources.conceptnet]
-url = "neo4j://localhost:7687"
-username = "neo4j"
-password = ""
-
 [resources.nlp]
-url = "127.0.0.1:5001"
+url = "ipv4:127.0.0.1:5678"
 
 
 # PUBLIC
@@ -61,8 +53,8 @@ extraction_keyword_pos_tags = [["NOUN", "VERB"]]
 extraction_keywords_per_adu = [false]
 extraction_max_concepts = [10000]
 
-nlp_embeddings = ["use-small"] # glove, sbert, use-small, use-large
-nlp_similarity = ["cosine"]    # dynamax
+nlp_embeddings = ["glove"]  # glove, sbert, use-small, use-large
+nlp_similarity = ["cosine"] # dynamax
 
 # Of which metrics should the score consist
 # score_adus_sem_sim = [0, 1]
@@ -101,6 +93,9 @@ NN = ["relinquishing"]
 [nlp.inflections.impedimentum]
 NNS = ["impedimenta"]
 
+[nlp.inflections.be]
+VBZ = ["'s"]
+
 
 [wordnet]
 hypernym_filter = [
@@ -116,59 +111,3 @@ hypernym_filter = [
     "thing.n.08",
 ]
 node_context_components = ["examples", "definition"]
-
-
-[conceptnet]
-[conceptnet.node]
-follow_form_of = false
-
-[conceptnet.relation]
-directed = true
-generalization_types = ["IsA"] # "HasA", "DerivedFrom", "IsA", "PartOf"
-all_types = [
-    "Antonym",
-    "AtLocation",
-    "CapableOf",
-    "Causes",
-    "CausesDesire",
-    "CreatedBy",
-    "DefinedAs",
-    "DerivedFrom",
-    "Desires",
-    "DistinctFrom",
-    "Entails",
-    "EtymologicallyDerivedFrom",
-    "EtymologicallyRelatedTo",
-    "ExternalURL",
-    "FormOf",
-    "HasA",
-    "HasContext",
-    "HasFirstSubevent",
-    "HasLastSubevent",
-    "HasPrerequisite",
-    "HasProperty",
-    "HasSubevent",
-    "IsA",
-    "IsInstanceOf",
-    "LocatedNear",
-    "MadeOf",
-    "MannerOf",
-    "MotivatedByGoal",
-    "NotCapableOf",
-    "NotDesires",
-    "NotHasProperty",
-    "ObstructedBy",
-    "PartOf",
-    "ReceivesAction",
-    "RelatedTo",
-    "SimilarTo",
-    "SymbolOf",
-    "Synonym",
-    "UsedFor",
-]
-
-[conceptnet.path]
-[conceptnet.path.max_length]
-shortest_path = 20
-generalization = 10
-metrics = 10
