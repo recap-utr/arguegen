@@ -14,13 +14,13 @@ typer = "^0.7.0"
 lemminflect = "^0.2.3"
 immutables = "^0.19"
 nlp-service = "^0.3.2"
-arg-services = "^0.3.10"
+arg-services = "^0.4.0"
 arguebuf = "^1.2.1"
 wn = "^0.9.3"
 dynaconf = "^3.1.11"
 
 [tool.poetry.dev-dependencies]
-json2python-models = "^0.2.7"
+json2python-models = "^0.3.0"
 
 [build-system]
 requires = ["poetry-core"]
