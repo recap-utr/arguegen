@@ -12,7 +12,6 @@ from arguegen.config import config, tuning
 from arguegen.controller import adapt, convert, evaluate, export, extract, load
 from arguegen.model import casebase, evaluation, nlp, wordnet
 
-logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 
 

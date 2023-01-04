@@ -8,6 +8,6 @@ logging.basicConfig(
     level=logging.WARN,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
