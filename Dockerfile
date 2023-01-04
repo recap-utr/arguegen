@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 ENV POETRY_VERSION=1.3.1
 ENV DEBIAN_FRONTEND=noninteractive
