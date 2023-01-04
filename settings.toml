@@ -95,5 +95,6 @@ VBZ = ["'s"]
 
 
 [wordnet]
+simulate_root = true
 hypernym_filter = []
 node_context_components = ["examples", "definition"]

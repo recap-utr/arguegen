@@ -81,7 +81,9 @@ class Node:
     ) -> t.Dict[Node, int]:
         distances_map: defaultdict[Node, list[int]] = defaultdict(list)
 
-        for path in self._synset.hypernym_paths(simulate_root=True):
+        for path in self._synset.hypernym_paths(
+            simulate_root=config.wordnet.simulate_root
+        ):
             for dist, hyp_ in enumerate(path):
                 hyp = Node(hyp_)
 
@@ -270,7 +272,9 @@ def _filter_nodes(
 def inherited_hypernyms(node: Node) -> t.FrozenSet[Path]:
     hyp_paths = []
 
-    for hyp_path in node._synset.hypernym_paths(simulate_root=True):
+    for hyp_path in node._synset.hypernym_paths(
+        simulate_root=config.wordnet.simulate_root
+    ):
         hyp_sequence = []
 
         for hyp in reversed(hyp_path[:-1]):  # The last element is the queried node
@@ -306,9 +310,12 @@ def all_shortest_paths(
 
                 all_paths.append(Path.from_nodes(shortest_path))
 
-    shortest_length = min(len(path) for path in all_paths)
+    if len(all_paths) > 0:
+        shortest_length = min(len(path) for path in all_paths)
 
-    return frozenset(path for path in all_paths if len(path) == shortest_length)
+        return frozenset(path for path in all_paths if len(path) == shortest_length)
+
+    return frozenset()
 
 
 def concept_synsets(

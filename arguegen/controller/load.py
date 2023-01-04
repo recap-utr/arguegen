@@ -119,6 +119,11 @@ def _case(
         else _generate_system_rules(rules_path, graph, user_query)
     )
 
+    log.debug(
+        f"Using the following {'user' if config.loading.user_defined_rules else 'system'}-generated rules: "
+        + ", ".join(str(rule) for rule in rules)
+    )
+
     if not user_rules:
         raise RuntimeError(f"No rules found in file '{rules_path}'.")
     if not rules and not allow_empty_rules:
@@ -178,7 +183,7 @@ def _generate_system_rules(
     if not mc:
         return tuple()
 
-    rules = {}
+    rules: dict[casebase.Rule, int] = {}
     major_claim_kw = nlp.keywords([mc.text], config["loading"]["heuristic_pos_tags"])
     user_query_kw = nlp.keywords(
         [user_query.text], config["loading"]["heuristic_pos_tags"]
