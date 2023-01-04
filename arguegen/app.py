@@ -24,11 +24,6 @@ def _init_child_process():
 def run():
     log.info("Initializing.")
 
-    # Add some hyperparameters
-    config["tuning"]["global_knowledge_graph"] = [
-        config["adaptation"]["knowledge_graph"]
-    ]
-
     start_time = timer()
     processes = int(config["resources"]["processes"])
 

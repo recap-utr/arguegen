@@ -24,9 +24,6 @@ retrieval_improvement = true
 single_stats = true
 sort_key = "score"           # score, sim_improvement
 
-[adaptation]
-knowledge_graph = "wordnet"
-
 [loading]
 # only set to false if the user-defined rules do NOT represent a path in the KG
 enforce_node_paths = true
