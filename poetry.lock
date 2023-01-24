@@ -2,17 +2,18 @@
 
 [[package]]
 name = "arg-services"
-version = "1.0.2"
+version = "1.0.8"
 description = "gRPC definitions for microservice-based argumentation machines"
 category = "main"
 optional = false
-python-versions = ">=3.8,<4.0"
+python-versions = ">=3.9,<4.0"
 files = [
-    {file = "arg_services-1.0.2-py3-none-any.whl", hash = "sha256:cbd57faf45cd2b48955b2f8264f9bbaa2c3e037ba9aed085bc4b04d72765c2d1"},
-    {file = "arg_services-1.0.2.tar.gz", hash = "sha256:8d9fe7da3764b0d8bde9718c537c499263e2a47b8ee46c7b1d39fbf8297d2113"},
+    {file = "arg_services-1.0.8-py3-none-any.whl", hash = "sha256:a31f30ef9cfd9ae8c38e3ff3efbc75dac1eb64b4e753c3a6350bfed51f0e996c"},
+    {file = "arg_services-1.0.8.tar.gz", hash = "sha256:fa14cc8c734de53ed0061aca961e9aa62f9db8770208627ffb3ecf550bd1fd51"},
 ]
 
 [package.dependencies]
+grpc-stubs = ">=1.24.12,<2.0.0"
 grpcio = ">=1.51.1,<2.0.0"
 grpcio-reflection = ">=1.51.1,<2.0.0"
 protobuf = ">=4.21.12,<5.0.0"
@@ -329,26 +330,6 @@ toolz = ">=0.8.0"
 cython = ["cython"]
 
 [[package]]
-name = "dataclasses-json"
-version = "0.5.7"
-description = "Easily serialize dataclasses to and from JSON"
-category = "main"
-optional = false
-python-versions = ">=3.6"
-files = [
-    {file = "dataclasses-json-0.5.7.tar.gz", hash = "sha256:c2c11bc8214fbf709ffc369d11446ff6945254a7f09128154a7620613d8fda90"},
-    {file = "dataclasses_json-0.5.7-py3-none-any.whl", hash = "sha256:bc285b5f892094c3a53d558858a88553dd6a61a11ab1a8128a0e554385dcc5dd"},
-]
-
-[package.dependencies]
-marshmallow = ">=3.3.0,<4.0.0"
-marshmallow-enum = ">=1.5.1,<2.0.0"
-typing-inspect = ">=0.4.0"
-
-[package.extras]
-dev = ["flake8", "hypothesis", "ipython", "mypy (>=0.710)", "portray", "pytest (>=6.2.3)", "simplejson", "types-dataclasses"]
-
-[[package]]
 name = "dynaconf"
 version = "3.1.11"
 description = "The dynamic configurator for your Python Project"
@@ -386,6 +367,21 @@ files = [
 dev = ["flake8", "pep8-naming", "tox (>=3)", "twine", "wheel"]
 docs = ["sphinx (>=5)", "sphinx-autodoc-typehints", "sphinx-rtd-theme"]
 test = ["coverage", "mock (>=4)", "pytest (>=7)", "pytest-cov", "pytest-mock (>=3)"]
+
+[[package]]
+name = "grpc-stubs"
+version = "1.24.12"
+description = "Mypy stubs for gRPC"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "grpc-stubs-1.24.12.tar.gz", hash = "sha256:7ca7bff5a9bd6401c6cddedf14882c8cb6d5ff6017271ad36881c8eb5129d6cd"},
+    {file = "grpc_stubs-1.24.12-py3-none-any.whl", hash = "sha256:9cdc502ea7a4a69841e3328414181bc407b32a8339feae4397c82182b7a0a779"},
+]
+
+[package.dependencies]
+grpcio = "*"
 
 [[package]]
 name = "grpcio"
@@ -786,40 +782,25 @@ files = [
 ]
 
 [[package]]
-name = "marshmallow"
-version = "3.19.0"
-description = "A lightweight library for converting complex datatypes to and from native Python datatypes."
+name = "mashumaro"
+version = "3.3.1"
+description = "Fast serialization framework on top of dataclasses"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "marshmallow-3.19.0-py3-none-any.whl", hash = "sha256:93f0958568da045b0021ec6aeb7ac37c81bfcccbb9a0e7ed8559885070b3a19b"},
-    {file = "marshmallow-3.19.0.tar.gz", hash = "sha256:90032c0fd650ce94b6ec6dc8dfeb0e3ff50c144586462c389b81a07205bedb78"},
+    {file = "mashumaro-3.3.1-py3-none-any.whl", hash = "sha256:74ae7704e4ac8813ff701909aa8d96a405156dc2e1e3fd34ac07db7f0823a54a"},
+    {file = "mashumaro-3.3.1.tar.gz", hash = "sha256:997ed0a4ce64967b96ff65f5ca76b8e5e459a4ec7a6a0f73625a067004a801c9"},
 ]
 
 [package.dependencies]
-packaging = ">=17.0"
+typing-extensions = ">=4.1.0"
 
 [package.extras]
-dev = ["flake8 (==5.0.4)", "flake8-bugbear (==22.10.25)", "mypy (==0.990)", "pre-commit (>=2.4,<3.0)", "pytest", "pytz", "simplejson", "tox"]
-docs = ["alabaster (==0.7.12)", "autodocsumm (==0.2.9)", "sphinx (==5.3.0)", "sphinx-issues (==3.0.1)", "sphinx-version-warning (==1.1.2)"]
-lint = ["flake8 (==5.0.4)", "flake8-bugbear (==22.10.25)", "mypy (==0.990)", "pre-commit (>=2.4,<3.0)"]
-tests = ["pytest", "pytz", "simplejson"]
-
-[[package]]
-name = "marshmallow-enum"
-version = "1.5.1"
-description = "Enum field for Marshmallow"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "marshmallow-enum-1.5.1.tar.gz", hash = "sha256:38e697e11f45a8e64b4a1e664000897c659b60aa57bfa18d44e226a9920b6e58"},
-    {file = "marshmallow_enum-1.5.1-py2.py3-none-any.whl", hash = "sha256:57161ab3dbfde4f57adeb12090f39592e992b9c86d206d02f6bd03ebec60f072"},
-]
-
-[package.dependencies]
-marshmallow = ">=2.0.0"
+msgpack = ["msgpack (>=0.5.6)"]
+orjson = ["orjson"]
+toml = ["tomli (>=1.1.0)", "tomli-w (>=1.0)"]
+yaml = ["pyyaml (>=3.13)"]
 
 [[package]]
 name = "murmurhash"
@@ -860,18 +841,6 @@ files = [
 ]
 
 [[package]]
-name = "mypy-extensions"
-version = "0.4.3"
-description = "Experimental type system extensions for programs checked with the mypy typechecker."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
-    {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
-]
-
-[[package]]
 name = "networkx"
 version = "2.8.8"
 description = "Python package for creating and manipulating graphs and networks"
@@ -892,27 +861,28 @@ test = ["codecov (>=2.1)", "pytest (>=7.2)", "pytest-cov (>=4.0)"]
 
 [[package]]
 name = "nlp-service"
-version = "1.0.2"
+version = "1.2.2"
 description = "Microservice for NLP tasks using gRPC"
 category = "main"
 optional = false
-python-versions = ">=3.8,<3.11"
+python-versions = ">=3.9,<3.12"
 files = [
-    {file = "nlp_service-1.0.2-py3-none-any.whl", hash = "sha256:5f3e2d0260218ef4a50c21dd793c4fc3a4da6b1a6d1792a02c8cdc5ccaa106c8"},
-    {file = "nlp_service-1.0.2.tar.gz", hash = "sha256:b44dae634a099eb19fb7bcdde357ee3de9db1c68944b20238e9cfab603508f2b"},
+    {file = "nlp_service-1.2.2-py3-none-any.whl", hash = "sha256:403a96cf5e1f7e7e9fc4018609dd4106820c5871f8e5ac48dac897d193cb5068"},
+    {file = "nlp_service-1.2.2.tar.gz", hash = "sha256:0b1276484207434b5a1bce032a3c94af646d709a169bafafd88cbbe2b3dc437e"},
 ]
 
 [package.dependencies]
-arg-services = ">=1.0.2,<2.0.0"
-dataclasses-json = ">=0.5.7,<0.6.0"
-nltk = ">=3.8,<4.0"
-numpy = ">=1.23.5,<2.0.0"
-scipy = ">=1.9.3,<2.0.0"
-spacy = ">=3.4.3,<4.0.0"
+arg-services = ">=1.0.8,<2.0.0"
+mashumaro = ">=3.3.1,<4.0.0"
+nltk = ">=3.8.1,<4.0.0"
+nptyping = ">=2.4.1,<3.0.0"
+numpy = ">=1.24.1,<2.0.0"
+scipy = ">=1.10.0,<2.0.0"
+spacy = ">=3.4.4,<4.0.0"
 
 [package.extras]
-server = ["gensim (>=4.2.0,<5.0.0)", "pyemd (>=0.5.1,<0.6.0)", "python-Levenshtein (>=0.20.8,<0.21.0)", "sentence-transformers (>=2.2.2,<3.0.0)", "torch (>=1.13.1,<2.0.0)", "typer (>=0.7.0,<0.8.0)"]
-wmd = ["gensim (>=4.2.0,<5.0.0)"]
+server = ["gensim (>=4.3.0,<5.0.0)", "pyemd (>=0.5.1,<0.6.0)", "python-Levenshtein (>=0.20.9,<0.21.0)", "sentence-transformers (>=2.2.2,<3.0.0)", "torch (>=1.13.1,<2.0.0)", "transformers (>=4.25.1,<5.0.0)", "typer (>=0.7.0,<0.8.0)"]
+wmd = ["gensim (>=4.3.0,<5.0.0)"]
 
 [[package]]
 name = "nltk"
@@ -939,6 +909,29 @@ machine-learning = ["numpy", "python-crfsuite", "scikit-learn", "scipy"]
 plot = ["matplotlib"]
 tgrep = ["pyparsing"]
 twitter = ["twython"]
+
+[[package]]
+name = "nptyping"
+version = "2.4.1"
+description = "Type hints for NumPy."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "nptyping-2.4.1-py3-none-any.whl", hash = "sha256:23e8164b1e2c55e872f392ca7516b9b1b0cb400b03b70accaa63998b4106b0b3"},
+    {file = "nptyping-2.4.1.tar.gz", hash = "sha256:57ba684ee5fc5eb681ee04270ee94adb879e4372ce6b640defa08ace8e1df295"},
+]
+
+[package.dependencies]
+numpy = {version = ">=1.20.0,<2.0.0", markers = "python_version >= \"3.8\""}
+typing-extensions = {version = ">=4.0.0,<5.0.0", markers = "python_version < \"3.10\""}
+
+[package.extras]
+build = ["invoke (>=1.6.0)", "pip-tools (>=6.5.0)"]
+complete = ["pandas", "pandas-stubs-fork"]
+dev = ["autoflake", "beartype (<0.10.0)", "beartype (>=0.10.0)", "black", "codecov (>=2.1.0)", "coverage", "feedparser", "invoke (>=1.6.0)", "isort", "mypy", "pandas", "pandas-stubs-fork", "pip-tools (>=6.5.0)", "pylint", "pyright", "setuptools", "typeguard", "wheel"]
+pandas = ["pandas", "pandas-stubs-fork"]
+qa = ["autoflake", "beartype (<0.10.0)", "beartype (>=0.10.0)", "black", "codecov (>=2.1.0)", "coverage", "feedparser", "isort", "mypy", "pylint", "pyright", "setuptools", "typeguard", "wheel"]
 
 [[package]]
 name = "numpy"
@@ -1831,22 +1824,6 @@ files = [
 ]
 
 [[package]]
-name = "typing-inspect"
-version = "0.8.0"
-description = "Runtime inspection utilities for typing module."
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "typing_inspect-0.8.0-py3-none-any.whl", hash = "sha256:5fbf9c1e65d4fa01e701fe12a5bca6c6e08a4ffd5bc60bfac028253a447c5188"},
-    {file = "typing_inspect-0.8.0.tar.gz", hash = "sha256:8b1ff0c400943b6145df8119c41c244ca8207f1f10c9c057aeed1560e4806e3d"},
-]
-
-[package.dependencies]
-mypy-extensions = ">=0.3.0"
-typing-extensions = ">=3.7.4"
-
-[[package]]
 name = "unidecode"
 version = "1.3.6"
 description = "ASCII transliterations of Unicode text"
@@ -1911,5 +1888,5 @@ web = ["starlette"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.8,<3.11"
-content-hash = "df62b3e88a82b100b1e61d015eacbba596c0d7d3a7fc653d312fa9c3accb7940"
+python-versions = ">=3.9,<3.12"
+content-hash = "c0a1ad91d6c8b1d474dfeb3a4ecede8617ea7c9c6c1aeee068b2b912c195c88f"
