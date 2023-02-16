@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "arguegen"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 
@@ -10,17 +10,15 @@ textacy = "^0.12.0"
 scikit-learn = "^1.2.0"
 pendulum = "^2.1.2"
 nltk = "^3.8.1"
-typer = "^0.7.0"
 lemminflect = "^0.2.3"
 immutables = "^0.19"
 nlp-service = "^1.2.2"
-arg-services = "^1.0.8"
-arguebuf = "^1.2.4"
+arg-services = "^1.2.0"
+arguebuf = { version = "^2.0.0b20", allow-prereleases = true }
 wn = "^0.9.3"
-dynaconf = "^3.1.11"
-
-[tool.poetry.group.dev.dependencies]
-json2python-models = "^0.3.0"
+openai = "^0.26.4"
+typed-settings = "^2.0.2"
+rich-click = "^1.6.1"
 
 [build-system]
 requires = ["poetry-core"]

@@ -6,9 +6,9 @@ from pathlib import Path
 import typer
 from nltk.metrics import agreement, masi_distance
 
-from arguegen.controller import load
-from arguegen.model import casebase
 from arguegen.config import config
+from arguegen.controllers import loader
+from arguegen.model import casebase
 
 app = typer.Typer()
 
@@ -16,7 +16,7 @@ app = typer.Typer()
 @app.command()
 def rule_agreement(path: Path) -> None:
     config["loading"]["user_defined_rules"] = False
-    cases = load.cases(path, allow_empty_rules=True)
+    cases = loader.cases(path, allow_empty_rules=True)
 
     total_rules = 0
     total_common_rules = 0
@@ -50,19 +50,22 @@ def rule_agreement(path: Path) -> None:
 
     print(f"Cases with empty rules: {empty_cases}/{len(cases)}")
     print(
-        f"Agreement over all rules: {total_common_rules}/{total_rules} ({total_common_rules/total_rules})"
+        "Agreement over all rules:"
+        f" {total_common_rules}/{total_rules} ({total_common_rules/total_rules})"
     )
     print(
-        f"Agreement over best rule: {total_contains_best_rule}/{len(cases)} ({total_contains_best_rule/len(cases)})"
+        "Agreement over best rule:"
+        f" {total_contains_best_rule}/{len(cases)} ({total_contains_best_rule/len(cases)})"
     )
     print(
-        f"Agreement over any rule: {total_contains_any_rule}/{len(cases)} ({total_contains_any_rule/len(cases)})"
+        "Agreement over any rule:"
+        f" {total_contains_any_rule}/{len(cases)} ({total_contains_any_rule/len(cases)})"
     )
 
 
 @app.command()
 def check_rules(path: Path) -> None:
-    load.cases(path, ignore_errors=False)
+    loader.cases(path, ignore_errors=False)
 
 
 def _triples(
@@ -87,12 +90,14 @@ def annotator_agreement(path1: Path, path2: t.Optional[Path] = None) -> None:
     first_source_target_triples = set()
     total_rules = 0
     rules_per_case = []
-    rule_code = lambda x: f"{x.source.code},{x.target.code}"
+
+    def rule_code(x):
+        return f"{x.source.code},{x.target.code}"
 
     if path2:
         config["loading"]["user_defined_rules"] = True
-        cases1 = load.cases(path1)
-        cases2 = load.cases(path2)
+        cases1 = loader.cases(path1)
+        cases2 = loader.cases(path2)
 
         for c1, c2 in itertools.product(cases1, cases2):
             if c1.relative_path == c2.relative_path:
@@ -155,7 +160,7 @@ def annotator_agreement(path1: Path, path2: t.Optional[Path] = None) -> None:
 
     else:
         config["loading"]["user_defined_rules"] = False
-        cases = load.cases(path1)
+        cases = loader.cases(path1)
 
         for c in cases:
             name = str(c.relative_path)

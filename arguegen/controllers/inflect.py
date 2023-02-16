@@ -1,11 +1,13 @@
-import itertools
 import typing as t
 from collections import defaultdict
 
 import immutables
 import lemminflect
-from arguegen.config import config
-from nltk import pos_tag, word_tokenize
+from nltk import pos_tag
+
+from arguegen.config import InflectionConfig
+
+config = InflectionConfig()
 
 
 def _lemma_parts(text: str, pos: str) -> t.List[str]:
@@ -25,11 +27,7 @@ def _inflect(
 ) -> t.Tuple[str, t.Dict[str, t.List[str]]]:
     """Return the lemma of `text` and all inflected forms of `text`."""
 
-    if lemmatize:
-        lemma_parts = _lemma_parts(text, pos)
-    else:
-        lemma_parts = text.split()
-
+    lemma_parts = _lemma_parts(text, pos) if lemmatize else text.split()
     lemma = " ".join(lemma_parts)
     *lemma_prefixes, lemma_suffix = lemma_parts
     lemma_prefix = " ".join(lemma_prefixes)
@@ -42,14 +40,14 @@ def _inflect(
     forms = defaultdict(list)
     forms["X"].append(lemma)
 
-    for pos_tag, inflections in inflection_map.items():
+    for tag, inflections in inflection_map.items():
         for inflection in inflections:
             form = " ".join([lemma_prefix, inflection])
-            forms[pos_tag].append(form.strip())
+            forms[tag].append(form.strip())
 
-    if additional_inflections := config["nlp"]["inflections"].get(lemma):
-        for pos_tag, inflections in additional_inflections.items():
-            forms[pos_tag].extend(inflections)
+    if additional_inflections := config.forms.get(lemma):
+        for tag, inflections in additional_inflections.items():
+            forms[tag].extend(inflections)
 
     return lemma, forms
 
@@ -102,9 +100,10 @@ def inflect_concept(
     # Thus, len(query.pos_tags) == 1 in all cases.
     lemma = next(iter(lemmas))
 
-    if not text in form2pos:
+    if text not in form2pos:
         raise RuntimeError(
-            f"{text=} not in {form2pos=}. You should update config['nlp']['inflections']['{lemma}']."
+            f"{text=} not in {form2pos=}. You should update the inflection config for"
+            f" '{lemma}'."
         )
 
     return lemma, make_immutable(form2pos, False), make_immutable(pos2form, False)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import inspect
-import itertools
 import statistics
 import typing as t
 from collections import defaultdict
@@ -11,56 +10,18 @@ import grpc
 import immutables
 import nlp_service.client
 import nlp_service.similarity
+import nlp_service.types
 import numpy as np
 import numpy.typing as npt
-import requests
 import spacy
 from arg_services.nlp.v1 import nlp_pb2, nlp_pb2_grpc
-from scipy.spatial import distance
-from spacy.tokens import Doc, DocBin
+from spacy.language import Language
+from spacy.tokens import Doc
 from textacy.extract.keyterms.yake import yake
 
-from arguegen.config import config, tuning, tuning_run
-from arguegen.controller.inflect import inflect_concept, make_immutable
+from arguegen.controllers.inflect import inflect_concept
 
-_vector_cache = {}
-
-
-def init_client():
-    channel = grpc.insecure_channel(
-        config["resources"]["nlp"]["url"], [("grpc.lb_policy_name", "round_robin")]
-    )
-    return nlp_pb2_grpc.NlpServiceStub(channel)
-
-
-client = init_client()
-
-_vector_config = {
-    "glove": nlp_pb2.NlpConfig(
-        language=config.nlp.lang,
-        spacy_model="en_core_web_lg",
-    ),
-    "use": nlp_pb2.NlpConfig(
-        language=config.nlp.lang,
-        embedding_models=[
-            nlp_pb2.EmbeddingModel(
-                model_type=nlp_pb2.EMBEDDING_TYPE_TENSORFLOW_HUB,
-                model_name="https://tfhub.dev/google/universal-sentence-encoder/4",
-                pooling_type=nlp_pb2.POOLING_MEAN,
-            )
-        ],
-    ),
-    "sbert": nlp_pb2.NlpConfig(
-        language=config.nlp.lang,
-        embedding_models=[
-            nlp_pb2.EmbeddingModel(
-                model_type=nlp_pb2.EMBEDDING_TYPE_SENTENCE_TRANSFORMERS,
-                model_name="stsb-mpnet-base-v2",
-                pooling_type=nlp_pb2.POOLING_MEAN,
-            )
-        ],
-    ),
-}
+Vector = nlp_service.types.NumpyVector
 
 
 def _split_list(
@@ -74,78 +35,8 @@ def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
     return [item[0] for item in seq] + [item[1] for item in seq]
 
 
-@dataclass(frozen=True)
-class TextKey:
-    text: str
-    embeddings: t.Optional[str] = None
-
-
-def vectors(texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
-    text_keys = [TextKey(text, tuning(config, "nlp", "embeddings")) for text in texts]
-
-    if unknown_keys := [key for key in text_keys if key not in _vector_cache]:
-        res = client.Vectors(
-            nlp_pb2.VectorsRequest(
-                texts=[x.text for x in unknown_keys],
-                embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
-                config=_vector_config[tuning(config, "nlp", "embeddings")],
-            )
-        )
-
-        new_vectors = tuple(np.array(x.document.vector) for x in res.vectors)
-        _vector_cache.update(dict(zip(unknown_keys, new_vectors)))
-
-    return tuple(_vector_cache[key] for key in text_keys)
-
-
-def vector(text: str) -> npt.NDArray[np.float_]:
-    return vectors([text])[0]
-
-
-def similarities(text_tuples: t.Iterable[t.Tuple[str, str]]) -> t.Tuple[float, ...]:
-    if inspect.isgenerator(text_tuples):
-        text_tuples = list(text_tuples)
-
-    vecs = vectors(_flatten_list(text_tuples))
-    vecs1, vecs2 = _split_list(vecs)
-
-    return tuple(
-        nlp_service.similarity.cosine(vec1, vec2) for vec1, vec2 in zip(vecs1, vecs2)
-    )
-
-
-def similarity(text1: str, text2: str) -> float:
-    return similarities([(text1, text2)])[0]
-
-
-_doc_cache = {}
-_nlp = spacy.blank(config.nlp.lang)
-
-
-def parse_docs(
-    texts: t.Iterable[str],
-    attributes: t.Optional[t.Iterable[str]] = None,
-) -> t.Tuple[Doc, ...]:
-    text_keys = [TextKey(text) for text in texts]
-    attrs = nlp_pb2.Strings(values=attributes) if attributes is not None else None
-
-    if unknown_keys := [key for key in text_keys if key not in _vector_cache]:
-        req = nlp_pb2.DocBinRequest(
-            texts=[key.text for key in unknown_keys],
-            config=nlp_pb2.NlpConfig(
-                language=config.nlp.lang, spacy_model="en_core_web_sm"
-            ),
-            attributes=attrs,
-        )
-        docbin = client.DocBin(req).docbin
-        docs = nlp_service.client.docbin2docs(docbin, _nlp)
-        _doc_cache.update(dict(zip(unknown_keys, docs)))
-
-    return tuple(_doc_cache[key] for key in text_keys)
-
-
-def parse_doc(text: str, attributes: t.Optional[t.Iterable[str]] = None) -> Doc:
-    return parse_docs([text], attributes)[0]
+def _dist2sim(distance: float) -> float:
+    return 1 / (1 + distance)
 
 
 @dataclass(frozen=True)
@@ -157,53 +48,132 @@ class Keyword:
     weight: float
 
 
-_keyword_cache = {}
+KeywordKey = tuple[tuple[str, ...], tuple[str, ...]]
 
 
-def keywords(
-    texts: t.Iterable[str], pos_tags: t.Iterable[str]
-) -> t.Tuple[Keyword, ...]:
-    if tuning_run(config) and not tuning(config, "extraction", "keywords_per_adu"):
-        texts = [" ".join(texts)]
+class Nlp:
+    _client: nlp_pb2_grpc.NlpServiceStub
+    _config: nlp_pb2.NlpConfig
+    _blank_model: Language
+    _vector_cache: dict[str, Vector] = {}
+    _keyword_cache: dict[KeywordKey, tuple[Keyword, ...]] = {}
+    _doc_cache: dict[str, Doc] = {}
 
-    key = (tuple(texts), tuple(pos_tags))
+    def __init__(
+        self,
+        address: str,
+        config: nlp_pb2.NlpConfig,
+    ):
+        channel = grpc.insecure_channel(
+            address, [("grpc.lb_policy_name", "round_robin")]
+        )
+        self._client = nlp_pb2_grpc.NlpServiceStub(channel)
+        self._config = config
+        self._blank_model = spacy.blank(config.language)
 
-    if key not in _keyword_cache:
-        _keyword_cache[key] = tuple(_keywords(texts, pos_tags))
-
-    return _keyword_cache[key]
-
-
-def _keywords(
-    texts: t.Iterable[str],
-    pos_tags: t.Iterable[str],
-) -> t.List[Keyword]:
-    docs = parse_docs(texts)
-    keyword_map = defaultdict(list)
-    keywords = []
-
-    for doc, pos_tag in zip(docs, pos_tags):
-        for kw, score in yake(doc, include_pos=pos_tag, normalize="lemma", topn=1.0):
-            keyword_map[(kw, pos_tag)].append(score)
-
-    for (kw, pos_tag), score in keyword_map.items():
-        lemma, form2pos, pos2form = inflect_concept(kw, pos_tag, lemmatize=False)
-
-        if form2pos is not None and pos2form is not None:
-            keywords.append(
-                Keyword(
-                    lemma=lemma,
-                    form2pos=form2pos,
-                    pos2form=pos2form,
-                    pos_tag=pos_tag,
-                    weight=_dist2sim(statistics.mean(score)),
+    def vectors(self, texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
+        if unknown_texts := [text for text in texts if text not in self._vector_cache]:
+            res = self._client.Vectors(
+                nlp_pb2.VectorsRequest(
+                    texts=unknown_texts,
+                    embedding_levels=[nlp_pb2.EMBEDDING_LEVEL_DOCUMENT],
+                    config=self._config,
                 )
             )
 
-    keywords.sort(key=lambda x: x.weight, reverse=True)
+            new_vectors = tuple(np.array(x.document.vector) for x in res.vectors)
+            self._vector_cache.update(dict(zip(unknown_texts, new_vectors)))
 
-    return keywords
+        return tuple(self._vector_cache[text] for text in texts)
 
+    def vector(self, text: str) -> npt.NDArray[np.float_]:
+        return self.vectors([text])[0]
 
-def _dist2sim(distance: float) -> float:
-    return 1 / (1 + distance)
+    def similarities(
+        self, text_tuples: t.Iterable[t.Tuple[str, str]]
+    ) -> t.Tuple[float, ...]:
+        if inspect.isgenerator(text_tuples):
+            text_tuples = list(text_tuples)
+
+        vecs = self.vectors(_flatten_list(text_tuples))
+        vecs1, vecs2 = _split_list(vecs)
+
+        return tuple(
+            nlp_service.similarity.cosine(vec1, vec2)
+            for vec1, vec2 in zip(vecs1, vecs2)
+        )
+
+    def similarity(self, text1: str, text2: str) -> float:
+        return self.similarities([(text1, text2)])[0]
+
+    def parse_docs(
+        self,
+        texts: t.Iterable[str],
+        attributes: t.Optional[t.Iterable[str]] = None,
+    ) -> t.Tuple[Doc, ...]:
+        attrs = nlp_pb2.Strings(values=attributes) if attributes is not None else None
+
+        if unknown_texts := [text for text in texts if text not in self._vector_cache]:
+            req = nlp_pb2.DocBinRequest(
+                texts=unknown_texts,
+                config=nlp_pb2.NlpConfig(
+                    language=self._config.language, spacy_model="en_core_web_sm"
+                ),
+                attributes=attrs,
+            )
+            docbin = self._client.DocBin(req).docbin
+            docs = nlp_service.client.docbin2docs(docbin, self._blank_model)
+            self._doc_cache.update(dict(zip(unknown_texts, docs)))
+
+        return tuple(self._doc_cache[text] for text in texts)
+
+    def parse_doc(
+        self, text: str, attributes: t.Optional[t.Iterable[str]] = None
+    ) -> Doc:
+        return self.parse_docs([text], attributes)[0]
+
+    def keywords(
+        self, texts: t.Iterable[str], pos_tags: t.Iterable[str], per_adu: bool = False
+    ) -> t.Tuple[Keyword, ...]:
+        if not per_adu:
+            texts = [" ".join(texts)]
+
+        key = (tuple(texts), tuple(pos_tags))
+
+        if key not in self._keyword_cache:
+            self._keyword_cache[key] = tuple(self._keywords(texts, pos_tags))
+
+        return self._keyword_cache[key]
+
+    def _keywords(
+        self,
+        texts: t.Iterable[str],
+        pos_tags: t.Iterable[str],
+    ) -> t.List[Keyword]:
+        docs = self.parse_docs(texts)
+        keyword_map = defaultdict(list)
+        keywords = []
+
+        for doc, pos_tag in zip(docs, pos_tags):
+            for kw, score in yake(
+                doc, include_pos=pos_tag, normalize="lemma", topn=1.0
+            ):
+                keyword_map[(kw, pos_tag)].append(score)
+
+        for (kw, pos_tag), score in keyword_map.items():
+            lemma, form2pos, pos2form = inflect_concept(kw, pos_tag, lemmatize=False)
+
+            if form2pos is not None and pos2form is not None:
+                keywords.append(
+                    Keyword(
+                        lemma=lemma,
+                        form2pos=form2pos,
+                        pos2form=pos2form,
+                        pos_tag=pos_tag,
+                        weight=_dist2sim(statistics.mean(score)),
+                    )
+                )
+
+        keywords.sort(key=lambda x: x.weight, reverse=True)
+
+        return keywords

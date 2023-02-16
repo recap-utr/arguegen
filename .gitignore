@@ -246,4 +246,4 @@ data/output
 data/input/**/*.pdf
 
 # Ignore dynaconf secret files
-.secrets.*
+*api_key.txt

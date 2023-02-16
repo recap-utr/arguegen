@@ -1,93 +1,55 @@
 from __future__ import annotations
 
-import itertools
 import logging
-import math
-import statistics
 import typing as t
 from dataclasses import dataclass, field
-from enum import Enum
-from pathlib import Path
 
 import arguebuf as ag
 import immutables
 import wn.constants
+from arg_services.cbr.v1beta import adaptation_pb2
+from arg_services.cbr.v1beta.model_pb2 import AnnotatedGraph
 
-from arguegen.config import config, tuning
-from arguegen.controller import convert
-from arguegen.model import nlp, wordnet
+from arguegen.model import wordnet
 
 log = logging.getLogger(__name__)
-
-global_metrics = {
-    "concept_sem_sim",
-    "nodes_path_sim",
-    "nodes_sem_sim",
-    "nodes_wup_sim",
-}
-
-extraction_adaptation_metrics = {
-    "query_concept_sem_sim",
-    "query_nodes_sem_sim",
-}
-
-metrics_per_stage = {
-    "extraction": {
-        *global_metrics,
-        *extraction_adaptation_metrics,
-        "adus_sem_sim",
-        "query_adus_sem_sim",
-        "major_claim_prox",
-        "keyword_weight",
-    },
-    "adaptation": {
-        *global_metrics,
-        *extraction_adaptation_metrics,
-        "hypernym_prox",
-    },
-    "evaluation": {*global_metrics},
-}
-
-metric_keys = {
-    "adus_sem_sim",
-    "concept_sem_sim",
-    "hypernym_prox",
-    "keyword_weight",
-    "major_claim_prox",
-    "nodes_path_sim",
-    "nodes_sem_sim",
-    "nodes_wup_sim",
-    "query_adus_sem_sim",
-    "query_concept_sem_sim",
-    "query_nodes_sem_sim",
-}
-
-assert metric_keys == set(itertools.chain.from_iterable(metrics_per_stage.values()))
-empty_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
-    key: None for key in metric_keys
-}
-best_metrics: t.Callable[[], t.Dict[str, t.Optional[float]]] = lambda: {
-    key: 1.0 for key in metric_keys
-}
+Pos = adaptation_pb2.Pos
 
 
-class HashableNode(ag.Node):
-    def __str__(self) -> str:
-        return str(self.id)
+class Graph(ag.Graph):
+    text: str
 
-    def __eq__(self, other: HashableNode) -> bool:
-        return self.id == other.id
+    def copy(self) -> Graph:
+        g = t.cast(Graph, ag.copy(self, config=ag.load.Config(GraphClass=Graph)))
+        g.text = self.text
 
-    def __hash__(self) -> int:
-        return hash(self.id)
+        return g
+
+    @classmethod
+    def load(cls, obj: AnnotatedGraph) -> Graph:
+        g = t.cast(
+            cls, ag.load.protobuf(obj.graph, config=ag.load.Config(GraphClass=Graph))
+        )
+        g.text = obj.text
+
+        return g
+
+    def dump(self) -> AnnotatedGraph:
+        return AnnotatedGraph(graph=ag.dump.protobuf(self), text=self.text)
 
 
-class HashableAtom(HashableNode, ag.AtomNode):
-    pass
+@dataclass(frozen=True, eq=True)
+class ScoredConcept:
+    concept: Concept
+    score: float
 
+    def __lt__(self, other: ScoredConcept) -> bool:
+        return self.score < other.score
 
-class HashableScheme(HashableNode, ag.SchemeNode):
-    pass
+    def dump(self) -> adaptation_pb2.Concept:
+        return adaptation_pb2.Concept(
+            lemma=self.concept.lemma, pos=self.concept._pos, score=self.score
+        )
 
 
 @dataclass(frozen=True, eq=True)
@@ -95,14 +57,13 @@ class Concept:
     lemma: str
     form2pos: immutables.Map[str, t.Tuple[str, ...]]
     pos2form: immutables.Map[str, t.Tuple[str, ...]]
-    pos: t.Optional[POS]
-    atoms: t.FrozenSet[HashableAtom]
-    synsets: t.FrozenSet[wordnet.Node] = field(compare=False)
-    related_concepts: t.Mapping[Concept, float] = field(compare=False)
-    user_query: UserQuery = field(compare=False)
-    metrics: t.Dict[str, t.Optional[float]] = field(
-        default_factory=empty_metrics, compare=False, repr=False
-    )
+    _pos: Pos.ValueType
+    atoms: t.FrozenSet[ag.AtomNode]
+    synsets: t.FrozenSet[wordnet.Synset] = field(compare=False)
+
+    @property
+    def pos(self) -> t.Optional[Pos.ValueType]:
+        return None if self._pos == Pos.POS_UNSPECIFIED else self._pos
 
     @property
     def forms(self) -> t.FrozenSet[str]:
@@ -124,25 +85,12 @@ class Concept:
         out = f"{self.lemma}"
 
         if self.pos:
-            out += f"/{self.pos.value}"
+            out += f"/{pos2str(self.pos)}"
 
         return out
 
-    @staticmethod
-    def sort(concepts: t.Iterable[Concept]) -> t.List[Concept]:
-        return list(sorted(concepts, key=lambda concept: concept.score))
-
-    @property
-    def score(self) -> float:
-        return score(self.metrics)
-
-    def to_dict(self) -> t.Dict[str, t.Any]:
-        return {
-            "concept": str(self),
-            "forms": str(self.forms),
-            "nodes": [str(node) for node in self.synsets],
-            "score": self.score,
-        }
+    def dump(self) -> adaptation_pb2.Concept:
+        return adaptation_pb2.Concept(lemma=self.lemma, pos=self._pos)
 
     @classmethod
     def from_concept(
@@ -153,136 +101,101 @@ class Concept:
         pos2form=None,
         pos=None,
         atoms=None,
-        nodes=None,
-        related_concepts=None,
-        user_query=None,
-        metrics=None,
+        synsets=None,
     ) -> Concept:
         return cls(
             lemma or source.lemma,
             form2pos or source.form2pos,
             pos2form or source.pos2form,
-            pos or source.pos,
+            pos or source._pos,
             atoms or source.atoms,
-            nodes or source.synsets,
-            related_concepts or source.related_concepts,
-            user_query or source.user_query,
-            metrics or source.metrics,
+            synsets or source.synsets,
         )
 
 
-def score(metrics: t.Dict[str, t.Optional[float]]) -> float:
-    result = 0
-    total_weight = 0
-
-    for metric_name, metric_weight in tuning(config, "score").items():
-        if (metric := metrics[metric_name]) is not None:
-            result += metric * metric_weight
-            total_weight += metric_weight
-
-    # Normalize the result.
-    if total_weight > 0:
-        return result / total_weight
-
-    return 0.0
-
-
-def filter_concepts(
-    concepts: t.Iterable[Concept], min_score: float, topn: t.Optional[int]
-) -> t.Set[Concept]:
-    sorted_concepts = sorted(concepts, key=lambda x: x.score, reverse=True)
-    filtered_concepts = list(filter(lambda x: x.score > min_score, sorted_concepts))
-
-    if topn and topn > 0:
-        filtered_concepts = filtered_concepts[:topn]
-
-    return set(filtered_concepts)
+_Concept = t.TypeVar("_Concept", Concept, ScoredConcept)
 
 
 @dataclass(frozen=True, eq=True)
-class Rule:
-    source: Concept
-    target: Concept
+class Rule(t.Generic[_Concept]):
+    source: _Concept
+    target: _Concept
 
     def __str__(self) -> str:
         return f"({self.source})->({self.target})"
 
-
-@dataclass(frozen=True, eq=True)
-class UserQuery:
-    text: str
-
-    def __str__(self) -> str:
-        return self.text
+    def dump(self) -> adaptation_pb2.Rule:
+        return adaptation_pb2.Rule(source=self.source.dump(), target=self.target.dump())
 
 
 @dataclass(frozen=True, eq=True)
 class Case:
-    relative_path: Path
-    user_query: UserQuery
-    graph: ag.Graph
-    rules: t.Tuple[Rule, ...]
-    benchmark_rules: t.Tuple[Rule, ...]
+    name: str
+    query_graph: Graph
+    case_graph: Graph
+    rules: t.Tuple[Rule[Concept], ...]
 
     def __str__(self) -> str:
-        return str(self.relative_path)
+        return self.name
 
 
-class POS(Enum):
-    NOUN = "noun"
-    VERB = "verb"
-    ADJECTIVE = "adjective"
-    ADVERB = "adverb"
-
-
-def spacy2pos(pos: t.Optional[str]) -> t.Optional[POS]:
+def spacy2pos(pos: t.Optional[str]) -> Pos.ValueType:
     if pos is None:
-        return None
+        return Pos.POS_UNSPECIFIED
 
     return {
-        "NOUN": POS.NOUN,
-        "PROPN": POS.NOUN,
-        "VERB": POS.VERB,
-        "ADJ": POS.ADJECTIVE,
-        "ADV": POS.ADVERB,
+        "NOUN": Pos.POS_NOUN,
+        "PROPN": Pos.POS_NOUN,
+        "VERB": Pos.POS_VERB,
+        "ADJ": Pos.POS_ADJECTIVE,
+        "ADV": Pos.POS_ADVERB,
     }[pos]
 
 
-def wn2pos(pos: t.Optional[str]) -> t.Optional[POS]:
+def wn2pos(pos: t.Optional[str]) -> Pos.ValueType:
     if pos is None:
-        return None
+        return Pos.POS_UNSPECIFIED
 
     return {
-        wn.constants.NOUN: POS.NOUN,
-        wn.constants.VERB: POS.VERB,
-        wn.constants.ADJECTIVE: POS.ADJECTIVE,
-        wn.constants.ADJECTIVE_SATELLITE: POS.ADJECTIVE,
-        wn.constants.ADVERB: POS.ADVERB,
-    }.get(pos)
+        wn.constants.NOUN: Pos.POS_NOUN,
+        wn.constants.VERB: Pos.POS_VERB,
+        wn.constants.ADJECTIVE: Pos.POS_ADJECTIVE,
+        wn.constants.ADJECTIVE_SATELLITE: Pos.POS_ADJECTIVE,
+        wn.constants.ADVERB: Pos.POS_ADVERB,
+    }.get(pos, Pos.POS_UNSPECIFIED)
 
 
-def pos2wn(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
+def pos2wn(pos: Pos.ValueType) -> t.List[t.Optional[str]]:
     if pos is None:
         return [None]
 
-    mapping: dict[POS, list[t.Optional[str]]] = {
-        POS.NOUN: [wn.constants.NOUN],
-        POS.VERB: [wn.constants.VERB],
-        POS.ADJECTIVE: [wn.constants.ADJECTIVE, wn.constants.ADJECTIVE_SATELLITE],
-        POS.ADVERB: [wn.constants.ADVERB],
+    mapping: dict[Pos.ValueType, list[t.Optional[str]]] = {
+        Pos.POS_NOUN: [wn.constants.NOUN],
+        Pos.POS_VERB: [wn.constants.VERB],
+        Pos.POS_ADJECTIVE: [wn.constants.ADJECTIVE, wn.constants.ADJECTIVE_SATELLITE],
+        Pos.POS_ADVERB: [wn.constants.ADVERB],
     }
 
     return mapping.get(pos, [None])
 
 
-def pos2spacy(pos: t.Optional[POS]) -> t.List[t.Optional[str]]:
-    if pos == POS.NOUN:
+def pos2spacy(pos: Pos.ValueType) -> t.List[t.Optional[str]]:
+    if pos == Pos.POS_NOUN:
         return ["NOUN"]  # "PROPN"
-    elif pos == POS.VERB:
+    elif pos == Pos.POS_VERB:
         return ["VERB"]
-    elif pos == POS.ADJECTIVE:
+    elif pos == Pos.POS_ADJECTIVE:
         return ["ADJ"]
-    elif pos == POS.ADVERB:
+    elif pos == Pos.POS_ADVERB:
         return ["ADV"]
 
     return [None]
+
+
+def pos2str(pos: Pos.ValueType) -> str:
+    return {
+        Pos.POS_NOUN: "noun",
+        Pos.POS_VERB: "verb",
+        Pos.POS_ADJECTIVE: "adjective",
+        Pos.POS_ADVERB: "adverb",
+    }[pos]

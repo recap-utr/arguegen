@@ -6,16 +6,8 @@ import statistics
 import typing as t
 from dataclasses import dataclass
 
-from arguegen.config import config, tuning
-from arguegen.controller import convert
-from arguegen.model import casebase, nlp, wordnet
-
-
-def _dist2sim(distance: t.Optional[float]) -> t.Optional[float]:
-    if distance is not None:
-        return 1 / (1 + distance)
-
-    return None
+from arguegen.controllers import convert
+from arguegen.model import casebase
 
 
 @dataclass(frozen=True)
@@ -70,7 +62,8 @@ def aggregate_eval(
                 return out
             else:
                 raise ValueError(
-                    f"The given metric '{metric}' is unknown. Possible values are '{aggr_funcs.keys()}'."
+                    f"The given metric '{metric}' is unknown. Possible values are"
+                    f" '{aggr_funcs.keys()}'."
                 )
 
         return {
@@ -322,109 +315,3 @@ class Evaluation:
 
     def __ge__(self, other):
         return self.score >= other.score
-
-
-def concept_metrics(
-    stage: str,
-    related_concepts: t.Union[casebase.Concept, t.Mapping[casebase.Concept, float]],
-    user_query: casebase.UserQuery,
-    atoms: t.Iterable[casebase.HashableAtom],
-    nodes: t.Iterable[wordnet.Node],
-    lemma: str,
-    weight: t.Optional[float] = None,
-    hypernym_level: t.Optional[int] = None,
-    hypernym_proximity: t.Optional[float] = None,
-    major_claim_distance: t.Optional[int] = None,
-    major_claim_proximity: t.Optional[float] = None,
-) -> t.Dict[str, t.Optional[float]]:
-    if isinstance(related_concepts, casebase.Concept):
-        related_concepts = {related_concepts: 1.0}
-
-    if not (hypernym_level is None or hypernym_proximity is None) or not (
-        major_claim_distance is None or major_claim_proximity is None
-    ):
-        raise RuntimeError("Invalid combination of metric parameters")
-
-    assert stage in casebase.metrics_per_stage.keys()
-
-    active_metrics = tuning(config, "score").keys()
-    active = lambda x: x in active_metrics and x in casebase.metrics_per_stage[stage]
-
-    total_weight = 0
-    metrics_map = {key: [] for key in casebase.metric_keys}
-
-    query_nodes_sem_sim = (
-        wordnet.query_nodes_similarity(
-            t.cast(t.Iterable[wordnet.Node], nodes), user_query
-        )
-        if active("query_nodes_sem_sim")
-        else None
-    )
-    query_concept_semantic_similarity = (
-        nlp.similarity(user_query.text, lemma)
-        if active("query_concept_sem_sim")
-        else None
-    )
-    query_adus_semantic_similarity = (
-        statistics.mean(
-            nlp.similarities((user_query.text, atom.plain_text) for atom in atoms)
-        )
-        if active("query_adus_sem_sim")
-        else None
-    )
-
-    for related_concept, related_concept_weight in related_concepts.items():
-        if related_concept_weight > 0:
-            total_weight += related_concept_weight
-
-            concept_semantic_similarity = (
-                nlp.similarity(lemma, related_concept.lemma)
-                if active("concept_sem_sim")
-                else None
-            )
-            adus_semantic_similarity = (
-                statistics.mean(
-                    nlp.similarities(
-                        (atom1.plain_text, atom2.plain_text)
-                        for atom1, atom2 in itertools.product(
-                            related_concept.atoms, atoms
-                        )
-                    )
-                )
-                if active("adus_sem_sim")
-                else None
-            )
-
-            metrics = {
-                "adus_sem_sim": adus_semantic_similarity,
-                "concept_sem_sim": concept_semantic_similarity,
-                "hypernym_prox": hypernym_proximity or _dist2sim(hypernym_level),
-                "keyword_weight": weight,
-                "major_claim_prox": major_claim_proximity
-                or _dist2sim(major_claim_distance),
-                "nodes_path_sim": None,
-                "nodes_sem_sim": None,
-                "nodes_wup_sim": None,
-                "query_adus_sem_sim": query_adus_semantic_similarity,
-                "query_concept_sem_sim": query_concept_semantic_similarity,
-                "query_nodes_sem_sim": query_nodes_sem_sim,
-            }
-
-            assert metrics.keys() == casebase.metric_keys
-
-            nodes = t.cast(t.Iterable[wordnet.Node], nodes)
-            related_nodes = t.cast(t.Iterable[wordnet.Node], related_concept.synsets)
-
-            metrics.update(wordnet.metrics(nodes, related_nodes, active))
-
-            for key, value in metrics.items():
-                if value is not None:
-                    metrics_map[key].append(value * related_concept_weight)
-
-    # No weight normalization required as given related concepts are available.
-    aggregated_metrics = {
-        key: float(sum(entries) / total_weight) if entries else None
-        for key, entries in metrics_map.items()
-    }
-
-    return aggregated_metrics

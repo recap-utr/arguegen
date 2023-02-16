@@ -3,7 +3,7 @@ import typing as t
 
 import arguebuf as ag
 
-from arguegen.controller import convert
+from arguegen.controllers import convert
 from arguegen.model import casebase, evaluation, nlp
 
 log = logging.getLogger(__name__)

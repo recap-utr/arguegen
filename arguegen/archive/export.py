@@ -6,9 +6,10 @@ from collections import defaultdict
 from pathlib import Path
 
 import arguebuf as ag
-from arguegen.controller import convert
-from arguegen.model import casebase, evaluation, wordnet
+
 from arguegen.config import config
+from arguegen.controllers import convert
+from arguegen.model import casebase, evaluation, wordnet
 
 log = logging.getLogger(__name__)
 
@@ -54,9 +55,9 @@ def grid_stats(
     log.info("Exporting grid stats.")
 
     results = [entry for entry in results if entry is not None]
-    case_results: t.Dict[
-        str, t.List[t.Tuple[evaluation.EvaluationTuple, int]]
-    ] = defaultdict(list)
+    case_results: t.Dict[str, t.List[t.Tuple[evaluation.EvaluationTuple, int]]] = (
+        defaultdict(list)
+    )
     param_combinations: t.List[t.List[evaluation.EvaluationTuple]] = [
         [] for _ in range(len(param_grid))
     ]
@@ -114,9 +115,11 @@ def grid_stats(
                     out_path / case, len(param_grid), param_grid[i]
                 )
                 current_cases[case] = {
-                    "evaluation": case_eval_tuple.to_dict(compact=True)
-                    if case_eval_tuple
-                    else None,
+                    "evaluation": (
+                        case_eval_tuple.to_dict(compact=True)
+                        if case_eval_tuple
+                        else None
+                    ),
                     "files": _output_file_paths(current_path),
                 }
 
