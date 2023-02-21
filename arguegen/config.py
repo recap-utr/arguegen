@@ -4,7 +4,6 @@ import typing as t
 from dataclasses import dataclass, field
 from enum import Enum
 
-import typed_settings as ts
 from google.protobuf.struct_pb2 import Struct
 from mashumaro import DataClassDictMixin
 
@@ -123,9 +122,3 @@ class InflectionConfig(DataClassDictMixin):
             "be": {"VBZ": ["'s"]},
         }
     )
-
-
-@ts.settings(frozen=True)
-class ServerConfig:
-    address: str = "localhost:50056"
-    nlp_address: str = "localhost:50051"

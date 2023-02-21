@@ -6,12 +6,18 @@ import rich_click as click
 import typed_settings as ts
 from arg_services.cbr.v1beta import adaptation_pb2, adaptation_pb2_grpc
 
-from arguegen.config import AdaptationMethod, ExtrasConfig, ServerConfig
+from arguegen.config import AdaptationMethod, ExtrasConfig
 from arguegen.controllers import adapt, extract, loader
 from arguegen.model import wordnet
 from arguegen.model.nlp import Nlp
 
 log = logging.getLogger(__name__)
+
+
+@ts.settings(frozen=True)
+class ServerConfig:
+    address: str = "localhost:50056"
+    nlp_address: str = "localhost:50051"
 
 
 class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
