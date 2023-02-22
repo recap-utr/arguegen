@@ -22,6 +22,7 @@ class SubstitutionMethod(str, Enum):
     TARGET_SCORE = "target_score"
     SOURCE_SCORE = "source_score"
     AGGREGATE_SCORE = "aggregate_score"
+    QUERY_SIMILARITY = "query_similarity"
 
 
 class PruningSelector(str, Enum):

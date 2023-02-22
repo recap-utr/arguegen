@@ -100,7 +100,7 @@ def argument_graph(
     )
 
     while sources:
-        if substitution_method == "query_sim":
+        if substitution_method == SubstitutionMethod.QUERY_SIMILARITY:
             adapted_graphs = {}
 
             for source in sources:
@@ -119,7 +119,7 @@ def argument_graph(
                 adapted_graphs.items(), key=lambda x: x[1][1]
             )
 
-        elif substitution_method in ["source_score", "target_score", "score"]:
+        else:
             source = sources[0]
             new_adapted_graph = current_adapted_graph.copy()
             applied_variants = frozenset(
@@ -130,9 +130,6 @@ def argument_graph(
             new_similarity = nlp.similarity(
                 case.query_graph.text, new_adapted_graph.text
             )
-
-        else:
-            raise ValueError(f"Setting {substitution_method=} is not valid.")
 
         if new_similarity < current_similarity:
             return current_adapted_graph, applied_adaptations
