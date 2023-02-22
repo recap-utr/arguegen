@@ -87,6 +87,11 @@ class Synset:
     def lemmas(self) -> list[wn.Form]:
         return self._synset.lemmas()
 
+    # TODO: Hacky!!
+    @property
+    def lemma(self) -> wn.Form:
+        return self._synset.lemmas()[0]
+
     @property
     def pos(self) -> casebase.Pos.ValueType:
         return casebase.wn2pos(self._synset.pos)
@@ -176,6 +181,15 @@ class Relationship:
 class Path:
     nodes: t.Tuple[Synset, ...]
     relationships: t.Tuple[Relationship, ...]
+
+    @property
+    def lemmas(self) -> list[wn.Form]:
+        return self.end_node.lemmas
+
+    # TODO: Hacky!!
+    @property
+    def lemma(self) -> wn.Form:
+        return self.end_node.lemma
 
     @property
     def start_node(self) -> Synset:

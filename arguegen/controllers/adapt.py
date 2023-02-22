@@ -218,10 +218,17 @@ def concepts(
         all_candidates[source] = adaptation_candidates
 
         filtered_adaptations = _filter_concepts(
-            adaptation_candidates, source, rules, config
+            adaptation_candidates,
+            source,
+            [casebase.Rule(rule.source.concept, rule.target.concept) for rule in rules],
+            config,
         )
         adapted_lemma = _filter_lemmas(
-            filtered_adaptations, source, rules, config=config, nlp=nlp
+            filtered_adaptations,
+            source,
+            [casebase.Rule(rule.source.concept, rule.target.concept) for rule in rules],
+            config=config,
+            nlp=nlp,
         )
 
         if adapted_lemma:
@@ -429,7 +436,7 @@ class Lemma:
 def _filter_lemmas(
     targets: t.Sequence[casebase.ScoredConcept],
     source: casebase.ScoredConcept,
-    rules: t.Iterable[casebase.Rule],
+    rules: t.Iterable[casebase.Rule[casebase.Concept]],
     config: AdaptationConfig,
     nlp: Nlp,
 ) -> t.Optional[casebase.ScoredConcept]:
@@ -455,14 +462,19 @@ def _filter_lemmas(
         )
     ]
 
-    best_lemma: Lemma = _prune(
+    best_lemmas = _prune(
         lemmas,
-        source,
+        source.concept,
         [(rule.source, rule.target) for rule in rules],
         limit=1,
         nlp=nlp,
         selector=config.pruning_selector,
-    )[0]
+    )
+
+    if len(best_lemmas) == 0:
+        return None
+
+    best_lemma = best_lemmas[0]
 
     _lemma, _form2pos, _pos2form = inflect_concept(
         best_lemma.lemma, casebase.pos2spacy(best_lemma.pos), lemmatize=False
@@ -501,18 +513,25 @@ def _filter_paths(
     )
 
 
+_AdaptedItem = t.TypeVar("_AdaptedItem", Lemma, wordnet.Path)
+_ReferenceItem = t.Union[wordnet.Synset, casebase.Concept]
+_RetrievedItem = t.Union[wordnet.Synset, casebase.Concept, wordnet.Path]
+
+
 def _prune(
-    adapted_items: t.Iterable[t.Any],
-    retrieved_item: t.Any,
-    reference_items: t.Iterable[t.Tuple[t.Any, t.Any]],
+    adapted_items: t.Iterable[_AdaptedItem],
+    retrieved_item: _RetrievedItem,
+    reference_items: t.Iterable[t.Tuple[_ReferenceItem, _ReferenceItem]],
     selector: PruningSelector,
     nlp: Nlp,
     limit: t.Optional[int] = None,
-) -> t.List[t.Any]:
+) -> t.List[_AdaptedItem]:
     candidate_values = defaultdict(list)
 
-    for item in reference_items:
-        val_reference = _aggregate_features(item[0].lemma, item[1].lemma, selector, nlp)
+    for reference_source, reference_target in reference_items:
+        val_reference = _aggregate_features(
+            reference_source.lemma, reference_target.lemma, selector, nlp
+        )
 
         for adapted_item in adapted_items:
             val_adapted = _aggregate_features(
