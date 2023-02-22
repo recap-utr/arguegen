@@ -16,8 +16,8 @@ log = logging.getLogger(__name__)
 
 @ts.settings(frozen=True)
 class ServerConfig:
-    address: str = "localhost:50056"
-    nlp_address: str = "localhost:50051"
+    address: str = "localhost:50300"
+    nlp_address: str = "localhost:50100"
 
 
 class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
