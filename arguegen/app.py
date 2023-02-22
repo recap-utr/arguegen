@@ -5,6 +5,7 @@ import grpc
 import rich_click as click
 import typed_settings as ts
 from arg_services.cbr.v1beta import adaptation_pb2, adaptation_pb2_grpc
+from rich.progress import track
 
 from arguegen.config import AdaptationMethod, ExtrasConfig
 from arguegen.controllers import adapt, extract, loader
@@ -33,7 +34,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
 
         config = ExtrasConfig.from_extras(req.extras)
 
-        for case_name, case_req in req.cases.items():
+        for case_name, case_req in track(req.cases.items()):
             case = loader.Loader(
                 case_name, case_req.case, req.query, nlp, wn, config.loader
             ).parse(case_req)
@@ -41,7 +42,6 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                 case, nlp, config.extraction, config.score, wn
             )
 
-            log.debug("Adapting concepts.")
             adapted_rules = []
 
             if config.adaptation.method == AdaptationMethod.DIRECT:
