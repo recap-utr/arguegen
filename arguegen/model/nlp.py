@@ -84,7 +84,7 @@ class Nlp:
             )
 
             new_vectors = tuple(np.array(x.document.vector) for x in res.vectors)
-            self._vector_cache.update(dict(zip(unknown_texts, new_vectors)))
+            self._vector_cache.update(zip(unknown_texts, new_vectors))
 
         return tuple(self._vector_cache[text] for text in texts)
 
@@ -115,7 +115,7 @@ class Nlp:
     ) -> t.Tuple[Doc, ...]:
         attrs = nlp_pb2.Strings(values=attributes) if attributes is not None else None
 
-        if unknown_texts := [text for text in texts if text not in self._vector_cache]:
+        if unknown_texts := [text for text in texts if text not in self._doc_cache]:
             req = nlp_pb2.DocBinRequest(
                 texts=unknown_texts,
                 config=nlp_pb2.NlpConfig(
@@ -125,7 +125,7 @@ class Nlp:
             )
             docbin = self._client.DocBin(req).docbin
             docs = nlp_service.client.docbin2docs(docbin, self._blank_model)
-            self._doc_cache.update(dict(zip(unknown_texts, docs)))
+            self._doc_cache.update(zip(unknown_texts, docs))
 
         return tuple(self._doc_cache[text] for text in texts)
 
