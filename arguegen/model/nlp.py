@@ -23,15 +23,17 @@ from arguegen.controllers.inflect import inflect_concept
 
 Vector = nlp_service.types.NumpyVector
 
+_Item = t.TypeVar("_Item")
+
 
 def _split_list(
-    seq: t.Sequence[t.Any],
-) -> t.Tuple[t.Sequence[t.Any], t.Sequence[t.Any]]:
+    seq: t.Sequence[_Item],
+) -> t.Tuple[t.Sequence[_Item], t.Sequence[_Item]]:
     half = len(seq) // 2
     return seq[:half], seq[half:]
 
 
-def _flatten_list(seq: t.Iterable[t.Tuple[t.Any, t.Any]]) -> t.List[t.Any]:
+def _flatten_list(seq: t.Iterable[t.Tuple[_Item, _Item]]) -> t.List[_Item]:
     return [item[0] for item in seq] + [item[1] for item in seq]
 
 

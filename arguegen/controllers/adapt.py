@@ -158,7 +158,7 @@ def concepts(
     t.Dict[casebase.ScoredConcept, t.Set[casebase.ScoredConcept]],
 ]:
     all_candidates = {}
-    rules = []
+    rules: list[casebase.Rule[casebase.ScoredConcept]] = []
 
     for source in sources:
         candidate_scores: defaultdict[casebase.Concept, list[float]] = defaultdict(list)
