@@ -59,10 +59,15 @@ def dist2sim(distance: float) -> float:
     return 1 / (1 + distance)
 
 
-def weighted_mean(values: t.Iterable[float], weights: t.Iterable[float]) -> float:
+def weighted_mean(
+    values: t.Iterable[float], weights: t.Iterable[float]
+) -> t.Optional[float]:
     weights = list(weights)
 
-    return sum(v * w for v, w in zip(values, weights)) / sum(weights)
+    try:
+        return sum(v * w for v, w in zip(values, weights)) / sum(weights)
+    except ZeroDivisionError:
+        return None
 
 
 def filter_concepts(
@@ -138,7 +143,7 @@ class Scorer:
 
     @property
     def related_atoms_semantic_similarity(self):
-        weighted_mean(
+        return weighted_mean(
             (
                 statistics.mean(
                     self.nlp.similarities(
