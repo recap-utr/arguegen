@@ -56,6 +56,9 @@ def hypernyms():
             for wn_pos in wn_pos_tags:
                 synsets.extend(db.synsets(concept, wn_pos))
 
+            if not synsets:
+                raise ValueError("The concept you entered does not exist in WordNet.")
+
             hypernyms = itertools.chain.from_iterable(
                 hyp.lemmas() for synset in synsets for hyp in synset.hypernyms()
             )
