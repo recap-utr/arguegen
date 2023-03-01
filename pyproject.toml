@@ -16,7 +16,7 @@ nlp-service = "^1.2.2"
 arg-services = "^1.2.0"
 arguebuf = { version = "^2.0.0b20", allow-prereleases = true }
 wn = "^0.9.3"
-openai = "^0.26.4"
+openai = "^0.27.0"
 typed-settings = "^2.0.2"
 rich-click = "^1.6.1"
 
