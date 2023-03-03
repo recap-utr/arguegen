@@ -62,19 +62,13 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
             )
             discarded_rules = set(adapted_rules).difference(applied_rules)
 
-            res.cases.append(
-                adaptation_pb2.AdaptedCaseResponse(
-                    case=adapted_graph.dump(),
-                    applied_rules=[rule.dump() for rule in applied_rules],
-                    discarded_rules=[rule.dump() for rule in discarded_rules],
-                    extracted_concepts=[
-                        concept.dump() for concept in extracted_concepts
-                    ],
-                    discarded_concepts=[
-                        concept.dump() for concept in discarded_concepts
-                    ],
-                    # TODO: Add rule candidates
-                )
+            res.cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
+                case=adapted_graph.dump(),
+                applied_rules=[rule.dump() for rule in applied_rules],
+                discarded_rules=[rule.dump() for rule in discarded_rules],
+                extracted_concepts=[concept.dump() for concept in extracted_concepts],
+                discarded_concepts=[concept.dump() for concept in discarded_concepts],
+                # TODO: Add rule candidates
             )
 
         return res

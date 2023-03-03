@@ -10,7 +10,7 @@ import grpc
 import immutables
 import nlp_service.client
 import nlp_service.similarity
-import nlp_service.types
+import nlp_service.typing
 import numpy as np
 import numpy.typing as npt
 import spacy
@@ -21,7 +21,7 @@ from textacy.extract.keyterms.yake import yake
 
 from arguegen.controllers.inflect import inflect_concept
 
-Vector = nlp_service.types.NumpyVector
+Vector = nlp_service.typing.NumpyVector
 
 _Item = t.TypeVar("_Item")
 
