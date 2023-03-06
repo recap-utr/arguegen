@@ -28,7 +28,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
     def Adapt(
         self, req: adaptation_pb2.AdaptRequest, ctx: grpc.ServicerContext
     ) -> adaptation_pb2.AdaptResponse:
-        res = adaptation_pb2.AdaptResponse()
+        adapted_cases = {}
         nlp = Nlp(self.server_config.nlp_address, req.nlp_config)
         wn = wordnet.Wordnet(nlp)
 
@@ -62,7 +62,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
             )
             discarded_rules = set(adapted_rules).difference(applied_rules)
 
-            res.cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
+            adapted_cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
                 case=adapted_graph.dump(),
                 applied_rules=[rule.dump() for rule in applied_rules],
                 discarded_rules=[rule.dump() for rule in discarded_rules],
@@ -71,7 +71,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                 # TODO: Add rule candidates
             )
 
-        return res
+        return adaptation_pb2.AdaptResponse(cases=adapted_cases)
 
 
 def add_services(config: ServerConfig):
