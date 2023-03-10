@@ -65,7 +65,7 @@ class Scorer:
                     total_weight += metric_weight
 
         # Normalize the score.
-        return score / total_weight
+        return score / total_weight if total_weight > 0 else 0
 
     @property
     def related_concept_weights(self) -> t.Iterable[float]:
