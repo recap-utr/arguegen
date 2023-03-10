@@ -5,7 +5,6 @@ import grpc
 import rich_click as click
 import typed_settings as ts
 from arg_services.cbr.v1beta import adaptation_pb2, adaptation_pb2_grpc
-from rich.progress import track
 
 from arguegen.config import AdaptationMethod, ExtrasConfig
 from arguegen.controllers import adapt, extract, loader
@@ -13,12 +12,14 @@ from arguegen.model import wordnet
 from arguegen.model.nlp import Nlp
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 @ts.settings(frozen=True)
 class ServerConfig:
     address: str = "localhost:50300"
     nlp_address: str = "localhost:50100"
+    threads: int = 1
 
 
 class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
@@ -28,13 +29,15 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
     def Adapt(
         self, req: adaptation_pb2.AdaptRequest, ctx: grpc.ServicerContext
     ) -> adaptation_pb2.AdaptResponse:
+        log.debug(f"[{id(self)}] Processing request...")
+
         adapted_cases = {}
         nlp = Nlp(self.server_config.nlp_address, req.nlp_config)
         wn = wordnet.Wordnet(nlp)
 
         config = ExtrasConfig.from_extras(req.extras)
 
-        for case_name, case_req in track(req.cases.items()):
+        for case_name, case_req in req.cases.items():
             case = loader.Loader(
                 case_name, case_req.case, req.query, nlp, wn, config.loader
             ).parse(case_req)
@@ -74,13 +77,14 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)
 
 
-def add_services(config: ServerConfig):
-    def callback(server: grpc.Server):
-        adaptation_pb2_grpc.add_AdaptationServiceServicer_to_server(
-            AdaptationService(config), server
-        )
+class ServiceAdder:
+    def __init__(self, config: ServerConfig):
+        self.config = config
 
-    return callback
+    def __call__(self, server: grpc.Server):
+        adaptation_pb2_grpc.add_AdaptationServiceServicer_to_server(
+            AdaptationService(self.config), server
+        )
 
 
 @click.command("arguegen")
@@ -88,8 +92,9 @@ def add_services(config: ServerConfig):
 def app(config: ServerConfig):
     arg_services.serve(
         config.address,
-        add_services(config),
+        ServiceAdder(config),
         [arg_services.full_service_name(adaptation_pb2, "AdaptationService")],
+        threads=config.threads,
     )
 
 
