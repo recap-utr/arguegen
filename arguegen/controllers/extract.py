@@ -56,7 +56,7 @@ def keywords(
             pos,
             nlp,
             [atom.plain_text for atom in atoms],
-            config.node_similarity_threshold,
+            config.synset_similarity_threshold,
         )
 
         if len(kg_nodes) > 0:

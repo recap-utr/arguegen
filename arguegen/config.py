@@ -30,30 +30,30 @@ class PruningSelector(str, Enum):
     DIFFERENCE = "difference"
 
 
-@dataclass(frozen=True)
+@dataclass
 class RelatedConceptWeight(DataClassDictMixin):
     source: float = 0.0
     target: float = 1.0
     original: float = 1.0
 
 
-@dataclass(frozen=True)
+@dataclass
 class LoaderConfig(DataClassDictMixin):
     heuristic_pos_tags: tuple[str, ...] = ("NOUN", "VERB")
     enforce_node_paths: bool = True
     filter_synsets_based_on_nodes: bool = True
 
 
-@dataclass(frozen=True)
+@dataclass
 class ExtractionConfig(DataClassDictMixin):
     keyword_pos_tags: tuple[str, ...] = ("NOUN", "VERB")
     keywords_per_adu: bool = False
     concept_limit: t.Union[None, int, float] = None
-    node_similarity_threshold: float = 0.0
+    synset_similarity_threshold: float = 0.0
     concept_score_threshold: float = 0.0
 
 
-@dataclass(frozen=True)
+@dataclass
 class AdaptationConfig(DataClassDictMixin):
     lemma_limit: int = 1
     method: AdaptationMethod = AdaptationMethod.DIRECT
@@ -66,12 +66,12 @@ class AdaptationConfig(DataClassDictMixin):
     pruning_bfs_limit: int = 10000
 
 
-@dataclass(frozen=True)
+@dataclass
 class ScoreConfig(DataClassDictMixin):
     related_atoms_semantic_similarity: float = 0
     related_lemmas_semantic_similarity: float = 0
     keyword_weight: float = 0
-    hypernym_proximity: float = 1
+    hypernym_proximity: float = 0
     major_claim_proximity: float = 0
     synsets_path_similarity: float = 0
     synsets_semantic_similarity: float = 1
@@ -81,7 +81,7 @@ class ScoreConfig(DataClassDictMixin):
     query_synsets_semantic_similarity: float = 0
 
 
-@dataclass(frozen=True)
+@dataclass
 class ExtrasConfig(DataClassDictMixin):
     loader: LoaderConfig = LoaderConfig()
     extraction: ExtractionConfig = ExtractionConfig()
