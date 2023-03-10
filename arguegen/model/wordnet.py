@@ -13,6 +13,8 @@ from wn.morphy import Morphy
 from arguegen.model import casebase
 from arguegen.model.nlp import Nlp
 
+wn.config.allow_multithreading = True
+
 
 @dataclass(frozen=True)
 class WordnetConfig:
