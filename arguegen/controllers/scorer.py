@@ -57,9 +57,12 @@ class Scorer:
         total_weight = 0
 
         for metric_name, metric_weight in self.config.to_dict().items():
-            if (metric := getattr(self, metric_name)) is not None:
-                score += metric * metric_weight
-                total_weight += metric_weight
+            if metric_weight > 0:
+                metric_value = getattr(self, metric_name)
+
+                if metric_value is not None:
+                    score += metric_value * metric_weight
+                    total_weight += metric_weight
 
         # Normalize the score.
         return score / total_weight
