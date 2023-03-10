@@ -28,13 +28,15 @@ def weighted_mean(
 def filter_concepts(
     scored_concepts: set[casebase.ScoredConcept],
     min_score: float,
-    topn: t.Optional[int],
+    limit: t.Union[None, int, float],
 ) -> set[casebase.ScoredConcept]:
     filtered_concepts = {entry for entry in scored_concepts if entry.score >= min_score}
     sorted_concepts = sorted(filtered_concepts)
 
-    if topn and topn > 0:
-        sorted_concepts = sorted_concepts[:topn]
+    if isinstance(limit, int) and limit > 0:
+        sorted_concepts = sorted_concepts[:limit]
+    elif isinstance(limit, float) and 0 < limit < 1:
+        sorted_concepts = sorted_concepts[: int(limit * len(sorted_concepts))]
 
     return set(sorted_concepts)
 
