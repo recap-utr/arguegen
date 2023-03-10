@@ -155,7 +155,7 @@ def concepts(
     t.Dict[casebase.ScoredConcept, t.Set[casebase.ScoredConcept]],
 ]:
     all_candidates = {}
-    rules: list[casebase.Rule[casebase.ScoredConcept]] = []
+    found_rules: list[casebase.Rule[casebase.ScoredConcept]] = []
 
     for source in sources:
         candidate_scores: defaultdict[casebase.Concept, list[float]] = defaultdict(list)
@@ -177,7 +177,7 @@ def concepts(
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
-                nodes = frozenset([hypernym])
+                synsets = frozenset([hypernym])
 
                 for lemma in hypernym.lemmas:
                     _, form2pos, pos2form = inflect_concept(
@@ -190,7 +190,7 @@ def concepts(
                         pos2form,
                         hypernym.pos,
                         source.concept.atoms,
-                        nodes,
+                        synsets,
                     )
 
                     score = scorer.Scorer(
@@ -217,25 +217,25 @@ def concepts(
         filtered_adaptations = _filter_concepts(
             adaptation_candidates,
             source,
-            [casebase.Rule(rule.source.concept, rule.target.concept) for rule in rules],
+            case.rules,
             config,
         )
         adapted_lemma = _filter_lemmas(
             filtered_adaptations,
             source,
-            [casebase.Rule(rule.source.concept, rule.target.concept) for rule in rules],
+            case.rules,
             config=config,
             nlp=nlp,
         )
 
         if adapted_lemma:
-            rules.append(casebase.Rule(source, adapted_lemma))
+            found_rules.append(casebase.Rule(source, adapted_lemma))
             log.debug(f"Adapt ({source})->({adapted_lemma}).")
 
         else:
             log.debug(f"No adaptation for ({source}).")
 
-    return rules, all_candidates
+    return found_rules, all_candidates
 
 
 def paths(
@@ -249,7 +249,7 @@ def paths(
     t.Dict[casebase.ScoredConcept, t.List[wordnet.Path]],
     t.Dict[casebase.ScoredConcept, t.Set[casebase.ScoredConcept]],
 ]:
-    rules = []
+    found_rules = []
     adapted_paths = {}
     all_candidates = {}
 
@@ -329,13 +329,13 @@ def paths(
         )
 
         if adapted_lemma:
-            rules.append(casebase.Rule(source, adapted_lemma))
+            found_rules.append(casebase.Rule(source, adapted_lemma))
             log.debug(f"Adapt ({source})->({adapted_lemma}).")
 
         else:
             log.debug(f"No adaptation for ({source}).")
 
-    return rules, adapted_paths, all_candidates
+    return found_rules, adapted_paths, all_candidates
 
 
 def _bfs_adaptation(
