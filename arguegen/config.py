@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing as t
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from google.protobuf.struct_pb2 import Struct
@@ -48,7 +48,7 @@ class LoaderConfig(DataClassDictMixin):
 class ExtractionConfig(DataClassDictMixin):
     keyword_pos_tags: tuple[str, ...] = ("NOUN", "VERB")
     keywords_per_adu: bool = False
-    concept_limit: int = 0
+    concept_limit: t.Union[None, int, float] = None
     node_similarity_threshold: float = 0.0
     concept_score_threshold: float = 0.0
 
@@ -60,7 +60,7 @@ class AdaptationConfig(DataClassDictMixin):
     bfs_method: BfsMethod = BfsMethod.BETWEEN
     substitution_method: SubstitutionMethod = SubstitutionMethod.AGGREGATE_SCORE
     related_concept_weight: RelatedConceptWeight = RelatedConceptWeight()
-    node_similarity_threshold: float = 0.0
+    synset_similarity_threshold: float = 0.0
     concept_score_threshold: float = 0.0
     pruning_selector: PruningSelector = PruningSelector.SIMILARITY
     pruning_bfs_limit: int = 10000
@@ -71,7 +71,7 @@ class ScoreConfig(DataClassDictMixin):
     related_atoms_semantic_similarity: float = 0
     related_lemmas_semantic_similarity: float = 0
     keyword_weight: float = 0
-    hypernym_proximity: float = 0
+    hypernym_proximity: float = 1
     major_claim_proximity: float = 0
     synsets_path_similarity: float = 0
     synsets_semantic_similarity: float = 1
@@ -100,26 +100,3 @@ class ExtrasConfig(DataClassDictMixin):
         struct.update(self.to_dict())
 
         return struct
-
-
-@dataclass(frozen=True)
-class WordnetConfig(DataClassDictMixin):
-    hypernym_filter: tuple[str, ...] = tuple()
-    synset_context: tuple[t.Literal["examples", "definition"], ...] = (
-        "examples",
-        "definition",
-    )
-    simulate_root: bool = True
-
-
-@dataclass(frozen=True)
-class InflectionConfig(DataClassDictMixin):
-    forms: dict[str, dict[str, list[str]]] = field(
-        default_factory=lambda: {
-            "prove": {"VPN": ["proven"]},
-            "journey": {"NN": ["journeying"]},
-            "relinquish": {"NN": ["relinquishing"]},
-            "impedimentum": {"NNS": ["impedimenta"]},
-            "be": {"VBZ": ["'s"]},
-        }
-    )

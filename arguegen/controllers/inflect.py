@@ -5,9 +5,13 @@ import immutables
 import lemminflect
 from nltk import pos_tag
 
-from arguegen.config import InflectionConfig
-
-config = InflectionConfig()
+ADDITIONAL_INFLECTIONS: dict[str, dict[str, list[str]]] = {
+    "prove": {"VPN": ["proven"]},
+    "journey": {"NN": ["journeying"]},
+    "relinquish": {"NN": ["relinquishing"]},
+    "impedimentum": {"NNS": ["impedimenta"]},
+    "be": {"VBZ": ["'s"]},
+}
 
 
 def _lemma_parts(text: str, pos: str) -> t.List[str]:
@@ -45,7 +49,7 @@ def _inflect(
             form = " ".join([lemma_prefix, inflection])
             forms[tag].append(form.strip())
 
-    if additional_inflections := config.forms.get(lemma):
+    if additional_inflections := ADDITIONAL_INFLECTIONS.get(lemma):
         for tag, inflections in additional_inflections.items():
             forms[tag].extend(inflections)
 

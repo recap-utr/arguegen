@@ -173,7 +173,7 @@ def concepts(
             hypernym_distances = node.hypernym_distances(
                 nlp,
                 [atom.plain_text for atom in source.concept.atoms],
-                config.node_similarity_threshold,
+                config.synset_similarity_threshold,
             )
 
             for hypernym, hyp_distance in hypernym_distances.items():
@@ -362,7 +362,7 @@ def _bfs_adaptation(
                     nlp,
                     current_path.end_node,
                     [atom.plain_text for atom in source.concept.atoms],
-                    config.node_similarity_threshold,
+                    config.synset_similarity_threshold,
                 )
 
                 # Here, paths that are shorter than the reference path are discarded.

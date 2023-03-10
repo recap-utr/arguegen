@@ -10,9 +10,21 @@ import wn
 import wn.similarity
 from wn.morphy import Morphy
 
-from arguegen.config import WordnetConfig
 from arguegen.model import casebase
 from arguegen.model.nlp import Nlp
+
+
+@dataclass(frozen=True)
+class WordnetConfig:
+    hypernym_filter: tuple[str, ...] = tuple()
+    synset_context: tuple[t.Literal["examples", "definition"], ...] = (
+        "examples",
+        "definition",
+    )
+    simulate_root: bool = False
+    lexicon: str = "oewn:2021"
+    use_morphy: bool = True
+
 
 config = WordnetConfig()
 
@@ -23,7 +35,9 @@ class Wordnet:
     _synsets_cache: dict[tuple[str, t.Union[str, None]], list[wn.Synset]] = {}
 
     def __init__(self, nlp: Nlp):
-        self.db = wn.Wordnet("oewn:2021", lemmatizer=Morphy())
+        self.db = wn.Wordnet(
+            config.lexicon, lemmatizer=Morphy() if config.use_morphy else None
+        )
         self.nlp = nlp
 
     def _synsets(
@@ -97,18 +111,18 @@ class Synset:
         return casebase.wn2pos(self._synset.pos)
 
     @property
-    def context(self) -> t.Tuple[str, ...]:
+    def context(self) -> frozenset[str]:
         ctx = []
 
-        for context_type in config.synset_context:
-            if context_type == "examples":
-                ctx.extend(self._synset.examples())
-            elif context_type == "definition" and (
-                definition := self._synset.definition()
-            ):
-                ctx.append(definition)
+        if "examples" in config.synset_context:
+            ctx.extend(self._synset.examples())
 
-        return tuple(ctx)
+        if "definition" in config.synset_context and (
+            definition := self._synset.definition()
+        ):
+            ctx.append(definition)
+
+        return frozenset(ctx)
 
     def __str__(self) -> str:
         return self._synset.id
@@ -334,13 +348,12 @@ def all_shortest_paths(
 def context_similarity(
     synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset], nlp: Nlp
 ) -> float:
-    synsets1_ctx = [x.context for x in synsets1]
-    synsets2_ctx = [x.context for x in synsets2]
+    contexts1 = itertools.chain.from_iterable(x.context for x in synsets1)
+    contexts2 = itertools.chain.from_iterable(x.context for x in synsets2)
+
     return statistics.mean(
         nlp.similarities(
-            (ctx1, ctx2)
-            for contexts1, contexts2 in itertools.product(synsets1_ctx, synsets2_ctx)
-            for ctx1, ctx2 in itertools.product(contexts1, contexts2)
+            (ctx1, ctx2) for ctx1, ctx2 in itertools.product(contexts1, contexts2)
         )
     )
 
