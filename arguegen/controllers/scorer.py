@@ -9,51 +9,6 @@ from arguegen.config import ScoreConfig
 from arguegen.model import casebase, wordnet
 from arguegen.model.nlp import Nlp
 
-global_metrics = {
-    "concept_sem_sim",
-    "nodes_path_sim",
-    "nodes_sem_sim",
-    "nodes_wup_sim",
-}
-
-extraction_adaptation_metrics = {
-    "query_concept_sem_sim",
-    "query_nodes_sem_sim",
-}
-
-metrics_per_stage = {
-    "extraction": {
-        *global_metrics,
-        *extraction_adaptation_metrics,
-        "adus_sem_sim",
-        "query_adus_sem_sim",
-        "major_claim_prox",
-        "keyword_weight",
-    },
-    "adaptation": {
-        *global_metrics,
-        *extraction_adaptation_metrics,
-        "hypernym_prox",
-    },
-    "evaluation": {*global_metrics},
-}
-
-metric_keys = {
-    "adus_sem_sim",
-    "concept_sem_sim",
-    "hypernym_prox",
-    "keyword_weight",
-    "major_claim_prox",
-    "nodes_path_sim",
-    "nodes_sem_sim",
-    "nodes_wup_sim",
-    "query_adus_sem_sim",
-    "query_concept_sem_sim",
-    "query_nodes_sem_sim",
-}
-
-assert metric_keys == set(itertools.chain.from_iterable(metrics_per_stage.values()))
-
 
 def dist2sim(distance: float) -> float:
     return 1 / (1 + distance)
