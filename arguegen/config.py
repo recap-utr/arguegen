@@ -87,6 +87,7 @@ class ExtrasConfig(DataClassDictMixin):
     extraction: ExtractionConfig = ExtractionConfig()
     adaptation: AdaptationConfig = AdaptationConfig()
     score: ScoreConfig = ScoreConfig()
+    type: str = "wordnet"
 
     @classmethod
     def from_extras(cls, extras: Struct) -> ExtrasConfig:
