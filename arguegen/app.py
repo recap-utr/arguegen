@@ -1,4 +1,6 @@
+import json
 import logging
+import traceback
 import typing as t
 
 import arg_services
@@ -53,10 +55,12 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         self, req: adaptation_pb2.AdaptRequest
     ) -> adaptation_pb2.AdaptResponse:
         adapted_cases = {}
+        config = ExtrasConfig.from_extras(req.extras)
 
         for case_name, case_req in req.cases.items():
             case_adapted = case_req.case
-            rules = ", ".join(
+            applied_rules = set()
+            given_rules = ", ".join(
                 f"adapt the {rule.source.pos} {rule.source.lemma} to the"
                 f" {rule.target.pos} {rule.target.lemma}"
                 for rule in case_req.rules
@@ -67,7 +71,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                     text_original = node.atom.text
                     text_adapted: t.Optional[str] = None
 
-                    if req.extras["endpoint"] == "edit":
+                    if config.openai.endpoint == "edit":
                         instruction = f"""
                             Imagine a user entered the following query into a search engine specialized in finding arguments:
                             {req.query.text}
@@ -76,10 +80,10 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                             Please only specialize or generalize the most important keywords in the text and do not rewrite the text.
                         """
 
-                        if rules:
+                        if given_rules:
                             instruction += (
-                                "\n\nYou are giving the following rules as a starting"
-                                f" point:\n{rules}."
+                                "\n\nPlease use the following rules as a starting"
+                                f" point:\n{given_rules}."
                             )
 
                         res = openai.Edit.create(
@@ -90,67 +94,70 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
 
                         text_adapted = res.choices[0].text  # type: ignore
 
-                    elif req.extras["endpoint"] == "chat":
-                        base_messages: tuple[ChatMessage, ...] = (
-                            {
-                                "role": "system",
-                                "content": (
-                                    "You are ChatGPT, a large language model trained by"
-                                    " OpenAI. Answer as concisely as possible. Think"
-                                    " step by step and keep the changes to the text"
-                                    " minimal."
-                                ),
-                            },
-                            {
-                                "role": "user",
-                                "content": (
-                                    "I would like to find arguments that are relevant"
-                                    f" to the following query: {req.query.text}"
-                                ),
-                            },
-                            {"role": "assistant", "content": case_req.case.text},
-                        )
-
-                        next_message: ChatMessage = {
-                            "role": "user",
+                    elif config.openai.endpoint == "chat":
+                        # https://github.com/openai/chatgpt-retrieval-plugin/blob/88d983585816b7f298edb0cabf7502c5ccff370d/services/extract_metadata.py#L11
+                        # https://github.com/openai/chatgpt-retrieval-plugin/blob/88d983585816b7f298edb0cabf7502c5ccff370d/services/pii_detection.py#L6
+                        system_message: ChatMessage = {
+                            "role": "system",
                             "content": f"""
-                                Your result is already quite good, but needs some adjustments.
-                                Please edit the following segment of the result to make it more relevant to the presented query.
-                                Please only specialize or generalize the most important keywords in the text and do not rewrite the text.
-                                Here is the segment:
-                                {text_original}
+                                A user entered the following query into a search engine specialized in finding arguments:
+                                {req.query.text}
+
+                                The search engine provided the user with the following result:
+                                {case_req.case.text}
+
+                                The user will now provide you with segments from that result that need to be adapted to make it more relevant to the presented query.
+                                You sould keep the changes as small as possible and only specialize or generalize the most important keywords in the text.
+
+                                Respond with a JSON containing key value pairs.
+                                Use the following structure:
+                                - text: string, the adapted text
+                                - rules: list of objects in the form {{"source": string, "target": string, "pos": string (either 'NOUN', 'VERB', 'ADJECTIVE', or 'ADVERB'), "importance": float (between 0 and 1)}}, the text replacements needed to transform the original text into the adapted text together with their part of speech (pos) tags and their perceived importance for the adaptation
                             """,
                         }
 
-                        if rules:
-                            next_message["content"] += (
-                                "\n\nYou are giving the following rules as a starting"
-                                f" point:\n{rules}."
+                        user_message: ChatMessage = {
+                            "role": "user",
+                            "content": f"Here is the text segment:\n{text_original}",
+                        }
+
+                        if given_rules:
+                            user_message["content"] += (
+                                "\n\nPlease use the following rules as a starting"
+                                f" point:\n{given_rules}."
                             )
 
                         res = openai.ChatCompletion.create(
                             model="gpt-3.5-turbo",
-                            messages=[*base_messages, next_message],
+                            messages=[system_message, user_message],
                         )
 
-                        text_adapted = res.choices[0].message.content  # type: ignore
+                        raw_completion = res.choices[0].message.content.strip()  # type: ignore
 
-                        # We will now perform another request to retrieve the changed keywords
-                        # messages.append(res.choices[0].message)  # type: ignore
-                        # messages.append(
-                        #     {
-                        #         "role": "user",
-                        #         "content": (
-                        #             "Please list all changes as a list in the form of [source,"
-                        #             " target]."
-                        #         ),
-                        #     }
-                        # )
+                        try:
+                            completion = json.loads(raw_completion)
+                            print(completion)
+                            text_adapted = completion.get("text")
 
-                        # res = openai.ChatCompletion.create(
-                        #     model="gpt-3.5-turbo", messages=messages
-                        # )
-                        # print(res.choices[0].message.content)  # type: ignore
+                            if completion_rules := completion.get("rules"):
+                                for rule in completion_rules:
+                                    applied_rules.add(
+                                        adaptation_pb2.Rule(
+                                            source=adaptation_pb2.Concept(
+                                                lemma=rule["source"],
+                                                pos=rule["pos"],
+                                                score=rule["importance"],
+                                            ),
+                                            target=adaptation_pb2.Concept(
+                                                lemma=rule["target"],
+                                                pos=rule["pos"],
+                                                score=rule["importance"],
+                                            ),
+                                        )
+                                    )
+
+                        except Exception:
+                            print(traceback.format_exc())
 
                     if text_adapted is not None:
                         node.atom.text = text_adapted
@@ -159,7 +166,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                         )
 
             adapted_cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
-                case=case_adapted,
+                case=case_adapted, applied_rules=applied_rules
             )
 
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)

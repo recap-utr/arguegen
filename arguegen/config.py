@@ -82,11 +82,18 @@ class ScoreConfig(DataClassDictMixin):
 
 
 @dataclass
+class OpenAIConfig(DataClassDictMixin):
+    endpoint: str = "chat"
+
+
+@dataclass
 class ExtrasConfig(DataClassDictMixin):
     loader: LoaderConfig = LoaderConfig()
     extraction: ExtractionConfig = ExtractionConfig()
     adaptation: AdaptationConfig = AdaptationConfig()
     score: ScoreConfig = ScoreConfig()
+    openai: OpenAIConfig = OpenAIConfig()
+    # wordnet, openai, hybrid
     type: str = "wordnet"
 
     @classmethod

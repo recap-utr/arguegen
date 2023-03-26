@@ -12,7 +12,7 @@ pendulum = "^2.1.2"
 nltk = "^3.8.1"
 lemminflect = "^0.2.3"
 immutables = "^0.19"
-nlp-service = "^1.3.5"
+nlp-service = "^1.3.11"
 arg-services = "^1.2.3"
 arguebuf = { version = "^2.0.0b23", allow-prereleases = true }
 wn = "^0.9.3"
