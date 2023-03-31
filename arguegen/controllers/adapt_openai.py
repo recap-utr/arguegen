@@ -4,6 +4,7 @@ import logging
 import traceback
 import typing as t
 from dataclasses import dataclass
+from textwrap import dedent
 
 import openai
 from arg_services.cbr.v1beta import adaptation_pb2
@@ -47,11 +48,11 @@ class AdaptOpenAI:
             for rule in self.req.rules
         )
 
-        return f"""
+        return dedent(f"""
 
             Please use the following rules as a starting point:
             {parsed_rules}
-        """
+        """)
 
     @functools.cached_property
     def original_texts(self) -> dict[str, str]:
@@ -94,14 +95,14 @@ class AdaptOpenAI:
     ) -> adaptation_pb2.AdaptedCaseResponse:
         adapted_texts: dict[str, str] = {}
 
-        instruction = f"""
+        instruction = dedent(f"""
             A user entered the following query into an argument search engine:
             {self.query.text}
 
             You should now edit the text to make it more relevant to the presented query.
             Please only specialize or generalize the most important keywords in the text and do not rewrite the text.
             {self.given_rules if self.given_rules else ""}
-        """
+        """)
 
         for node_id, original_text in self.original_texts.items():
             res = openai.Edit.create(
@@ -125,7 +126,7 @@ class AdaptOpenAI:
         adapted_texts: dict[str, str] = {}
         applied_rules: list[adaptation_pb2.Rule] = []
 
-        system_message = f"""
+        system_message = dedent(f"""
             A user entered the following query into an argument search engine:
             {self.query.text}
 
@@ -135,25 +136,20 @@ class AdaptOpenAI:
             The user will now provide you with segments from that result that need to be adapted to make it more relevant to the presented query.
             You sould keep the changes as small as possible and only generalize the most important keywords in the text.
             {self.given_rules if self.given_rules else ""}
-        """
+        """)
 
         if self.config.type == "openai-chat-explainable":
-            system_message += """
+            system_message += dedent("""
                 Do not rewrite whole sentences or paragraphs, only replace small chunks!
 
                 Respond with a JSON of the following structure:
-                {
-                    text: string, the adapted text
-                    rules: list of objects, the replacements needed to transform the original text into the adapted text:  [
-                        {
-                            source: string, keyword that needs to be replaced,
-                            target: string, generalized keyword that should be used instead,
-                            pos: noun/verb/adjective/adverb, part of speech tag of the keyword,
-                            importance: float between 0 and 1, how important the keyword is in the text
-                        }
-                    ]
-                }
-            """
+                - text: string, the adapted text
+                - rules: list of objects, the replacements needed to transform the original text into the adapted text
+                    -- source: string, keyword that needs to be replaced,
+                    -- target: string, generalized keyword that should be used instead,
+                    -- pos: noun/verb/adjective/adverb, part of speech tag of the keyword,
+                    -- importance: float between 0 and 1, how important the keyword is in the text
+            """)
 
         messages: list[ChatMessage] = [{"role": "system", "content": system_message}]
 
@@ -235,7 +231,7 @@ class AdaptOpenAI:
         if len(extracted_concepts) == 0:
             return rules
 
-        system_message = f"""
+        system_message = dedent(f"""
             A user entered the following query into an argument search engine:
             {self.query.text}
 
@@ -246,17 +242,15 @@ class AdaptOpenAI:
             Pay attention to the provided part of speech tag (POS) and treat the provided score as an estimation of the keyword's importance to be generalized.
             {self.given_rules if self.given_rules else ""}
 
-        """
+        """)
 
-        system_message += """
-            Respond with a list of JSON object having the following structure:
-            {
-                source: string, the 'lemma' provided by the user
-                target: string, the generalized 'lemma' that should be used instead
-                index: int, the 'index' of the lemma in the user input
-                importance: float between 0 and 1, how important the generalization is for the text
-            }
-        """
+        system_message += dedent("""
+            For each JSON object provided by the user, respond with a JSON object having the following structure:
+            - source: string, the unmodified lemma provided by the user
+            - target: string, the generalized lemma that should be used instead
+            - index: int, the unmodified index of the lemma in the user input
+            - importance: float between 0 and 1, how important the generalization is for the text
+        """)
 
         user_message = json.dumps(
             [
@@ -297,7 +291,9 @@ class AdaptOpenAI:
                     completion["index"]
                 ]
 
-                assert extracted_concept.concept.lemma == completion["source"]
+                assert extracted_concept.concept.lemma == completion.get(
+                    "source", completion.get("lemma")
+                )
 
                 adapted_concept = casebase.ScoredConcept(
                     casebase.Concept.from_concept(
@@ -309,7 +305,7 @@ class AdaptOpenAI:
                 rules.append(casebase.Rule(extracted_concept, adapted_concept))
 
         except Exception:
-            log.error(f"""
+            log.error(dedent(f"""
                 traceback:
                 {traceback.format_exc()}
 
@@ -318,6 +314,6 @@ class AdaptOpenAI:
 
                 assistant:
                 {raw_completion}
-            """)
+            """))
 
         return rules
