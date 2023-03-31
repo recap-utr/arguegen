@@ -47,9 +47,10 @@ class ScoredConcept:
         return self.score < other.score
 
     def dump(self) -> adaptation_pb2.Concept:
-        return adaptation_pb2.Concept(
-            lemma=self.concept.lemma, pos=self.concept._pos, score=self.score
-        )
+        obj = self.concept.dump()
+        obj.MergeFrom(adaptation_pb2.Concept(score=self.score))
+
+        return obj
 
 
 @dataclass(frozen=True, eq=True)

@@ -83,7 +83,8 @@ class ScoreConfig(DataClassDictMixin):
 
 @dataclass
 class OpenAIConfig(DataClassDictMixin):
-    endpoint: str = "chat"
+    chat_model: str = "gpt-3.5-turbo"
+    edit_model: str = "text-davinci-edit-001"
 
 
 @dataclass
@@ -93,7 +94,7 @@ class ExtrasConfig(DataClassDictMixin):
     adaptation: AdaptationConfig = AdaptationConfig()
     score: ScoreConfig = ScoreConfig()
     openai: OpenAIConfig = OpenAIConfig()
-    # wordnet, openai, hybrid
+    # wordnet, openai-edit, openai-chat-prose, openai-chat-explainable, openai-chat-hybrid
     type: str = "wordnet"
 
     @classmethod
