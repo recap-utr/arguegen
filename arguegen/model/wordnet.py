@@ -103,7 +103,6 @@ class Synset:
     def lemmas(self) -> list[wn.Form]:
         return self._synset.lemmas()
 
-    # TODO: Hacky!!
     @property
     def lemma(self) -> wn.Form:
         return self._synset.lemmas()[0]
@@ -202,7 +201,6 @@ class Path:
     def lemmas(self) -> list[wn.Form]:
         return self.end_node.lemmas
 
-    # TODO: Hacky!!
     @property
     def lemma(self) -> wn.Form:
         return self.end_node.lemma
@@ -364,14 +362,14 @@ def path_similarity(
     synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
 ) -> float:
     return statistics.mean(
-        (wn.similarity.path(s1._synset, s2._synset))
+        (wn.similarity.path(s1._synset, s2._synset, config.simulate_root))
         for s1, s2 in itertools.product(synsets1, synsets2)
     )
 
 
 def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
     return statistics.mean(
-        (wn.similarity.wup(s1._synset, s2._synset))
+        (wn.similarity.wup(s1._synset, s2._synset, config.simulate_root))
         for s1, s2 in itertools.product(synsets1, synsets2)
     )
 

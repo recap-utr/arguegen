@@ -12,10 +12,11 @@ from arg_services.cbr.v1beta.model_pb2 import AnnotatedGraph
 
 from arguegen.config import ExtrasConfig
 from arguegen.controllers import adapt, extract
+from arguegen.controllers.inflect import inflect_concept
 from arguegen.controllers.loader import Loader
 from arguegen.model import casebase
 from arguegen.model.nlp import Nlp
-from arguegen.model.wordnet import Wordnet
+from arguegen.model.wordnet import Wordnet, path_similarity
 
 log = logging.getLogger(__name__)
 
@@ -99,8 +100,11 @@ class AdaptOpenAI:
             A user entered the following query into an argument search engine:
             {self.query.text}
 
-            You should now edit the text to make it more relevant to the presented query.
-            Please only specialize or generalize the most important keywords in the text and do not rewrite the text.
+            The search engine provided the user with the following result:
+            {self.req.case.text}
+
+            You should now adapt a snippet of that text to make it more relevant to the presented query.
+            Please only specialize or generalize the most important parts in the text and do not rewrite it entirely.
             {self.given_rules if self.given_rules else ""}
         """)
 
@@ -134,14 +138,14 @@ class AdaptOpenAI:
             {self.req.case.text}
 
             The user will now provide you with segments from that result that need to be adapted to make it more relevant to the presented query.
-            You sould keep the changes as small as possible and only generalize the most important keywords in the text.
+            Please only specialize or generalize the most important parts in the text and do not rewrite it entirely.
             {self.given_rules if self.given_rules else ""}
         """)
 
         if self.config.type == "openai-chat-explainable":
             system_message += dedent("""
-                Do not rewrite whole sentences or paragraphs, only replace small chunks!
 
+                You must limit your changes to the most important keywords/chunks in the text and provide a list of rules to transform the original text into the adapted one.
                 Respond with a JSON of the following structure:
                 - text: string, the adapted text
                 - rules: list of objects, the replacements needed to transform the original text into the adapted text
@@ -209,14 +213,22 @@ class AdaptOpenAI:
             case, self.nlp, self.config.extraction, self.config.score, self.wn
         )
 
-        adapted_rules = self._predict_rules(extracted_concepts)
+        predicted_rules = self._predict_rules(extracted_concepts)
+
+        if self.config.openai.verify_hybrid_rules:
+            verified_rules = self._verify_rules(predicted_rules)
+        else:
+            verified_rules = predicted_rules
+
         adapted_graph, applied_rules = adapt.argument_graph(
-            case, adapted_rules, self.nlp, self.config.adaptation
+            case, verified_rules, self.nlp, self.config.adaptation
         )
+        discarded_rules = set(verified_rules).difference(applied_rules)
 
         return adaptation_pb2.AdaptedCaseResponse(
             case=adapted_graph.dump(),
             applied_rules=[rule.dump() for rule in applied_rules],
+            discarded_rules=[rule.dump() for rule in discarded_rules],
             extracted_concepts=[concept.dump() for concept in extracted_concepts],
             discarded_concepts=[concept.dump() for concept in discarded_concepts],
         )
@@ -287,22 +299,36 @@ class AdaptOpenAI:
             completions = json.loads(raw_completion)
 
             for completion in completions:
-                extracted_concept: casebase.ScoredConcept = extracted_concepts[
-                    completion["index"]
-                ]
+                source: casebase.ScoredConcept = extracted_concepts[completion["index"]]
 
-                assert extracted_concept.concept.lemma == completion.get(
+                assert source.concept.lemma == completion.get(
                     "source", completion.get("lemma")
                 )
 
-                adapted_concept = casebase.ScoredConcept(
-                    casebase.Concept.from_concept(
-                        extracted_concept.concept, completion["target"]
+                lemma = completion["target"]
+                _, form2pos, pos2form = inflect_concept(
+                    lemma, casebase.pos2spacy(source.concept._pos), lemmatize=False
+                )
+
+                synsets = self.wn.concept_synsets(
+                    form2pos.keys(),
+                    source.concept._pos,
+                    self.nlp,
+                )
+
+                target = casebase.ScoredConcept(
+                    casebase.Concept(
+                        lemma,
+                        form2pos,
+                        pos2form,
+                        source.concept._pos,
+                        source.concept.atoms,
+                        synsets,
                     ),
                     completion["importance"],
                 )
 
-                rules.append(casebase.Rule(extracted_concept, adapted_concept))
+                rules.append(casebase.Rule(source, target))
 
         except Exception:
             log.error(dedent(f"""
@@ -317,3 +343,18 @@ class AdaptOpenAI:
             """))
 
         return rules
+
+    def _verify_rules(
+        self, predicted_rules: t.Iterable[casebase.Rule[casebase.ScoredConcept]]
+    ) -> list[casebase.Rule[casebase.ScoredConcept]]:
+        verified_rules: list[casebase.Rule[casebase.ScoredConcept]] = []
+
+        for rule in predicted_rules:
+            sim = path_similarity(
+                rule.source.concept.synsets, rule.target.concept.synsets
+            )
+
+            if sim >= self.config.openai.min_wordnet_path_similarity:
+                verified_rules.append(rule)
+
+        return verified_rules

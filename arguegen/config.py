@@ -85,6 +85,8 @@ class ScoreConfig(DataClassDictMixin):
 class OpenAIConfig(DataClassDictMixin):
     chat_model: str = "gpt-3.5-turbo"
     edit_model: str = "text-davinci-edit-001"
+    verify_hybrid_rules: bool = True
+    min_wordnet_path_similarity: float = 0.5
 
 
 @dataclass
