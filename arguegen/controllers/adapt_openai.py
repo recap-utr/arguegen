@@ -67,7 +67,7 @@ class AdaptOpenAI:
 
     def compute(
         self,
-    ) -> adaptation_pb2.AdaptedCaseResponse:
+    ) -> t.Optional[adaptation_pb2.AdaptedCaseResponse]:
         if self.config.type == "openai-edit":
             return self._edit()
         elif self.config.type in ("openai-chat-prose", "openai-chat-explainable"):
@@ -200,7 +200,7 @@ class AdaptOpenAI:
             case=self._apply_adaptations(adapted_texts), applied_rules=applied_rules
         )
 
-    def _chat_hybrid(self) -> adaptation_pb2.AdaptedCaseResponse:
+    def _chat_hybrid(self) -> t.Optional[adaptation_pb2.AdaptedCaseResponse]:
         case = Loader(
             self.case_name,
             self.req.case,
@@ -209,29 +209,33 @@ class AdaptOpenAI:
             self.wn,
             self.config.loader,
         ).parse(self.req)
-        extracted_concepts, discarded_concepts = extract.keywords(
-            case, self.nlp, self.config.extraction, self.config.score, self.wn
-        )
 
-        predicted_rules = self._predict_rules(extracted_concepts)
+        if len(case.rules) > 0:
+            extracted_concepts, discarded_concepts = extract.keywords(
+                case, self.nlp, self.config.extraction, self.config.score, self.wn
+            )
 
-        if self.config.openai.verify_hybrid_rules:
-            verified_rules = self._verify_rules(predicted_rules)
-        else:
-            verified_rules = predicted_rules
+            predicted_rules = self._predict_rules(extracted_concepts)
 
-        adapted_graph, applied_rules = adapt.argument_graph(
-            case, verified_rules, self.nlp, self.config.adaptation
-        )
-        discarded_rules = set(verified_rules).difference(applied_rules)
+            if self.config.openai.verify_hybrid_rules:
+                verified_rules = self._verify_rules(predicted_rules)
+            else:
+                verified_rules = predicted_rules
 
-        return adaptation_pb2.AdaptedCaseResponse(
-            case=adapted_graph.dump(),
-            applied_rules=[rule.dump() for rule in applied_rules],
-            discarded_rules=[rule.dump() for rule in discarded_rules],
-            extracted_concepts=[concept.dump() for concept in extracted_concepts],
-            discarded_concepts=[concept.dump() for concept in discarded_concepts],
-        )
+            adapted_graph, applied_rules = adapt.argument_graph(
+                case, verified_rules, self.nlp, self.config.adaptation
+            )
+            discarded_rules = set(verified_rules).difference(applied_rules)
+
+            return adaptation_pb2.AdaptedCaseResponse(
+                case=adapted_graph.dump(),
+                applied_rules=[rule.dump() for rule in applied_rules],
+                discarded_rules=[rule.dump() for rule in discarded_rules],
+                extracted_concepts=[concept.dump() for concept in extracted_concepts],
+                discarded_concepts=[concept.dump() for concept in discarded_concepts],
+            )
+
+        return None
 
     def _predict_rules(
         self, _extracted_concepts: t.AbstractSet[casebase.ScoredConcept]

@@ -61,6 +61,9 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
             ).compute()
             for case_name, case_req in req.cases.items()
         }
+        adapted_cases = {
+            key: value for key, value in adapted_cases.items() if value is not None
+        }
 
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)
 
@@ -77,38 +80,44 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
             case = loader.Loader(
                 case_name, case_req.case, req.query, nlp, wn, config.loader
             ).parse(case_req)
-            extracted_concepts, discarded_concepts = extract.keywords(
-                case, nlp, config.extraction, config.score, wn
-            )
 
-            adapted_rules = []
-
-            if config.adaptation.method == AdaptationMethod.DIRECT:
-                adapted_rules, rule_candidates = adapt.concepts(
-                    extracted_concepts, case, nlp, config.adaptation, config.score
+            if len(case.rules) > 0:
+                extracted_concepts, discarded_concepts = extract.keywords(
+                    case, nlp, config.extraction, config.score, wn
                 )
 
-            elif config.adaptation.method == AdaptationMethod.BFS:
-                extracted_paths = extract.paths(
-                    extracted_concepts, case.rules, config.adaptation.bfs_method
-                )
-                adapted_rules, adapted_paths, rule_candidates = adapt.paths(
-                    extracted_paths, case, nlp, config.adaptation, config.score
-                )
+                adapted_rules = []
 
-            adapted_graph, applied_rules = adapt.argument_graph(
-                case, adapted_rules, nlp, config.adaptation
-            )
-            discarded_rules = set(adapted_rules).difference(applied_rules)
+                if config.adaptation.method == AdaptationMethod.DIRECT:
+                    adapted_rules, rule_candidates = adapt.concepts(
+                        extracted_concepts, case, nlp, config.adaptation, config.score
+                    )
 
-            adapted_cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
-                case=adapted_graph.dump(),
-                applied_rules=[rule.dump() for rule in applied_rules],
-                discarded_rules=[rule.dump() for rule in discarded_rules],
-                extracted_concepts=[concept.dump() for concept in extracted_concepts],
-                discarded_concepts=[concept.dump() for concept in discarded_concepts],
-                # TODO: Add rule candidates
-            )
+                elif config.adaptation.method == AdaptationMethod.BFS:
+                    extracted_paths = extract.paths(
+                        extracted_concepts, case.rules, config.adaptation.bfs_method
+                    )
+                    adapted_rules, adapted_paths, rule_candidates = adapt.paths(
+                        extracted_paths, case, nlp, config.adaptation, config.score
+                    )
+
+                adapted_graph, applied_rules = adapt.argument_graph(
+                    case, adapted_rules, nlp, config.adaptation
+                )
+                discarded_rules = set(adapted_rules).difference(applied_rules)
+
+                adapted_cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
+                    case=adapted_graph.dump(),
+                    applied_rules=[rule.dump() for rule in applied_rules],
+                    discarded_rules=[rule.dump() for rule in discarded_rules],
+                    extracted_concepts=[
+                        concept.dump() for concept in extracted_concepts
+                    ],
+                    discarded_concepts=[
+                        concept.dump() for concept in discarded_concepts
+                    ],
+                    # TODO: Add rule candidates
+                )
 
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)
 
