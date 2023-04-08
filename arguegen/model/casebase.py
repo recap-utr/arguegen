@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 
 import arguebuf as ag
 import immutables
-import wn.constants
 from arg_services.cbr.v1beta import adaptation_pb2
 from arg_services.cbr.v1beta.model_pb2 import AnnotatedGraph
+from nltk.corpus.reader import wordnet as wn
 
 from arguegen.model import wordnet
 
@@ -158,11 +158,11 @@ def wn2pos(pos: t.Optional[str]) -> Pos.ValueType:
         return Pos.POS_UNSPECIFIED
 
     return {
-        wn.constants.NOUN: Pos.POS_NOUN,
-        wn.constants.VERB: Pos.POS_VERB,
-        wn.constants.ADJECTIVE: Pos.POS_ADJECTIVE,
-        wn.constants.ADJECTIVE_SATELLITE: Pos.POS_ADJECTIVE,
-        wn.constants.ADVERB: Pos.POS_ADVERB,
+        wn.NOUN: Pos.POS_NOUN,
+        wn.VERB: Pos.POS_VERB,
+        wn.ADJ: Pos.POS_ADJECTIVE,
+        wn.ADJ_SAT: Pos.POS_ADJECTIVE,
+        wn.ADV: Pos.POS_ADVERB,
     }.get(pos, Pos.POS_UNSPECIFIED)
 
 
@@ -171,10 +171,10 @@ def pos2wn(pos: Pos.ValueType) -> t.List[t.Optional[str]]:
         return [None]
 
     mapping: dict[Pos.ValueType, list[t.Optional[str]]] = {
-        Pos.POS_NOUN: [wn.constants.NOUN],
-        Pos.POS_VERB: [wn.constants.VERB],
-        Pos.POS_ADJECTIVE: [wn.constants.ADJECTIVE, wn.constants.ADJECTIVE_SATELLITE],
-        Pos.POS_ADVERB: [wn.constants.ADVERB],
+        Pos.POS_NOUN: [wn.NOUN],
+        Pos.POS_VERB: [wn.VERB],
+        Pos.POS_ADJECTIVE: [wn.ADJ, wn.ADJ_SAT],
+        Pos.POS_ADVERB: [wn.ADV],
     }
 
     return mapping.get(pos, [None])

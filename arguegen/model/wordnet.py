@@ -6,14 +6,14 @@ import typing as t
 from collections import defaultdict
 from dataclasses import dataclass
 
-import wn
-import wn.similarity
-from wn.morphy import Morphy
+from nltk.corpus.reader.api import CorpusReader
+from nltk.corpus.reader.wordnet import Lemma as NltkLemma
+from nltk.corpus.reader.wordnet import Synset as NltkSynset
+from nltk.corpus.reader.wordnet import WordNetCorpusReader
+from nltk.corpus.util import LazyCorpusLoader
 
 from arguegen.model import casebase
 from arguegen.model.nlp import Nlp
-
-wn.config.allow_multithreading = True
 
 
 @dataclass(frozen=True)
@@ -24,34 +24,41 @@ class WordnetConfig:
         "definition",
     )
     simulate_root: bool = False
-    lexicon: str = "oewn:2021"
-    use_morphy: bool = True
 
 
 config = WordnetConfig()
 
 
 class Wordnet:
-    db: wn.Wordnet
     nlp: Nlp
-    _synsets_cache: dict[tuple[str, t.Union[str, None]], list[wn.Synset]] = {}
+    db: WordNetCorpusReader
+    _synsets_cache: dict[tuple[str, t.Union[str, None]], list[NltkSynset]] = {}
 
     def __init__(self, nlp: Nlp):
-        self.db = wn.Wordnet(
-            config.lexicon, lemmatizer=Morphy() if config.use_morphy else None
+        self.db = t.cast(
+            WordNetCorpusReader,
+            LazyCorpusLoader(
+                "wordnet",
+                WordNetCorpusReader,
+                LazyCorpusLoader(
+                    "omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"
+                ),
+            ),
         )
         self.nlp = nlp
 
     def _synsets(
         self, name: str, pos_tags: t.Collection[t.Optional[str]]
-    ) -> t.List[wn.Synset]:
+    ) -> t.List[NltkSynset]:
         results = []
 
         for pos_tag in pos_tags:
             cache_key = (name, pos_tag)
 
             if cache_key not in self._synsets_cache:
-                self._synsets_cache[cache_key] = self.db.synsets(name, pos_tag)
+                self._synsets_cache[cache_key] = t.cast(
+                    list[NltkSynset], self.db.synsets(name, pos_tag) or []
+                )
 
             results.extend(self._synsets_cache[cache_key])
 
@@ -91,7 +98,7 @@ class Synset:
     # examples: t.Tuple[str, ...]
     # word: wn.Word
     # sense: wn.Sense
-    _synset: wn.Synset
+    _synset: NltkSynset
 
     def __eq__(self, other: Synset) -> bool:
         return self._synset == other._synset
@@ -100,33 +107,35 @@ class Synset:
         return hash((self._synset,))
 
     @property
-    def lemmas(self) -> list[wn.Form]:
-        return self._synset.lemmas()
+    def lemmas(self) -> list[str]:
+        return [
+            lemma.name() for lemma in t.cast(list[NltkLemma], self._synset.lemmas())
+        ]
 
     @property
-    def lemma(self) -> wn.Form:
-        return self._synset.lemmas()[0]
+    def lemma(self) -> str:
+        return self.lemmas[0]
 
     @property
     def pos(self) -> casebase.Pos.ValueType:
-        return casebase.wn2pos(self._synset.pos)
+        return casebase.wn2pos(self._synset.pos())
 
     @property
     def context(self) -> frozenset[str]:
         ctx = []
 
         if "examples" in config.synset_context:
-            ctx.extend(self._synset.examples())
+            ctx.extend(self._synset.examples() or [])
 
         if "definition" in config.synset_context and (
-            definition := self._synset.definition()
+            definition := self._synset.definition() or ""
         ):
             ctx.append(definition)
 
         return frozenset(ctx)
 
     def __str__(self) -> str:
-        return self._synset.id
+        return self._synset.name() or ""
 
     def hypernyms(
         self,
@@ -149,16 +158,17 @@ class Synset:
     ) -> t.Dict[Synset, int]:
         distances_map: defaultdict[Synset, list[int]] = defaultdict(list)
 
-        for path in self._synset.hypernym_paths(simulate_root=config.simulate_root):
-            for dist, hyp_ in enumerate(path):
-                hyp = Synset(hyp_)
+        for nltk_hyp, dist in self._synset.hypernym_distances(
+            simulate_root=config.simulate_root
+        ):
+            hyp = Synset(nltk_hyp)
 
-                if (
-                    hyp != self
-                    and dist > 0
-                    and hyp._synset.id not in config.hypernym_filter
-                ):
-                    distances_map[hyp].append(dist)
+            if (
+                hyp != self
+                and dist > 0
+                and hyp._synset.name() not in config.hypernym_filter
+            ):
+                distances_map[hyp].append(dist)
 
         filtered_hypernym_keys = distances_map.keys()
 
@@ -198,11 +208,11 @@ class Path:
     relationships: t.Tuple[Relationship, ...]
 
     @property
-    def lemmas(self) -> list[wn.Form]:
+    def lemmas(self) -> list[str]:
         return self.end_node.lemmas
 
     @property
-    def lemma(self) -> wn.Form:
+    def lemma(self) -> str:
         return self.end_node.lemma
 
     @property
@@ -300,7 +310,8 @@ def _filter_nodes(
 def inherited_hypernyms(node: Synset) -> t.FrozenSet[Path]:
     hyp_paths = []
 
-    for hyp_path in node._synset.hypernym_paths(simulate_root=config.simulate_root):
+    # TODO: simulate_root=config.simulate_root
+    for hyp_path in node._synset.hypernym_paths():
         hyp_sequence = []
 
         for hyp in reversed(hyp_path[:-1]):  # The last element is the queried node
@@ -366,7 +377,12 @@ def path_similarity(
 ) -> float:
     try:
         return statistics.mean(
-            (wn.similarity.path(s1._synset, s2._synset, config.simulate_root))
+            (
+                t.cast(
+                    float,
+                    s1._synset.path_similarity(s2._synset, config.simulate_root),
+                )
+            )
             for s1, s2 in itertools.product(synsets1, synsets2)
         )
     except statistics.StatisticsError:
@@ -376,7 +392,12 @@ def path_similarity(
 def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
     try:
         return statistics.mean(
-            (wn.similarity.wup(s1._synset, s2._synset, config.simulate_root))
+            (
+                t.cast(
+                    float,
+                    s1._synset.wup_similarity(s2._synset, config.simulate_root),
+                )
+            )
             for s1, s2 in itertools.product(synsets1, synsets2)
         )
     except statistics.StatisticsError:
