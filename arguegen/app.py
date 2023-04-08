@@ -34,7 +34,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
     def Adapt(
         self, req: adaptation_pb2.AdaptRequest, ctx: grpc.ServicerContext
     ) -> adaptation_pb2.AdaptResponse:
-        log.debug(f"[{id(self)}] Processing request...")
+        log.info(f"[{id(self)}] Processing request...")
         extras_type = t.cast(str, req.extras["type"])
 
         if extras_type.startswith("openai"):
@@ -54,13 +54,14 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         config = ExtrasConfig.from_extras(req.extras)
         nlp = Nlp(self.server_config.nlp_address, req.nlp_config)
         wn = wordnet.Wordnet(nlp)
+        adapted_cases: dict[str, adaptation_pb2.AdaptedCaseResponse] = {}
 
-        adapted_cases = {
-            case_name: AdaptOpenAI(
+        for case_name, case_req in req.cases.items():
+            log.debug(f"[{id(self)}] Processing case {case_name}...")
+            adapted_cases[case_name] = AdaptOpenAI(
                 case_name, case_req, req.query, config, nlp, wn
             ).compute()
-            for case_name, case_req in req.cases.items()
-        }
+
         adapted_cases = {
             key: value for key, value in adapted_cases.items() if value is not None
         }
@@ -77,6 +78,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         config = ExtrasConfig.from_extras(req.extras)
 
         for case_name, case_req in req.cases.items():
+            log.debug(f"[{id(self)}] Processing case {case_name}...")
             case = loader.Loader(
                 case_name, case_req.case, req.query, nlp, wn, config.loader
             ).parse(case_req)
@@ -117,6 +119,10 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                         concept.dump() for concept in discarded_concepts
                     ],
                     # TODO: Add rule candidates
+                )
+            else:
+                adapted_cases[case_name] = adaptation_pb2.AdaptedCaseResponse(
+                    case=case_req.case,
                 )
 
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)

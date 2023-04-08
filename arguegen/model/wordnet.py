@@ -351,34 +351,48 @@ def context_similarity(
     contexts1 = itertools.chain.from_iterable(x.context for x in synsets1)
     contexts2 = itertools.chain.from_iterable(x.context for x in synsets2)
 
-    return statistics.mean(
-        nlp.similarities(
-            (ctx1, ctx2) for ctx1, ctx2 in itertools.product(contexts1, contexts2)
+    try:
+        return statistics.mean(
+            nlp.similarities(
+                (ctx1, ctx2) for ctx1, ctx2 in itertools.product(contexts1, contexts2)
+            )
         )
-    )
+    except statistics.StatisticsError:
+        return 0
 
 
 def path_similarity(
     synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]
 ) -> float:
-    return statistics.mean(
-        (wn.similarity.path(s1._synset, s2._synset, config.simulate_root))
-        for s1, s2 in itertools.product(synsets1, synsets2)
-    )
+    try:
+        return statistics.mean(
+            (wn.similarity.path(s1._synset, s2._synset, config.simulate_root))
+            for s1, s2 in itertools.product(synsets1, synsets2)
+        )
+    except statistics.StatisticsError:
+        return 0
 
 
 def wup_similarity(synsets1: t.Iterable[Synset], synsets2: t.Iterable[Synset]) -> float:
-    return statistics.mean(
-        (wn.similarity.wup(s1._synset, s2._synset, config.simulate_root))
-        for s1, s2 in itertools.product(synsets1, synsets2)
-    )
+    try:
+        return statistics.mean(
+            (wn.similarity.wup(s1._synset, s2._synset, config.simulate_root))
+            for s1, s2 in itertools.product(synsets1, synsets2)
+        )
+    except statistics.StatisticsError:
+        return 0
 
 
 def query_synsets_similarity(
     synsets: t.Iterable[Synset], user_query: casebase.Graph, nlp: Nlp
 ) -> t.Optional[float]:
-    similarities = nlp.similarities(
-        (lemma, user_query.text) for synset in synsets for lemma in synset.lemmas
-    )
-
-    return statistics.mean(similarities) if similarities else None
+    try:
+        return statistics.mean(
+            nlp.similarities(
+                (lemma, user_query.text)
+                for synset in synsets
+                for lemma in synset.lemmas
+            )
+        )
+    except statistics.StatisticsError:
+        return None

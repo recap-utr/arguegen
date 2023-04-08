@@ -95,12 +95,13 @@ def keywords(
     for (c1, o1), (c2, o2) in itertools.product(occurences.items(), occurences.items()):
         # 'tuition' in 'tuition fees'
         if (
-            c1 != c2
+            c1 in candidates
+            and c1 != c2
+            and o1 == o2
             and (
                 c2.concept.lemma.startswith(c1.concept.lemma)
                 or c2.concept.lemma.endswith(c1.concept.lemma)
             )
-            and o1 == o2
         ):
             candidates.remove(c1)
 

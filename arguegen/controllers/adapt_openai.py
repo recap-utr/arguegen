@@ -67,7 +67,7 @@ class AdaptOpenAI:
 
     def compute(
         self,
-    ) -> t.Optional[adaptation_pb2.AdaptedCaseResponse]:
+    ) -> adaptation_pb2.AdaptedCaseResponse:
         if self.config.type == "openai-edit":
             return self._edit()
         elif self.config.type in ("openai-chat-prose", "openai-chat-explainable"):
@@ -200,7 +200,7 @@ class AdaptOpenAI:
             case=self._apply_adaptations(adapted_texts), applied_rules=applied_rules
         )
 
-    def _chat_hybrid(self) -> t.Optional[adaptation_pb2.AdaptedCaseResponse]:
+    def _chat_hybrid(self) -> adaptation_pb2.AdaptedCaseResponse:
         case = Loader(
             self.case_name,
             self.req.case,
@@ -235,7 +235,7 @@ class AdaptOpenAI:
                 discarded_concepts=[concept.dump() for concept in discarded_concepts],
             )
 
-        return None
+        return adaptation_pb2.AdaptedCaseResponse(case=self.req.case)
 
     def _predict_rules(
         self, _extracted_concepts: t.AbstractSet[casebase.ScoredConcept]

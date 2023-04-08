@@ -15,6 +15,7 @@ from arguegen.model.nlp import Nlp
 log = logging.getLogger(__name__)
 
 
+# TODO: May be worth investigting for performance improvements
 class Loader:
     def __init__(
         self,
@@ -121,13 +122,6 @@ class Loader:
             )
 
         return tuple()
-
-        # TODO: be is adapted to be
-        # microtexts-premtim/keep_retirement_at_63/nodeset6416
-        # generated: ["(be/verb/{'120420', '120419', '120421', '120418'})->(be/verb/{'120420', '120419', '120421', '120418'})", "(economy/noun/{'120421'})->(system/noun/{'120421'})"]
-        # user: ["(retirement/noun/{'120418'})->(termination/noun/{'120418'})", "(economy/noun/{'120421'})->(system/noun/{'120421'})", "(capability/noun/{'120420'})->(ability/noun/{'120420'})", "(labour/noun/{'120421'})->(work/noun/{'120421'})"]
-
-        # TODO: Noun chunks shoudl also be considered. At the moment, 'morning-after pill' is ignored and only 'pill' is considered
 
     def _verify_rules(self, rules: t.Collection[casebase.Rule]) -> None:
         if len(rules) != len({rule.source for rule in rules}):

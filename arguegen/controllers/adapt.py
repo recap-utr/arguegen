@@ -158,8 +158,8 @@ def concepts(
     found_rules: list[casebase.Rule[casebase.ScoredConcept]] = []
 
     for source in sources:
-        candidate_scores: defaultdict[casebase.Concept, list[float]] = defaultdict(list)
         related_concepts = {source.concept: config.related_concept_weight.original}
+        adaptation_candidates: t.Set[casebase.ScoredConcept] = set()
 
         for rule in case.rules:
             related_concepts.update(
@@ -202,36 +202,35 @@ def concepts(
                         nlp,
                         hypernym_level=hyp_distance,
                     ).compute()
-                    candidate_scores[candidate].append(score)
+                    adaptation_candidates.add(casebase.ScoredConcept(candidate, score))
 
-        # TODO: Here may be an error!
-        max_score = max(max(scores) for scores in candidate_scores.values())
+        if adaptation_candidates:
+            max_score = max(item.score for item in adaptation_candidates)
+            best_candidates = {
+                item for item in adaptation_candidates if item.score == max_score
+            }
+            all_candidates[source] = best_candidates
 
-        adaptation_candidates = {
-            casebase.ScoredConcept(candidate, max_score)
-            for candidate, scores in candidate_scores.items()
-            if max(scores) == max_score
-        }
-        all_candidates[source] = adaptation_candidates
+            filtered_candidates = _filter_concepts(
+                best_candidates,
+                source,
+                case.rules,
+                config,
+            )
+            adapted_lemma = _filter_lemmas(
+                filtered_candidates,
+                source,
+                case.rules,
+                config=config,
+                nlp=nlp,
+            )
 
-        filtered_adaptations = _filter_concepts(
-            adaptation_candidates,
-            source,
-            case.rules,
-            config,
-        )
-        adapted_lemma = _filter_lemmas(
-            filtered_adaptations,
-            source,
-            case.rules,
-            config=config,
-            nlp=nlp,
-        )
+            if adapted_lemma:
+                found_rules.append(casebase.Rule(source, adapted_lemma))
+                log.debug(f"Adapt ({source})->({adapted_lemma}).")
 
-        if adapted_lemma:
-            found_rules.append(casebase.Rule(source, adapted_lemma))
-            log.debug(f"Adapt ({source})->({adapted_lemma}).")
-
+            else:
+                log.debug(f"No adaptation for ({source}).")
         else:
             log.debug(f"No adaptation for ({source}).")
 
@@ -267,7 +266,7 @@ def paths(
 
         adaptation_results = list(itertools.chain.from_iterable(adaptation_results))
         adapted_paths[source] = adaptation_results
-        candidate_scores = defaultdict(list)
+        adaptation_candidates: t.Set[casebase.ScoredConcept] = set()
 
         for result in adaptation_results:
             hyp_distance = len(result)
@@ -309,28 +308,27 @@ def paths(
                     nlp,
                     hypernym_level=hyp_distance,
                 ).compute()
-                candidate_scores[candidate].append(score)
+                adaptation_candidates.add(casebase.ScoredConcept(candidate, score))
 
-        # TODO: Here may be an error!
-        max_score = max(max(scores) for scores in candidate_scores.values())
+        if adaptation_candidates:
+            max_score = max(item.score for item in adaptation_candidates)
+            best_candidates = {
+                item for item in adaptation_candidates if item.score == max_score
+            }
+            all_candidates[source] = best_candidates
 
-        adaptation_candidates = {
-            casebase.ScoredConcept(candidate, max_score)
-            for candidate, scores in candidate_scores.items()
-            if max(scores) == max_score
-        }
-        all_candidates[source] = adaptation_candidates
+            filtered_candidates = _filter_concepts(
+                best_candidates, source, case.rules, config
+            )
+            adapted_lemma = _filter_lemmas(
+                filtered_candidates, source, case.rules, config, nlp
+            )
 
-        filtered_adaptations = _filter_concepts(
-            adaptation_candidates, source, case.rules, config
-        )
-        adapted_lemma = _filter_lemmas(
-            filtered_adaptations, source, case.rules, config, nlp
-        )
-
-        if adapted_lemma:
-            found_rules.append(casebase.Rule(source, adapted_lemma))
-            log.debug(f"Adapt ({source})->({adapted_lemma}).")
+            if adapted_lemma:
+                found_rules.append(casebase.Rule(source, adapted_lemma))
+                log.debug(f"Adapt ({source})->({adapted_lemma}).")
+            else:
+                log.debug(f"No adaptation for ({source}).")
 
         else:
             log.debug(f"No adaptation for ({source}).")
@@ -566,7 +564,7 @@ def _compare_features(
     selector: PruningSelector,
 ) -> float:
     if selector == PruningSelector.SIMILARITY:
-        assert isinstance(feat1, float) and isinstance(feat2, float)
+        assert not (isinstance(feat1, np.ndarray) or isinstance(feat2, np.ndarray))
         return 1 - abs(feat1 - feat2)
     elif selector == PruningSelector.DIFFERENCE:
         assert isinstance(feat1, np.ndarray) and isinstance(feat2, np.ndarray)
