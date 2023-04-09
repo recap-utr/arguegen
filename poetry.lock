@@ -1421,7 +1421,6 @@ files = [
 
 [package.dependencies]
 numpy = {version = ">=1.20.0,<2.0.0", markers = "python_version >= \"3.8\""}
-typing-extensions = {version = ">=4.0.0,<5.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
 build = ["invoke (>=1.6.0)", "pip-tools (>=6.5.0)"]
@@ -2501,5 +2500,5 @@ multidict = ">=4.0"
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.9,<3.12"
-content-hash = "fce5a3fa55ccac6b78c9faa5ff208a018e581f3680e40d279c0ec3c167232c0f"
+python-versions = ">=3.10, <3.12"
+content-hash = "286d992da253e0f74e3c87a5eaf9598fed1d0e5a8b8a98f21941bcdf173872e9"
