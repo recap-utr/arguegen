@@ -35,16 +35,18 @@ class Wordnet:
     _synsets_cache: dict[tuple[str, t.Union[str, None]], list[NltkSynset]] = {}
 
     def __init__(self, nlp: Nlp):
+        # copied from `nltk.corpus.wordnet`
         self.db = t.cast(
             WordNetCorpusReader,
             LazyCorpusLoader(
                 "wordnet",
                 WordNetCorpusReader,
                 LazyCorpusLoader(
-                    "omw", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"
+                    "omw-1.4", CorpusReader, r".*/wn-data-.*\.tab", encoding="utf8"
                 ),
             ),
         )
+        self.db.ensure_loaded()
         self.nlp = nlp
 
     def _synsets(
@@ -89,22 +91,28 @@ class Wordnet:
 
 @dataclass(frozen=True)
 class Synset:
-    # name: str
-    # _lemmas: t.FrozenSet[str]
-    # pos: t.Optional[str]
-    # uri: str
-    # index: str
-    # definition: str
-    # examples: t.Tuple[str, ...]
-    # word: wn.Word
-    # sense: wn.Sense
     _synset: NltkSynset
 
     def __eq__(self, other: Synset) -> bool:
-        return self._synset == other._synset
+        return self.name == other.name
 
     def __hash__(self) -> int:
-        return hash((self._synset,))
+        return hash((self.name,))
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def name(self) -> str:
+        return self._synset.name() or ""
+
+    @property
+    def definition(self) -> t.Optional[str]:
+        return self._synset.definition()
+
+    @property
+    def examples(self) -> t.List[str]:
+        return self._synset.examples() or []
 
     @property
     def lemmas(self) -> list[str]:
@@ -125,17 +133,12 @@ class Synset:
         ctx = []
 
         if "examples" in config.synset_context:
-            ctx.extend(self._synset.examples() or [])
+            ctx.extend(self.examples)
 
-        if "definition" in config.synset_context and (
-            definition := self._synset.definition() or ""
-        ):
+        if "definition" in config.synset_context and (definition := self.definition):
             ctx.append(definition)
 
         return frozenset(ctx)
-
-    def __str__(self) -> str:
-        return self._synset.name() or ""
 
     def hypernyms(
         self,
@@ -310,7 +313,7 @@ def _filter_nodes(
 def inherited_hypernyms(node: Synset) -> t.FrozenSet[Path]:
     hyp_paths = []
 
-    # TODO: simulate_root=config.simulate_root
+    # TODO: simulate_root=config.simulate_root cannot be used with nltk here
     for hyp_path in node._synset.hypernym_paths():
         hyp_sequence = []
 
