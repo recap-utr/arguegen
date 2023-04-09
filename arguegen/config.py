@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import typing as t
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from google.protobuf.struct_pb2 import Struct
@@ -59,7 +59,9 @@ class AdaptationConfig(DataClassDictMixin):
     method: AdaptationMethod = AdaptationMethod.DIRECT
     bfs_method: BfsMethod = BfsMethod.BETWEEN
     substitution_method: SubstitutionMethod = SubstitutionMethod.AGGREGATE_SCORE
-    related_concept_weight: RelatedConceptWeight = RelatedConceptWeight()
+    related_concept_weight: RelatedConceptWeight = field(
+        default_factory=RelatedConceptWeight
+    )
     synset_similarity_threshold: float = 0.0
     concept_score_threshold: float = 0.0
     pruning_selector: PruningSelector = PruningSelector.SIMILARITY
@@ -91,11 +93,11 @@ class OpenAIConfig(DataClassDictMixin):
 
 @dataclass
 class ExtrasConfig(DataClassDictMixin):
-    loader: LoaderConfig = LoaderConfig()
-    extraction: ExtractionConfig = ExtractionConfig()
-    adaptation: AdaptationConfig = AdaptationConfig()
-    score: ScoreConfig = ScoreConfig()
-    openai: OpenAIConfig = OpenAIConfig()
+    loader: LoaderConfig = field(default_factory=LoaderConfig)
+    extraction: ExtractionConfig = field(default_factory=ExtractionConfig)
+    adaptation: AdaptationConfig = field(default_factory=AdaptationConfig)
+    score: ScoreConfig = field(default_factory=ScoreConfig)
+    openai: OpenAIConfig = field(default_factory=OpenAIConfig)
     # wordnet, openai-edit, openai-chat-prose, openai-chat-explainable, openai-chat-hybrid
     type: str = "wordnet"
 
