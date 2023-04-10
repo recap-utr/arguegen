@@ -18,7 +18,20 @@ from arguegen.model.nlp import Nlp
 
 @dataclass(frozen=True)
 class WordnetConfig:
-    hypernym_filter: tuple[str, ...] = tuple()
+    hypernym_filter: frozenset[str] = frozenset(
+        (
+            "abstraction.n.06",
+            "artifact.n.01",
+            "causal_agent.n.01",
+            "entity.n.01",
+            "living_thing.n.01",
+            "mental_object.n.01",
+            "object.n.01",
+            "physical_entity.n.01",
+            "psychological_feature.n.01",
+            "thing.n.08",
+        )
+    )
     synset_context: tuple[t.Literal["examples", "definition"], ...] = (
         "examples",
         "definition",
