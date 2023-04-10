@@ -17,7 +17,6 @@ from arguegen.model.nlp import Nlp
 openai.api_key_path = "./openai_api_key.txt"
 
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
 
 
 @ts.settings(frozen=True)

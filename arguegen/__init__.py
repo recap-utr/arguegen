@@ -1,5 +1,4 @@
 import logging
-import os
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
@@ -10,4 +9,4 @@ logging.basicConfig(
 )
 logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
 log = logging.getLogger(__name__)
-log.setLevel(logging.INFO)
+log.setLevel(logging.DEBUG)
