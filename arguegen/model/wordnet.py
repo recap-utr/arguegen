@@ -32,7 +32,7 @@ config = WordnetConfig()
 class Wordnet:
     nlp: Nlp
     db: WordNetCorpusReader
-    _synsets_cache: dict[tuple[str, t.Union[str, None]], list[NltkSynset]] = {}
+    _synsets_cache: dict[tuple[str, t.Union[str, None]], list[NltkSynset]]
 
     def __init__(self, nlp: Nlp):
         # copied from `nltk.corpus.wordnet`
@@ -48,6 +48,7 @@ class Wordnet:
         )
         self.db.ensure_loaded()
         self.nlp = nlp
+        self._synsets_cache = {}
 
     def _synsets(
         self, name: str, pos_tags: t.Collection[t.Optional[str]]

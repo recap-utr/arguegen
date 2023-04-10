@@ -57,9 +57,9 @@ class Nlp:
     _client: nlp_pb2_grpc.NlpServiceStub
     _config: nlp_pb2.NlpConfig
     _blank_model: Language
-    _vector_cache: dict[str, Vector] = {}
-    _keyword_cache: dict[KeywordKey, tuple[Keyword, ...]] = {}
-    _doc_cache: dict[str, Doc] = {}
+    _vector_cache: dict[str, Vector]
+    _keyword_cache: dict[KeywordKey, tuple[Keyword, ...]]
+    _doc_cache: dict[str, Doc]
 
     def __init__(
         self,
@@ -72,6 +72,9 @@ class Nlp:
         self._client = nlp_pb2_grpc.NlpServiceStub(channel)
         self._config = config
         self._blank_model = spacy.blank(config.language)
+        self._vector_cache = {}
+        self._keyword_cache = {}
+        self._doc_cache = {}
 
     def vectors(self, texts: t.Iterable[str]) -> t.Tuple[np.ndarray, ...]:
         if unknown_texts := [text for text in texts if text not in self._vector_cache]:
