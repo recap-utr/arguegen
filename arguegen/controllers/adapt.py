@@ -227,12 +227,6 @@ def concepts(
 
             if adapted_lemma:
                 found_rules.append(casebase.Rule(source, adapted_lemma))
-                log.debug(f"Adapt ({source})->({adapted_lemma}).")
-
-            else:
-                log.debug(f"No adaptation for ({source}).")
-        else:
-            log.debug(f"No adaptation for ({source}).")
 
     return found_rules, all_candidates
 
@@ -326,12 +320,6 @@ def paths(
 
             if adapted_lemma:
                 found_rules.append(casebase.Rule(source, adapted_lemma))
-                log.debug(f"Adapt ({source})->({adapted_lemma}).")
-            else:
-                log.debug(f"No adaptation for ({source}).")
-
-        else:
-            log.debug(f"No adaptation for ({source}).")
 
     return found_rules, adapted_paths, all_candidates
 

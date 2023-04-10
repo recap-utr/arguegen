@@ -111,11 +111,6 @@ def keywords(
         config.concept_limit,
     )
 
-    log.debug(
-        "Found the following concepts:"
-        f" {', '.join((str(concept) for concept in concepts))}"
-    )
-
     return concepts, {entry for entry in candidates if entry not in concepts}
 
 
@@ -137,10 +132,6 @@ def paths(
                     )
                 ) is not None:
                     paths.extend(candidates)
-                    log.debug(
-                        f"Found {len(candidates)} reference path(s) for"
-                        f" ({rule.source})->({source.concept})."
-                    )
 
             if paths:
                 result[source] = paths
@@ -153,11 +144,6 @@ def paths(
                 rule.source.synsets, rule.target.synsets
             ):
                 paths.extend(candidates)
-
-            log.debug(
-                f"Found {len(paths)} reference path(s) for"
-                f" ({rule.source})->({rule.target})."
-            )
 
         if paths:
             for source in sources:

@@ -44,9 +44,6 @@ class Loader:
             else self._generate_rules()
         )
 
-        log.debug(
-            "Using the following rules: " + ", ".join(str(rule) for rule in rules)
-        )
         return casebase.Case(self.case_name, self.query_graph, self.case_graph, rules)
 
     def _parse_rules(
