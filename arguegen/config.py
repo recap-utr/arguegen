@@ -41,7 +41,7 @@ class RelatedConceptWeight(DataClassDictMixin):
 class LoaderConfig(DataClassDictMixin):
     heuristic_pos_tags: tuple[str, ...] = ("NOUN", "VERB")
     enforce_node_paths: bool = True
-    filter_synsets_based_on_nodes: bool = True
+    synset_similarity_threshold: float = 0.0
 
 
 @dataclass

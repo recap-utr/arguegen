@@ -318,6 +318,7 @@ class AdaptOpenAI:
                     form2pos.keys(),
                     source.concept._pos,
                     self.nlp,
+                    # TODO: Maybe filter based on atoms of source concept?
                 )
 
                 target = casebase.ScoredConcept(

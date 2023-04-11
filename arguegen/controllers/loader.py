@@ -199,11 +199,8 @@ class Loader:
             form2pos.keys(),
             concept.pos,
             self.nlp,
-            (
-                [atom.plain_text for atom in atoms]
-                if self.config.filter_synsets_based_on_nodes
-                else None
-            ),
+            [atom.plain_text for atom in atoms],
+            self.config.synset_similarity_threshold,
         )
 
         assert synsets, (

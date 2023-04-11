@@ -85,8 +85,8 @@ class Wordnet:
         names: t.Iterable[str],
         pos: casebase.Pos.ValueType,
         nlp: Nlp,
-        comparison_texts: t.Optional[t.Iterable[str]] = None,
-        min_similarity: t.Optional[float] = None,
+        comparison_texts: t.Iterable[str] = tuple(),
+        min_similarity: float = 0,
     ) -> t.FrozenSet[Synset]:
         synsets = set()
 
@@ -97,7 +97,7 @@ class Wordnet:
 
         synsets = frozenset(synsets)
 
-        if comparison_texts is None or min_similarity is None:
+        if not comparison_texts or not min_similarity:
             return synsets
 
         return _filter_nodes(synsets, comparison_texts, min_similarity, nlp)
