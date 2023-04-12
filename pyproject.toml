@@ -18,6 +18,7 @@ arguebuf = { version = "^2.0.0b23", allow-prereleases = true }
 openai = "^0.27.4"
 typed-settings = "^23.0.0"
 rich-click = "^1.6.1"
+backoff = "^2.2.1"
 
 [build-system]
 requires = ["poetry-core"]

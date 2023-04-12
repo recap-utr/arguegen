@@ -1,3 +1,4 @@
+import asyncio
 import functools
 import json
 import logging
@@ -6,6 +7,7 @@ import typing as t
 from dataclasses import dataclass
 from textwrap import dedent
 
+import backoff
 import openai
 from arg_services.cbr.v1beta import adaptation_pb2
 from arg_services.cbr.v1beta.model_pb2 import AnnotatedGraph
@@ -20,10 +22,22 @@ from arguegen.model.wordnet import Wordnet, path_similarity
 
 log = logging.getLogger(__name__)
 
+openai.api_key_path = "./openai_api_key.txt"
+
 
 class ChatMessage(t.TypedDict):
     role: t.Literal["user", "system", "assistant"]
     content: str
+
+
+@backoff.on_exception(backoff.expo, openai.OpenAIError, max_tries=10)
+async def _fetch_openai_edit(*args, **kwargs) -> t.Any:
+    return await openai.Edit.acreate(*args, **kwargs)
+
+
+@backoff.on_exception(backoff.expo, openai.OpenAIError, max_tries=10)
+async def _fetch_openai_chat(*args, **kwargs) -> t.Any:
+    return await openai.ChatCompletion.acreate(*args, **kwargs)
 
 
 @dataclass()
@@ -65,15 +79,17 @@ class AdaptOpenAI:
             )
         }
 
-    def compute(
+    async def compute(
         self,
     ) -> adaptation_pb2.AdaptedCaseResponse:
+        log.debug(f"[{id(self)}] Processing case {self.case_name}...")
+
         if self.config.type == "openai-edit":
-            return self._edit()
+            return await self._edit()
         elif self.config.type in ("openai-chat-prose", "openai-chat-explainable"):
-            return self._chat()
+            return await self._chat()
         elif self.config.type == "openai-chat-hybrid":
-            return self._chat_hybrid()
+            return await self._chat_hybrid()
 
         log.error(f"Invalid type selected: {self.config.type}")
 
@@ -91,11 +107,9 @@ class AdaptOpenAI:
 
         return adapted_case
 
-    def _edit(
+    async def _edit(
         self,
     ) -> adaptation_pb2.AdaptedCaseResponse:
-        adapted_texts: dict[str, str] = {}
-
         instruction = dedent(f"""
             A user entered the following query into an argument search engine:
             {self.query.text}
@@ -108,20 +122,27 @@ class AdaptOpenAI:
             {self.given_rules if self.given_rules else ""}
         """)
 
-        for node_id, original_text in self.original_texts.items():
-            res = openai.Edit.create(
-                model=self.config.openai.edit_model,
-                input=original_text,
-                instruction=instruction,
+        responses = await asyncio.gather(
+            *(
+                _fetch_openai_edit(
+                    model=self.config.openai.edit_model,
+                    input=original_text,
+                    instruction=instruction,
+                )
+                for original_text in self.original_texts.values()
             )
+        )
 
-            adapted_texts[node_id] = res.choices[0].text  # type: ignore
+        adapted_texts = {
+            node_id: res.choices[0].text
+            for node_id, res in zip(self.original_texts.keys(), responses)
+        }
 
         return adaptation_pb2.AdaptedCaseResponse(
             case=self._apply_adaptations(adapted_texts)
         )
 
-    def _chat(
+    async def _chat(
         self,
     ) -> adaptation_pb2.AdaptedCaseResponse:
         # https://github.com/openai/chatgpt-retrieval-plugin/blob/88d983585816b7f298edb0cabf7502c5ccff370d/services/extract_metadata.py#L11
@@ -160,12 +181,12 @@ class AdaptOpenAI:
         for node_id, text_original in self.original_texts.items():
             messages.append({"role": "user", "content": text_original})
 
-            res = openai.ChatCompletion.create(
+            res = await _fetch_openai_chat(
                 model=self.config.openai.chat_model, messages=messages
             )
 
-            raw_completion = res.choices[0].message.content.strip()  # type: ignore
-            messages.append(res.choices[0].message)  # type: ignore
+            raw_completion = res.choices[0].message.content.strip()
+            messages.append(res.choices[0].message)
 
             try:
                 completion = json.loads(raw_completion)
@@ -200,7 +221,7 @@ class AdaptOpenAI:
             case=self._apply_adaptations(adapted_texts), applied_rules=applied_rules
         )
 
-    def _chat_hybrid(self) -> adaptation_pb2.AdaptedCaseResponse:
+    async def _chat_hybrid(self) -> adaptation_pb2.AdaptedCaseResponse:
         case = Loader(
             self.case_name,
             self.req.case,
@@ -215,7 +236,7 @@ class AdaptOpenAI:
                 case, self.nlp, self.config.extraction, self.config.score, self.wn
             )
 
-            predicted_rules = self._predict_rules(extracted_concepts)
+            predicted_rules = await self._predict_rules(extracted_concepts)
 
             if self.config.openai.verify_hybrid_rules:
                 verified_rules = self._verify_rules(predicted_rules)
@@ -237,7 +258,7 @@ class AdaptOpenAI:
 
         return adaptation_pb2.AdaptedCaseResponse(case=self.req.case)
 
-    def _predict_rules(
+    async def _predict_rules(
         self, _extracted_concepts: t.AbstractSet[casebase.ScoredConcept]
     ) -> list[casebase.Rule[casebase.ScoredConcept]]:
         # We need a deterministic ordering
@@ -293,11 +314,11 @@ class AdaptOpenAI:
             {"role": "user", "content": user_message},
         ]
 
-        res = openai.ChatCompletion.create(
+        res = await _fetch_openai_chat(
             model=self.config.openai.chat_model, messages=messages
         )
 
-        raw_completion = res.choices[0].message.content.strip()  # type: ignore
+        raw_completion = res.choices[0].message.content.strip()
 
         try:
             completions = json.loads(raw_completion)

@@ -1,9 +1,9 @@
+import asyncio
 import logging
 import typing as t
 
 import arg_services
 import grpc
-import openai
 import rich_click as click
 import typed_settings as ts
 from arg_services.cbr.v1beta import adaptation_pb2, adaptation_pb2_grpc
@@ -13,8 +13,6 @@ from arguegen.controllers import adapt, extract, loader
 from arguegen.controllers.adapt_openai import AdaptOpenAI
 from arguegen.model import wordnet
 from arguegen.model.nlp import Nlp
-
-openai.api_key_path = "./openai_api_key.txt"
 
 log = logging.getLogger(__name__)
 
@@ -37,7 +35,7 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         extras_type = t.cast(str, req.extras["type"])
 
         if extras_type.startswith("openai"):
-            return self._adapt_openai(req)
+            return asyncio.run(self._adapt_openai(req))
 
         elif extras_type == "wordnet":
             return self._adapt_wordnet(req)
@@ -47,22 +45,24 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
         return adaptation_pb2.AdaptResponse()
 
     # Prompts: https://github.com/openai/openai-cookbook/blob/main/techniques_to_improve_reliability.md
-    def _adapt_openai(
+    async def _adapt_openai(
         self, req: adaptation_pb2.AdaptRequest
     ) -> adaptation_pb2.AdaptResponse:
         config = ExtrasConfig.from_extras(req.extras)
         nlp = Nlp(self.server_config.nlp_address, req.nlp_config)
         wn = wordnet.Wordnet(nlp)
-        adapted_cases: dict[str, adaptation_pb2.AdaptedCaseResponse] = {}
 
-        for case_name, case_req in req.cases.items():
-            log.debug(f"[{id(self)}] Processing case {case_name}...")
-            adapted_cases[case_name] = AdaptOpenAI(
-                case_name, case_req, req.query, config, nlp, wn
-            ).compute()
+        responses: list[adaptation_pb2.AdaptedCaseResponse] = await asyncio.gather(
+            *(
+                AdaptOpenAI(case_name, case_req, req.query, config, nlp, wn).compute()
+                for case_name, case_req in req.cases.items()
+            )
+        )
 
         adapted_cases = {
-            key: value for key, value in adapted_cases.items() if value is not None
+            key: value
+            for key, value in zip(req.cases.keys(), responses)
+            if value is not None
         }
 
         return adaptation_pb2.AdaptResponse(cases=adapted_cases)
