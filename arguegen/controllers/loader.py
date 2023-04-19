@@ -67,7 +67,9 @@ class Loader:
     ) -> t.Tuple[casebase.Rule, ...]:
         case_text = self.case_graph.text
 
-        if mc := self.case_graph.major_claim or self.case_graph.root_node:
+        if self.config.rules_from_mc_only and (
+            mc := self.case_graph.major_claim or self.case_graph.root_node
+        ):
             case_text = mc.plain_text
 
         rules: dict[casebase.Rule, int] = {}
@@ -100,13 +102,13 @@ class Loader:
                         source.atoms,
                     )
 
-                    if shortest_paths := wordnet.all_shortest_paths(
-                        source.synsets, target.synsets
-                    ):
-                        rule = self._create_rule(source, target)
-
-                        if distance := len(next(iter(shortest_paths))):
-                            rules[rule] = distance
+                    if (
+                        paths := wordnet.all_shortest_paths(
+                            source.synsets, target.synsets
+                        )
+                    ) and (distance := len(next(iter(paths)))):
+                        rule = self._rule_from_shortest_paths(source, target, paths)
+                        rules[rule] = distance
 
         if rules.values():
             min_distance = min(rules.values())
@@ -133,7 +135,7 @@ class Loader:
 
     def _create_rule(
         self, source: casebase.Concept, target: casebase.Concept
-    ) -> casebase.Rule:
+    ) -> casebase.Rule[casebase.Concept]:
         if self.config.enforce_node_paths:
             paths = wordnet.all_shortest_paths(source.synsets, target.synsets)
 
@@ -154,13 +156,26 @@ class Loader:
 
                 # err += f"The following hypernyms are permitted: {sorted(lemmas)}"
 
-                raise RuntimeError()
+                raise RuntimeError(
+                    f"The given rule '{str(source)}->{str(target)}' is invalid. No path"
+                    " to connect the concepts could be found in wordnet."
+                )
 
-            source_synsets = frozenset(path.start_node for path in paths)
-            target_synsets = frozenset(path.end_node for path in paths)
+            return self._rule_from_shortest_paths(source, target, paths)
 
-            source = casebase.Concept.from_concept(source, synsets=source_synsets)
-            target = casebase.Concept.from_concept(target, synsets=target_synsets)
+        return casebase.Rule(source, target)
+
+    def _rule_from_shortest_paths(
+        self,
+        source: casebase.Concept,
+        target: casebase.Concept,
+        paths: t.Collection[wordnet.Path],
+    ) -> casebase.Rule:
+        source_synsets = frozenset(path.start_node for path in paths)
+        target_synsets = frozenset(path.end_node for path in paths)
+
+        source = casebase.Concept.from_concept(source, synsets=source_synsets)
+        target = casebase.Concept.from_concept(target, synsets=target_synsets)
 
         return casebase.Rule(source, target)
 

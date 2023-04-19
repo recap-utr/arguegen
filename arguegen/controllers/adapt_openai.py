@@ -328,6 +328,10 @@ class AdaptOpenAI:
 
                 assert source.concept.lemma == completion.get(
                     "source", completion.get("lemma")
+                ), (
+                    f"The input concept {source.concept.lemma} does not match the"
+                    " output concept"
+                    f" {completion.get('source', completion.get('lemma'))}"
                 )
 
                 lemma = completion["target"]
