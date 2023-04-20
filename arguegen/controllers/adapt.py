@@ -64,7 +64,10 @@ def _apply_variants(
                                 )
 
                                 node.text = adapted_text
-                                graph.text.replace(original_text, adapted_text)
+                                # TODO: May not be applicable to all graph2text algorithms
+                                graph.text = graph.text.replace(
+                                    original_text, adapted_text
+                                )
 
 
 def argument_graph(
@@ -413,7 +416,7 @@ class Lemma:
     lemma: str
     pos: casebase.Pos.ValueType
     nodes: t.FrozenSet[wordnet.Synset]
-    concepts: t.FrozenSet[casebase.Concept]
+    concepts: t.FrozenSet[casebase.ScoredConcept]
 
 
 def _filter_lemmas(
@@ -463,16 +466,17 @@ def _filter_lemmas(
         best_lemma.lemma, casebase.pos2spacy(best_lemma.pos), lemmatize=False
     )
 
+    converted_lemma = casebase.Concept(
+        lemma=_lemma,
+        form2pos=_form2pos,
+        pos2form=_pos2form,
+        _pos=best_lemma.pos,
+        atoms=source.concept.atoms,
+        synsets=best_lemma.nodes,
+    )
+
     return casebase.ScoredConcept(
-        casebase.Concept(
-            lemma=_lemma,
-            form2pos=_form2pos,
-            pos2form=_pos2form,
-            _pos=best_lemma.pos,
-            atoms=source.concept.atoms,
-            synsets=best_lemma.nodes,
-        ),
-        0,
+        converted_lemma, statistics.mean(x.score for x in best_lemma.concepts)
     )
 
 

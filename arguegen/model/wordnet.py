@@ -131,7 +131,7 @@ class Synset:
     @property
     def lemmas(self) -> list[str]:
         return [
-            lemma.name() for lemma in t.cast(list[NltkLemma], self._synset.lemmas())
+            lemma.name().replace("_", " ") for lemma in t.cast(list[NltkLemma], self._synset.lemmas())
         ]
 
     @property

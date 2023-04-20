@@ -117,6 +117,12 @@ class AdaptationService(adaptation_pb2_grpc.AdaptationServiceServicer):
                     discarded_concepts=[
                         concept.dump() for concept in discarded_concepts
                     ],
+                    # TODO: Add to schema
+                    # generated_rules=(
+                    #     [rule.dump() for rule in case.rules]
+                    #     if not case_req.rules
+                    #     else []
+                    # ),
                     # TODO: Add rule candidates
                 )
             else:

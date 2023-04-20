@@ -136,7 +136,7 @@ class Loader:
     def _create_rule(
         self, source: casebase.Concept, target: casebase.Concept
     ) -> casebase.Rule[casebase.Concept]:
-        if self.config.enforce_node_paths:
+        if self.config.enforce_user_rule_paths:
             paths = wordnet.all_shortest_paths(source.synsets, target.synsets)
 
             if len(paths) == 0:
@@ -204,8 +204,8 @@ class Loader:
                         _atoms.add(atom)
 
             assert _atoms, (
-                f"The concept '{concept.lemma}' with the forms '{form2pos}' specified"
-                " in 'could not be found in the graph. Please check the spelling."
+                f"The concept '{concept.lemma}' with the forms '{form2pos}'"
+                " could not be found in the argument graph. Please check the spelling."
             )
 
             atoms = frozenset(_atoms)
@@ -219,8 +219,8 @@ class Loader:
         )
 
         assert synsets, (
-            f"The concept '{concept.lemma}' with the forms '{form2pos}' specified in"
-            " cannot be found in the knowledge graph."
+            f"The concept '{concept.lemma}' with the forms '{form2pos}'"
+            " could not be found in wordnet."
         )
 
         return casebase.Concept(
