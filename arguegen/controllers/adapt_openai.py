@@ -254,6 +254,9 @@ class AdaptOpenAI:
                 discarded_rules=[rule.dump() for rule in discarded_rules],
                 extracted_concepts=[concept.dump() for concept in extracted_concepts],
                 discarded_concepts=[concept.dump() for concept in discarded_concepts],
+                generated_rules=(
+                    [rule.dump() for rule in case.rules] if not self.req.rules else []
+                ),
             )
 
         return adaptation_pb2.AdaptedCaseResponse(case=self.req.case)
