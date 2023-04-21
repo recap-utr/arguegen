@@ -4,8 +4,9 @@ import itertools
 import statistics
 import typing as t
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+from arg_services.cbr.v1beta.adaptation_pb2 import Pos
 from nltk.corpus.reader.api import CorpusReader
 from nltk.corpus.reader.wordnet import Lemma as NltkLemma
 from nltk.corpus.reader.wordnet import Synset as NltkSynset
@@ -35,6 +36,9 @@ class WordnetConfig:
     synset_context: tuple[t.Literal["examples", "definition"], ...] = (
         "examples",
         "definition",
+    )
+    synset_variants: dict[tuple[str, Pos.ValueType], str] = field(
+        default_factory=lambda: {("licence fee", Pos.POS_NOUN): "license fee"}
     )
     simulate_root: bool = False
 
@@ -67,6 +71,7 @@ class Wordnet:
         self, name: str, pos_tags: t.Collection[t.Optional[str]]
     ) -> t.List[NltkSynset]:
         results = []
+        name = name.replace(" ", "_")
 
         for pos_tag in pos_tags:
             cache_key = (name, pos_tag)
@@ -83,7 +88,7 @@ class Wordnet:
     def concept_synsets(
         self,
         names: t.Iterable[str],
-        pos: casebase.Pos.ValueType,
+        pos: Pos.ValueType,
         nlp: Nlp,
         comparison_texts: t.Iterable[str] = tuple(),
         min_similarity: float = 0,
@@ -91,10 +96,13 @@ class Wordnet:
         synsets = set()
 
         for name in names:
-            name = name.replace(" ", "_")
-            synsets.update(
-                {Synset(ss) for ss in self._synsets(name, casebase.pos2wn(pos)) if ss}
-            )
+            wn_pos = casebase.pos2wn(pos)
+            synsets.update({Synset(ss) for ss in self._synsets(name, wn_pos) if ss})
+
+            if variant := config.synset_variants.get((name, pos)):
+                synsets.update(
+                    {Synset(ss) for ss in self._synsets(variant, wn_pos) if ss}
+                )
 
         synsets = frozenset(synsets)
 
@@ -141,7 +149,7 @@ class Synset:
         return self.lemmas[0]
 
     @property
-    def pos(self) -> casebase.Pos.ValueType:
+    def pos(self) -> Pos.ValueType:
         return casebase.wn2pos(self._synset.pos())
 
     @property

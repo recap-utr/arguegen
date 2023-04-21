@@ -7,13 +7,13 @@ from dataclasses import dataclass, field
 import arguebuf as ag
 import immutables
 from arg_services.cbr.v1beta import adaptation_pb2
+from arg_services.cbr.v1beta.adaptation_pb2 import Pos
 from arg_services.cbr.v1beta.model_pb2 import AnnotatedGraph
 from nltk.corpus.reader import wordnet as wn
 
 from arguegen.model import wordnet
 
 log = logging.getLogger(__name__)
-Pos = adaptation_pb2.Pos
 
 
 class Graph(ag.Graph):
