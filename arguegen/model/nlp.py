@@ -67,7 +67,12 @@ class Nlp:
         config: nlp_pb2.NlpConfig,
     ):
         channel = grpc.insecure_channel(
-            address, [("grpc.lb_policy_name", "round_robin")]
+            address,
+            [
+                ("grpc.lb_policy_name", "round_robin"),
+                ("grpc.max_send_message_length", -1),
+                ("grpc.max_receive_message_length", -1),
+            ],
         )
         self._client = nlp_pb2_grpc.NlpServiceStub(channel)
         self._config = config
