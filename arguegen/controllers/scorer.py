@@ -31,7 +31,7 @@ def filter_concepts(
     limit: t.Union[None, int, float],
 ) -> set[casebase.ScoredConcept]:
     filtered_concepts = {entry for entry in scored_concepts if entry.score >= min_score}
-    sorted_concepts = sorted(filtered_concepts)
+    sorted_concepts = sorted(filtered_concepts, reverse=True)
 
     if isinstance(limit, int) and limit > 0:
         sorted_concepts = sorted_concepts[:limit]
