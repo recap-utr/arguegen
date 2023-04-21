@@ -91,6 +91,7 @@ class Wordnet:
         synsets = set()
 
         for name in names:
+            name = name.replace(" ", "_")
             synsets.update(
                 {Synset(ss) for ss in self._synsets(name, casebase.pos2wn(pos)) if ss}
             )
@@ -131,7 +132,8 @@ class Synset:
     @property
     def lemmas(self) -> list[str]:
         return [
-            lemma.name().replace("_", " ") for lemma in t.cast(list[NltkLemma], self._synset.lemmas())
+            lemma.name().replace("_", " ")
+            for lemma in t.cast(list[NltkLemma], self._synset.lemmas())
         ]
 
     @property
