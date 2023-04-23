@@ -389,22 +389,10 @@ def _filter_concepts(
     filtered_concepts = scorer.filter_concepts(
         filtered_concepts,
         config.concept_score_threshold,
-        None,
+        limit,
     )
 
-    if filtered_concepts:
-        sorted_concepts = sorted(
-            filtered_concepts,
-            key=lambda c: c.score,
-            reverse=True,
-        )
-
-        if limit:
-            return sorted_concepts[:limit]
-
-        return sorted_concepts
-
-    return []
+    return filtered_concepts
 
 
 class BreakLoop(Exception):

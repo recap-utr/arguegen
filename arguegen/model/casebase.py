@@ -43,9 +43,6 @@ class ScoredConcept:
     concept: Concept
     score: float
 
-    def __lt__(self, other: ScoredConcept) -> bool:
-        return self.score < other.score
-
     def dump(self) -> adaptation_pb2.Concept:
         obj = self.concept.dump()
         obj.MergeFrom(adaptation_pb2.Concept(score=self.score))

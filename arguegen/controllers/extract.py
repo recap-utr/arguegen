@@ -111,7 +111,7 @@ def keywords(
         config.concept_limit,
     )
 
-    return concepts, {entry for entry in candidates if entry not in concepts}
+    return set(concepts), {entry for entry in candidates if entry not in concepts}
 
 
 def paths(
