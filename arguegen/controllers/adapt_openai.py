@@ -18,7 +18,7 @@ from arguegen.controllers.inflect import inflect_concept
 from arguegen.controllers.loader import Loader
 from arguegen.model import casebase
 from arguegen.model.nlp import Nlp
-from arguegen.model.wordnet import Wordnet, path_similarity
+from arguegen.model.wordnet import Wordnet, wup_similarity
 
 log = logging.getLogger(__name__)
 
@@ -246,7 +246,7 @@ class AdaptOpenAI:
             adapted_graph, applied_rules = adapt.argument_graph(
                 case, verified_rules, self.nlp, self.config.adaptation
             )
-            discarded_rules = set(verified_rules).difference(applied_rules)
+            discarded_rules = set(predicted_rules).difference(applied_rules)
 
             return adaptation_pb2.AdaptedCaseResponse(
                 case=adapted_graph.dump(),
@@ -383,11 +383,11 @@ class AdaptOpenAI:
         verified_rules: list[casebase.Rule[casebase.ScoredConcept]] = []
 
         for rule in predicted_rules:
-            sim = path_similarity(
+            sim = wup_similarity(
                 rule.source.concept.synsets, rule.target.concept.synsets
             )
 
-            if sim >= self.config.openai.min_wordnet_path_similarity:
+            if sim >= self.config.openai.min_wordnet_similarity:
                 verified_rules.append(rule)
 
         return verified_rules
