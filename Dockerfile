@@ -1,24 +1,34 @@
-FROM python:3.9-slim
+ARG PYTHON_VERSION=3.11
 
-ENV POETRY_VERSION=1.3.1
+FROM python:${PYTHON_VERSION}-slim
+
+ARG EXTRAS=""
+ARG POETRY_VERSION=1.4.2
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV PIP_DEFAULT_TIMEOUT=100
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
 RUN apt update \
-    && apt install -y --no-install-recommends graphviz \
-    && apt install -y build-essential \
+    && apt install --no-install-recommends -y build-essential graphviz \
     && apt clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install "poetry==${POETRY_VERSION}"
+RUN pip install "poetry==${POETRY_VERSION}" \
+    && poetry config virtualenvs.in-project true
+
 COPY poetry.lock* pyproject.toml ./
-RUN poetry install --no-interaction --no-ansi
+RUN poetry install --no-interaction --no-ansi --no-root
 
-RUN poetry run python -m nltk.downloader popular universal_tagset \
-    && poetry run python -m wn download oewn:2021 \
-    && poetry run python -m spacy download en_core_web_lg \
-    && poetry run python -m spacy download en_core_web_sm
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-CMD [ "poetry", "run", "python",  "-m", "arguegen" ]
+RUN python -m nltk.downloader popular universal_tagset
+
+COPY . ./
+
+ENTRYPOINT [ "python", "-m", "arguegen" ]
+CMD [ ]

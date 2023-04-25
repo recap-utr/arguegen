@@ -102,10 +102,16 @@ Ein Nutzer hat eine Query zur Rezeptpflicht von Medikamenten gestellt. Das Syste
     "cbrEvaluations": [
       {
         "generalizations": {
-          "microtexts-v2/micro_6368": {
-            "morning-after pill/noun": "prophylactic devices/noun",
-            "advice/noun": "communication/noun"
-          },
+          "microtexts-v2/micro_6368": [
+            {
+              "source": "morning-after pill/noun",
+              "target": "prophylactic devices/noun"
+            },
+            {
+              "source": "advice/noun",
+              "target": "communication/noun"
+            }
+          ],
           "...": {}
         },
         "ranking": {

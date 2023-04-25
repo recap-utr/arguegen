@@ -40,7 +40,7 @@ class RelatedConceptWeight(DataClassDictMixin):
 @dataclass
 class LoaderConfig(DataClassDictMixin):
     heuristic_pos_tags: tuple[str, ...] = ("NOUN", "VERB")
-    enforce_user_rule_paths: bool = True
+    enforce_user_rule_paths: bool = False
     synset_similarity_threshold: float = 0.0
     rules_from_mc_only: bool = False
 
@@ -89,7 +89,7 @@ class OpenAIConfig(DataClassDictMixin):
     chat_model: str = "gpt-3.5-turbo"
     edit_model: str = "text-davinci-edit-001"
     verify_hybrid_rules: bool = True
-    min_wordnet_similarity: float = 0.1
+    min_wordnet_similarity: float = 0.25
 
 
 @dataclass
