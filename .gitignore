@@ -247,3 +247,5 @@ data/input/**/*.pdf
 
 # Ignore dynaconf secret files
 *api_key.txt
+.direnv/
+/.envrc
