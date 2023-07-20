@@ -9,4 +9,4 @@ docker-compose build
 docker-compose up
 ```
 
-More documentation will follow for the final version.
+The evaluation client as well as the corresponding dataset are available at our [`arguelauncher`](github.com/recap-utr/arguelauncher) repository.
