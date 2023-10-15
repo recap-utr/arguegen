@@ -5,7 +5,7 @@ description = ""
 authors = ["Mirko Lenz <info@mirko-lenz.de>"]
 
 [tool.poetry.dependencies]
-python = ">=3.10, <3.12"
+python = ">=3.12, <3.13"
 textacy = "^0.13.0"
 scikit-learn = "^1.2.2"
 pendulum = "^2.1.2"
