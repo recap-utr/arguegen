@@ -1,12 +1,9 @@
-# Argument Graph Adaptation
+# ArgueGen: Case-Based Argument Graph Adaptation
 
 This application requires an [nlp service](https://github.com/recap-utr/nlp-service), so set it up first.
-When using OpenAI services, obtain an API key and put it in `openai_api_key.txt`.
-Then, we recommend to use docker to start this app.
+The evaluation client as well as the corresponding dataset are available at our [`arguelauncher`](github.com/recap-utr/arguelauncher) repository.
+You can start the service with nix:
 
 ```shell
-docker-compose build
-docker-compose up
+nix develop -c poetry run python -m arguegen
 ```
-
-The evaluation client as well as the corresponding dataset are available at our [`arguelauncher`](github.com/recap-utr/arguelauncher) repository.
